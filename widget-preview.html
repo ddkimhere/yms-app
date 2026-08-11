@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>위젯 미리보기 · YMS Master Track</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E8B84B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .widget-page { background: var(--cream); min-height: 100vh; }
+
+    /* Phone mockup */
+    .phone-mockup {
+      width: 200px; height: 420px;
+      background: var(--charcoal);
+      border-radius: 40px;
+      padding: 16px 10px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.12);
+      position: relative; flex-shrink: 0;
+    }
+    .phone-screen {
+      width: 100%; height: 100%;
+      background: #1a1a2e;
+      border-radius: 28px;
+      overflow: hidden;
+      padding: 10px;
+      display: flex; flex-direction: column;
+      gap: 8px;
+    }
+    .phone-time {
+      color: #fff; font-size: 28px; font-weight: 800;
+      font-family: var(--font-en);
+      text-align: center; margin: 6px 0 2px;
+    }
+    .phone-date {
+      color: rgba(255,255,255,.6); font-size: 10px;
+      text-align: center; margin-bottom: 6px;
+    }
+
+    /* Widget Styles (phone-sized) */
+    .widget-row { display: flex; gap: 6px; }
+
+    /* Small Widget */
+    .ws-small {
+      flex: 1; height: 72px;
+      background: linear-gradient(135deg, #FFF8EC, #FFFFFF);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid rgba(232,184,75,.4);
+    }
+    .ws-small .wh { font-size: 7px; font-weight: 800; color: var(--orange); font-family: var(--font-en); opacity:.7; }
+    .ws-small .wt { font-size: 9px; font-weight: 700; color: var(--charcoal); line-height: 1.3; }
+    .ws-small .wd { font-size: 7px; color: var(--gray-mid); }
+    .ws-small .wb { font-size: 7px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: var(--orange); color: #fff; display: inline-block; margin-top: 2px; }
+
+    /* Status Widget */
+    .ws-status {
+      flex: 1; height: 72px;
+      background: linear-gradient(135deg, var(--orange), var(--orange-lt));
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+    }
+    .ws-status .wh { font-size: 7px; font-weight: 800; color: rgba(255,255,255,.7); font-family: var(--font-en); }
+    .ws-status .wrow { display: flex; align-items: center; justify-content: space-between; }
+    .ws-status .wnum { font-size: 20px; font-weight: 900; color: #fff; font-family: var(--font-en); }
+    .ws-status .wlbl { font-size: 7px; color: rgba(255,255,255,.8); font-weight: 600; }
+    .ws-status .wbottom { font-size: 7px; color: rgba(255,255,255,.7); }
+
+    /* Medium Widget */
+    .ws-medium {
+      height: 100px;
+      background: linear-gradient(135deg, #FFF8EC, #FFFFFF);
+      border-radius: 14px;
+      padding: 10px 12px;
+      border: 1px solid rgba(232,184,75,.4);
+    }
+    .ws-medium .wh-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .ws-medium .wh { font-size: 7px; font-weight: 800; color: var(--orange); font-family: var(--font-en); opacity:.7; }
+    .ws-medium .wdate { font-size: 7px; color: var(--gray-mid); }
+    .ws-medium .witem {
+      display: flex; align-items: center; gap: 6px;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(0,0,0,.04);
+    }
+    .ws-medium .witem:last-child { border-bottom: none; }
+    .ws-medium .wdot { width: 5px; height: 5px; border-radius: 50%; background: var(--mustard); }
+    .ws-medium .wtext { font-size: 8px; font-weight: 600; color: var(--charcoal); flex: 1; }
+    .ws-medium .wbadge { font-size: 6px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: var(--orange); color: #fff; }
+
+    /* ── Big Preview Cards ── */
+    .preview-section { padding: 0 20px 20px; }
+    .preview-card {
+      background: var(--warm-white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 16px;
+    }
+    .preview-card-title {
+      font-size: 16px; font-weight: 700;
+      color: var(--charcoal); margin-bottom: 4px;
+    }
+    .preview-card-desc {
+      font-size: 12px; color: var(--gray-mid);
+      margin-bottom: 16px;
+    }
+
+    /* Big Widget Large */
+    .widget-big-sm {
+      width: 160px; height: 90px;
+      background: linear-gradient(135deg, #FFF8EC, #FFFFFF);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--mustard-lt);
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .widget-big-md {
+      width: 100%;
+      background: linear-gradient(135deg, #FFF8EC, #FFFFFF);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--mustard-lt);
+    }
+    .widget-big-st {
+      width: 160px; height: 90px;
+      background: linear-gradient(135deg, var(--orange), var(--orange-lt));
+      border-radius: var(--radius-md);
+      padding: 14px;
+      box-shadow: var(--shadow-md);
+      display: flex; flex-direction: column; justify-content: space-between;
+      color: #fff;
+    }
+
+    .w-brand { font-family: var(--font-en); font-size: 9px; font-weight: 900; opacity: .65; }
+    .w-brand-white { font-family: var(--font-en); font-size: 9px; font-weight: 900; color: #fff; opacity: .65; }
+
+    .badge-new-sm {
+      font-size: 8px; font-weight: 700;
+      background: var(--orange); color: #fff;
+      padding: 1px 6px; border-radius: 4px;
+    }
+
+    .hw-widget-row {
+      display: flex; align-items: center;
+      gap: 8px; padding: 6px 0;
+      border-bottom: 1px solid var(--beige);
+    }
+    .hw-widget-row:last-child { border-bottom: none; }
+
+    /* Animate widgets */
+    .widget-pulse {
+      animation: widgetPulse 3s ease-in-out infinite;
+    }
+    @keyframes widgetPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper widget-page">
+  <!-- App Bar -->
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <span style="font-size:17px;font-weight:700;color:var(--charcoal);">홈 위젯 미리보기</span>
+    </div>
+  </header>
+
+  <!-- Hero: Phone Mockup -->
+  <div style="display:flex;justify-content:center;padding:20px;gap:20px;flex-wrap:wrap;background:linear-gradient(180deg,var(--cream),var(--beige));">
+    <div class="phone-mockup widget-pulse">
+      <div class="phone-screen">
+        <div class="phone-time" id="phoneTime">09:41</div>
+        <div class="phone-date" id="phoneDate">2026년 4월 19일 일요일</div>
+
+        <!-- Small + Status widgets row -->
+        <div class="widget-row">
+          <div class="ws-small">
+            <div class="wh">YMS · 오늘 숙제</div>
+            <div>
+              <div class="wt">Unit 5 단어 암기 10개</div>
+              <div class="wd">중2 영어 A반 · 김민준</div>
+            </div>
+            <span class="wb">D-1</span>
+          </div>
+          <div class="ws-status">
+            <div class="wh">YMS MASTER TRACK</div>
+            <div class="wrow">
+              <div><div class="wnum">2</div><div class="wlbl">새 숙제</div></div>
+              <div style="width:1px;height:30px;background:rgba(255,255,255,.3);"></div>
+              <div><div class="wnum">1</div><div class="wlbl">마감 임박</div></div>
+            </div>
+            <div class="wbottom">📖 오늘 바로 확인하세요</div>
+          </div>
+        </div>
+
+        <!-- Medium widget -->
+        <div class="ws-medium">
+          <div class="wh-row">
+            <div class="wh">YMS MASTER TRACK</div>
+            <div class="wdate" id="widgetDate">4월 19일</div>
+          </div>
+          <div class="witem">
+            <div class="wdot" style="background:var(--orange);"></div>
+            <div class="wtext">Unit 5 단어 암기 10개</div>
+            <span class="wbadge">D-1</span>
+          </div>
+          <div class="witem">
+            <div class="wdot" style="background:var(--mustard);"></div>
+            <div class="wtext">Reading 독해 연습 p.23</div>
+            <span class="wbadge" style="background:var(--mustard);">D-3</span>
+          </div>
+          <div class="witem">
+            <div class="wdot" style="background:var(--present);"></div>
+            <div class="wtext">Phonics 워크시트 B형</div>
+            <span class="wbadge" style="background:#4CAF50;">NEW</span>
+          </div>
+        </div>
+
+        <div style="flex:1;"></div>
+        <!-- Dock -->
+        <div style="display:flex;justify-content:center;gap:12px;padding:4px 0;">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:14px;">📞</div>
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:14px;">📷</div>
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:14px;">🎓</div>
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:14px;">💬</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:200px;max-width:220px;display:flex;flex-direction:column;gap:10px;justify-content:center;">
+      <div style="background:var(--warm-white);border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow-sm);">
+        <div style="font-size:13px;font-weight:700;color:var(--charcoal);margin-bottom:6px;">📱 위젯 3종</div>
+        <div style="font-size:12px;color:var(--gray-mid);line-height:1.6;">
+          <div>📌 소형 – 최신 숙제 1건</div>
+          <div>📋 중형 – 숙제 목록 3건</div>
+          <div>🟠 상태형 – 건수 요약</div>
+        </div>
+      </div>
+      <div style="background:var(--mustard-bg);border:1px solid var(--mustard-lt);border-radius:var(--radius-md);padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:4px;">⚡ 실시간 업데이트</div>
+        <div style="font-size:11px;color:var(--gray-dark);line-height:1.6;">선생님이 숙제 등록 → 앱 수신 → 위젯 자동 갱신</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <!-- Widget Type 1: Small -->
+    <div class="preview-card">
+      <div class="preview-card-title">📌 소형 위젯 (Small)</div>
+      <div class="preview-card-desc">최신 숙제 1건 + 마감 정보를 표시합니다</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="widget-big-sm">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="w-brand">YMS · 숙제</div>
+            <span style="font-size:10px;">📖</span>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--charcoal);line-height:1.3;">Unit 5 단어 암기 10개</div>
+            <div style="font-size:10px;color:var(--gray-mid);margin-top:2px;">중2 영어 A반 · 김민준</div>
+            <div style="margin-top:4px;"><span class="badge-new-sm" style="background:var(--badge-d1);">D-1</span></div>
+          </div>
+        </div>
+
+        <div class="widget-big-sm" style="justify-content:center;align-items:center;gap:6px;">
+          <div style="font-size:32px;">📭</div>
+          <div style="font-size:10px;color:var(--gray-mid);text-align:center;">오늘 숙제 없음</div>
+          <div class="w-brand" style="text-align:center;">YMS Master Track</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--cream);border-radius:var(--radius-sm);">
+        <div style="font-size:11px;font-weight:600;color:var(--charcoal);">표시 정보</div>
+        <div style="font-size:11px;color:var(--gray-mid);margin-top:3px;">숙제 제목 · 반 이름 · 학생 이름 · 마감 뱃지</div>
+      </div>
+    </div>
+
+    <!-- Widget Type 2: Medium -->
+    <div class="preview-card">
+      <div class="preview-card-title">📋 중형 위젯 (Medium)</div>
+      <div class="preview-card-desc">최신 숙제 최대 3건을 목록으로 표시합니다</div>
+      <div class="widget-big-md">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="w-brand">YMS MASTER TRACK</div>
+          <div style="font-size:10px;color:var(--gray-mid);" id="bigWidgetDate">4월 19일</div>
+        </div>
+        <div class="hw-widget-row">
+          <span style="font-size:14px;">📖</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--charcoal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Unit 5 단어 암기 10개</div>
+            <div style="font-size:11px;color:var(--gray-mid);">중2 영어 A반</div>
+          </div>
+          <span class="badge badge-d1">D-1</span>
+        </div>
+        <div class="hw-widget-row">
+          <span style="font-size:14px;">📖</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--charcoal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Reading 독해 연습 p.23</div>
+            <div style="font-size:11px;color:var(--gray-mid);">중2 영어 A반</div>
+          </div>
+          <span class="badge badge-d3">D-3</span>
+        </div>
+        <div class="hw-widget-row">
+          <span style="font-size:14px;">📖</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--charcoal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Phonics 워크시트 B형</div>
+            <div style="font-size:11px;color:var(--gray-mid);">초등 리딩 B반</div>
+          </div>
+          <span class="badge badge-new">NEW</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--cream);border-radius:var(--radius-sm);">
+        <div style="font-size:11px;font-weight:600;color:var(--charcoal);">표시 정보</div>
+        <div style="font-size:11px;color:var(--gray-mid);margin-top:3px;">숙제 제목 · 반 이름 · 마감 뱃지 (최대 3건)</div>
+      </div>
+    </div>
+
+    <!-- Widget Type 3: Status -->
+    <div class="preview-card">
+      <div class="preview-card-title">🟠 상태형 위젯 (Status)</div>
+      <div class="preview-card-desc">새 숙제 수와 마감 임박 건수를 요약합니다</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="widget-big-st">
+          <div class="w-brand-white">YMS MASTER TRACK</div>
+          <div style="display:flex;align-items:center;justify-content:space-around;">
+            <div style="text-align:center;">
+              <div style="font-size:28px;font-weight:900;color:#fff;font-family:var(--font-en);">2</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.8);">새 숙제</div>
+            </div>
+            <div style="width:1px;height:36px;background:rgba(255,255,255,.3);"></div>
+            <div style="text-align:center;">
+              <div style="font-size:28px;font-weight:900;color:#fff;font-family:var(--font-en);">1</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.8);">마감 임박</div>
+            </div>
+          </div>
+          <div style="font-size:9px;color:rgba(255,255,255,.7);">탭하여 확인</div>
+        </div>
+
+        <div class="widget-big-st" style="background:linear-gradient(135deg,#4CAF50,#66BB6A);">
+          <div class="w-brand-white">YMS MASTER TRACK</div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:#fff;font-family:var(--font-en);">✓</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.9);">숙제 없음</div>
+          </div>
+          <div style="font-size:9px;color:rgba(255,255,255,.7);">오늘도 수고했어요!</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--cream);border-radius:var(--radius-sm);">
+        <div style="font-size:11px;font-weight:600;color:var(--charcoal);">표시 정보</div>
+        <div style="font-size:11px;color:var(--gray-mid);margin-top:3px;">새 숙제 건수 · 마감 임박 건수 (D-1 이내)</div>
+      </div>
+    </div>
+
+    <!-- Update Flow -->
+    <div class="card card-mustard">
+      <div style="font-size:15px;font-weight:700;color:var(--orange);margin-bottom:10px;">⚡ 위젯 업데이트 흐름</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--orange);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+          <div style="font-size:13px;color:var(--charcoal);">선생님이 앱에서 숙제 등록</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--mustard);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+          <div style="font-size:13px;color:var(--charcoal);">서버에 저장 + 푸시 알림 발송</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--present);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+          <div style="font-size:13px;color:var(--charcoal);">학부모 앱 알림 수신 → 위젯 갱신</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--charcoal);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+          <div style="font-size:13px;color:var(--charcoal);">홈 화면에서 바로 숙제 확인!</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.5);border-radius:var(--radius-sm);font-size:11px;color:var(--gray-dark);line-height:1.6;">
+        <strong>iOS:</strong> WidgetKit 타임라인 + 푸시 트리거 (reloadAllTimelines)<br>
+        <strong>Android:</strong> AppWidget + FCM 수신 즉시 갱신 (워크매니저 보조)
+      </div>
+    </div>
+
+    <!-- Back to Home Button -->
+    <div style="padding-bottom:20px;">
+      <button class="btn btn-primary btn-full" onclick="history.back()">← 앱으로 돌아가기</button>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('phoneTime').textContent = `${h}:${m}`;
+
+    const dows = ['일','월','화','수','목','금','토'];
+    document.getElementById('phoneDate').textContent =
+      `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 ${dows[now.getDay()]}요일`;
+
+    const dateStr = `${now.getMonth()+1}월 ${now.getDate()}일`;
+    const d1 = document.getElementById('widgetDate');
+    const d2 = document.getElementById('bigWidgetDate');
+    if (d1) d1.textContent = dateStr;
+    if (d2) d2.textContent = dateStr;
+  }
+
+  updateClock();
+  setInterval(updateClock, 60000);
+</script>
+</body>
+</html>

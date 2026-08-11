@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>숙제 · YMS Master Track</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E8B84B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--mustard:var(--periwinkle);--mustard-lt:var(--periwinkle-lt);--mustard-bg:var(--periwinkle-bg);--orange:var(--navy);--orange-lt:var(--navy-lt);--orange-dark:var(--navy-dark);--cream:var(--sky-bg);--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--shadow-lg:0 8px 32px rgba(30,50,120,.16);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;--font-en:'Nunito',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    .app-wrapper{max-width:430px;min-height:100vh;margin:0 auto;background:var(--sky-bg);position:relative;overflow-x:hidden;}
+    .filter-scroll {
+      display: flex; gap: 8px;
+      overflow-x: auto; padding: 12px 20px 0;
+      scrollbar-width: none;
+    }
+    .filter-scroll::-webkit-scrollbar { display: none; }
+    .filter-chip {
+      padding: 7px 16px;
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--beige-dark);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; background: var(--warm-white);
+      color: var(--gray-mid); white-space: nowrap;
+      transition: all .15s;
+    }
+    .filter-chip.active {
+      background: var(--orange); color: #fff;
+      border-color: var(--orange);
+    }
+
+    .hw-card {
+      background: var(--warm-white);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--beige);
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .hw-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .hw-card-header {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 8px;
+    }
+    .hw-card-title {
+      font-size: 15px; font-weight: 700;
+      color: var(--charcoal); flex: 1;
+    }
+    .hw-card-meta {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 8px; flex-wrap: wrap;
+    }
+    .hw-card-due {
+      font-size: 12px; font-weight: 600;
+      color: var(--orange);
+    }
+
+    /* Teacher Register FAB */
+    .fab {
+      position: fixed;
+      bottom: 90px; right: calc(50% - 200px);
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: var(--orange);
+      color: #fff;
+      font-size: 24px;
+      border: none; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(212,100,26,.4);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 150;
+      transition: transform .15s;
+    }
+    .fab:hover { transform: scale(1.08); }
+
+    @media (max-width: 430px) {
+      .fab { right: 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <!-- App Bar -->
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <span style="font-size:17px;font-weight:700;color:var(--charcoal);">숙제</span>
+    </div>
+    <div class="app-bar-right">
+      <span id="roleChip" class="chip chip-mustard" style="font-size:11px;"></span>
+    </div>
+  </header>
+
+  <!-- Filter Chips -->
+  <div class="filter-scroll" id="filterRow">
+    <div class="filter-chip active" data-filter="ALL" onclick="setFilter(this,'ALL')">전체</div>
+    <div class="filter-chip" data-filter="NEW" onclick="setFilter(this,'NEW')">🆕 NEW</div>
+    <div class="filter-chip" data-filter="D-1" onclick="setFilter(this,'D-1')">🔥 D-1</div>
+    <div class="filter-chip" data-filter="D-3" onclick="setFilter(this,'D-3')">📅 D-3</div>
+    <div class="filter-chip" data-filter="OVERDUE" onclick="setFilter(this,'OVERDUE')">⚠️ 마감</div>
+  </div>
+
+  <!-- Homework List -->
+  <div class="page-content" id="hwListWrap">
+    <div class="skeleton" style="height:100px;border-radius:16px;margin-bottom:10px;"></div>
+    <div class="skeleton" style="height:100px;border-radius:16px;margin-bottom:10px;"></div>
+    <div class="skeleton" style="height:100px;border-radius:16px;"></div>
+  </div>
+
+  <!-- Tab Bar -->
+  <nav class="tab-bar" id="tabBar"></nav>
+</div>
+
+<!-- FAB for Teachers -->
+<button class="fab hidden" id="fabBtn" onclick="showHwRegModal()" title="숙제 등록">✏️</button>
+
+<!-- Homework Detail Modal -->
+<div id="hwDetailModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div id="hwDetailContent"></div>
+    <button class="btn btn-ghost btn-full mt-16" onclick="document.getElementById('hwDetailModal').classList.add('hidden')">닫기</button>
+  </div>
+</div>
+
+<!-- Homework Register Modal (Teacher) -->
+<div id="hwRegModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ 숙제 등록</div>
+    <form id="hwRegForm" onsubmit="submitHomework(event)" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">반 선택</label>
+        <select class="form-input form-select" id="hwClassId">
+          <option value="cls001">중2 영어 A반</option>
+          <option value="cls002">초등 리딩 B반</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">과목</label>
+        <input type="text" class="form-input" id="hwSubject" value="영어" required>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">제목</label>
+        <input type="text" class="form-input" id="hwTitle" placeholder="숙제 제목 입력" required>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">내용</label>
+        <textarea class="form-input" id="hwContent" rows="3" placeholder="내용 입력" style="resize:none;"></textarea>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">마감일</label>
+        <input type="date" class="form-input" id="hwDueDate">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('hwRegModal').classList.add('hidden')">취소</button>
+        <button type="submit" class="btn btn-primary" style="flex:2;" id="hwRegBtn">등록하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
+<script src="js/app.js"></script>
+<script>
+  const user = ymsPageInit(true);
+  let currentFilter = 'ALL';
+  let allHomework   = [];
+
+  /* ── 반 목록 (선생님 등록 시 선택용) ── */
+  const CLASS_LIST = [
+    { id:'cls001', name:'중2 영어 A반',   levelCode:'C3' },
+    { id:'cls002', name:'초등 리딩 B반',  levelCode:'F4' },
+  ];
+
+  function init() {
+    if (!user) return;
+    const roleMap = { PARENT:'👨‍👩‍👧 학부모', TEACHER:'👩‍🏫 선생님', ADMIN:'🏫 관리자', STUDENT:'🎓 학생' };
+    document.getElementById('roleChip').textContent = roleMap[user.role] || user.role;
+
+    if (user.role === 'TEACHER' || user.role === 'ADMIN') {
+      document.getElementById('fabBtn').classList.remove('hidden');
+    }
+    ymsRenderTabBar('homework.html');
+    loadHomework();
+  }
+
+  // renderTabBar → ymsRenderTabBar 로 통합 (js/app.js)
+
+  /* ── 숙제 목록 불러오기 (Table API) ── */
+  async function loadHomework() {
+    YMS_UI.showLoading('#hwListWrap');
+    try {
+      const res = await _tFetch('tables/homework?limit=100');
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      let list = (json.data || []).map(hw => ({ ...hw, badge: calcBadge(hw.dueAt) }));
+
+      /* 학부모/학생: 자기 반 숙제만 필터 */
+      if (user.role === 'PARENT' || user.role === 'STUDENT') {
+        const myClass = await getMyClassName();
+        if (myClass) list = list.filter(h => h.className === myClass);
+      }
+
+      allHomework = list;
+    } catch(e) {
+      console.warn('[YMS] 숙제 로드 실패', e);
+      allHomework = [];
+    }
+    renderHomework(allHomework);
+  }
+
+  /* 내 반 이름 가져오기 — DB 조회 */
+  async function getMyClassName() {
+    // STUDENT: students 테이블에서 본인 레코드의 className
+    if (user.role === 'STUDENT') {
+      try {
+        const sid = user.studentId || user._tableId;
+        if (sid) {
+          const r = await _tFetch(`tables/students/${sid}`);
+          if (r.ok) { const s = await r.json(); return s.className || null; }
+        }
+        // studentId 없으면 이름으로 검색
+        const r2 = await _tFetch(`tables/students?search=${encodeURIComponent(user.name)}&limit=5`);
+        if (r2.ok) {
+          const j = await r2.json();
+          const s = (j.data||[]).find(s => s.name === user.name);
+          return s?.className || null;
+        }
+      } catch(e) { console.warn('[YMS] 학생 반 조회 실패', e); }
+      return null;
+    }
+    // PARENT: users 테이블의 childIds → students 테이블에서 반 조회
+    if (user.role === 'PARENT') {
+      try {
+        const childIds = Array.isArray(user.childIds)
+          ? user.childIds
+          : (user.childIds||'').split(',').map(s=>s.trim()).filter(Boolean);
+        if (childIds.length) {
+          const r = await _tFetch(`tables/students/${childIds[0]}`);
+          if (r.ok) { const s = await r.json(); return s.className || null; }
+        }
+      } catch(e) { console.warn('[YMS] 학부모 자녀 반 조회 실패', e); }
+      return null;
+    }
+    return null;
+  }
+
+  /* 마감일 기준 뱃지 자동 계산 */
+  function calcBadge(dueAt) {
+    if (!dueAt) return 'NEW';
+    const diff = (new Date(dueAt) - Date.now()) / (1000 * 60 * 60 * 24);
+    if (diff < 0)  return 'OVERDUE';
+    if (diff < 1)  return 'D-1';
+    if (diff < 3)  return 'D-3';
+    return 'NEW';
+  }
+
+  function renderHomework(list) {
+    const wrap = document.getElementById('hwListWrap');
+    wrap.innerHTML = '';
+
+    const filtered = currentFilter === 'ALL'
+      ? list
+      : list.filter(h => h.badge === currentFilter);
+
+    if (filtered.length === 0) {
+      wrap.innerHTML = YMS_UI.renderEmpty('숙제가 없습니다 🎉');
+      return;
+    }
+
+    filtered.forEach(hw => {
+      const card = document.createElement('div');
+      card.className = 'hw-card';
+      const createdAt = hw.created_at ? new Date(hw.created_at).toISOString() : (hw.createdAt || '');
+      card.innerHTML = `
+        <div class="hw-card-header">
+          <div style="font-size:22px;">${YMS_UI.subjectEmoji(hw.subject)}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="hw-card-title">${hw.title}</div>
+          </div>
+          ${YMS_UI.badge(hw.badge)}
+        </div>
+        <div class="hw-card-meta">
+          <span class="chip chip-gray" style="font-size:11px;">${hw.className || ''}</span>
+          ${hw.teacherName ? `<span style="font-size:12px;color:var(--gray-mid);">👩‍🏫 ${hw.teacherName}</span>` : ''}
+          ${hw.dueAt ? `<span class="hw-card-due">📅 ${YMS_Date.dueLabel(hw.dueAt)}</span>` : ''}
+        </div>
+        <div style="font-size:11px;color:var(--gray-light);margin-top:6px;">${YMS_Date.fromNow(createdAt)}</div>
+      `;
+      /* 선생님/관리자: 삭제 버튼 */
+      if (user.role === 'TEACHER' || user.role === 'ADMIN') {
+        const delBtn = document.createElement('button');
+        delBtn.style.cssText = 'margin-top:8px;padding:4px 12px;background:#FFEBEE;color:#C62828;border:1px solid #FFCDD2;border-radius:40px;font-size:11px;font-weight:700;cursor:pointer;';
+        delBtn.textContent = '🗑 삭제';
+        delBtn.addEventListener('click', e => { e.stopPropagation(); deleteHomework(hw.id); });
+        card.appendChild(delBtn);
+      }
+      card.addEventListener('click', () => openDetail(hw));
+      wrap.appendChild(card);
+    });
+  }
+
+  function setFilter(el, filter) {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    currentFilter = filter;
+    renderHomework(allHomework);
+  }
+
+  function openDetail(hw) {
+    document.getElementById('hwDetailContent').innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:28px;">${YMS_UI.subjectEmoji(hw.subject)}</span>
+        <span class="chip chip-mustard">${hw.subject}</span>
+        ${YMS_UI.badge(hw.badge)}
+      </div>
+      <h2 style="font-size:20px;font-weight:800;color:var(--charcoal);line-height:1.3;margin-bottom:12px;">${hw.title}</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <span class="chip chip-gray">${hw.className || ''}</span>
+        ${hw.dueAt ? `<span class="chip chip-orange">📅 ${YMS_Date.dueLabel(hw.dueAt)}</span>` : ''}
+        ${hw.levelCode ? `<span class="chip chip-blue">${hw.levelCode}</span>` : ''}
+      </div>
+      <div style="font-size:12px;color:var(--gray-mid);margin-bottom:12px;">
+        선생님: <strong>${hw.teacherName || '-'}</strong> · 등록: ${YMS_Date.fromNow(hw.created_at || hw.createdAt)}
+      </div>
+      <div style="background:var(--cream);border-radius:var(--radius-md);padding:16px;font-size:14px;line-height:1.7;color:var(--gray-dark);">
+        ${hw.content || '내용이 없습니다.'}
+      </div>
+      ${hw.dueAt ? `<div style="margin-top:14px;padding:12px 16px;background:var(--mustard-bg);border-radius:var(--radius-md);border:1px solid var(--mustard-lt);">
+        <div style="font-size:12px;font-weight:700;color:var(--orange);">📅 마감 정보</div>
+        <div style="font-size:14px;font-weight:700;color:var(--charcoal);margin-top:4px;">${YMS_Date.format(hw.dueAt, {showYear:true})}</div>
+      </div>` : ''}
+    `;
+    document.getElementById('hwDetailModal').classList.remove('hidden');
+  }
+
+  /* ── 숙제 등록 (선생님/관리자) ── */
+  function showHwRegModal() {
+    const tom = new Date(); tom.setDate(tom.getDate() + 1);
+    document.getElementById('hwDueDate').value = tom.toISOString().slice(0, 10);
+    // 반 목록 채우기
+    const sel = document.getElementById('hwClassId');
+    sel.innerHTML = CLASS_LIST.map(c => `<option value="${c.id}" data-name="${c.name}" data-level="${c.levelCode}">${c.name}</option>`).join('');
+    document.getElementById('hwRegModal').classList.remove('hidden');
+  }
+
+  async function submitHomework(e) {
+    e.preventDefault();
+    const btn = document.getElementById('hwRegBtn');
+    btn.disabled = true; btn.textContent = '등록 중...';
+
+    const sel       = document.getElementById('hwClassId');
+    const clsName   = sel.options[sel.selectedIndex].dataset.name;
+    const levelCode = sel.options[sel.selectedIndex].dataset.level;
+    const dueDate   = document.getElementById('hwDueDate').value;
+    const dueAt     = dueDate ? new Date(dueDate + 'T21:00:00+09:00').toISOString() : null;
+
+    const payload = {
+      title:       document.getElementById('hwTitle').value.trim(),
+      content:     document.getElementById('hwContent').value.trim(),
+      subject:     document.getElementById('hwSubject').value.trim() || '영어',
+      className:   clsName,
+      levelCode,
+      teacherId:   user.id,
+      teacherName: user.name,
+      dueAt,
+      badge:       calcBadge(dueAt),
+      isVisible:   true,
+    };
+
+    try {
+      /* Table API POST */
+      const res = await _tFetch('tables/homework', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error();
+      const saved = await res.json();
+      allHomework.unshift({ ...saved, badge: calcBadge(saved.dueAt) });
+      YMS_UI.toast('숙제가 등록되었습니다! 📚');
+    } catch {
+      /* 실패 시 로컬 임시 추가 */
+      allHomework.unshift({ id: 'hw_' + Date.now(), ...payload, created_at: new Date().toISOString() });
+      YMS_UI.toast('숙제 등록 완료 (오프라인 임시저장) 📚');
+    }
+
+    document.getElementById('hwRegModal').classList.add('hidden');
+    document.getElementById('hwRegForm').reset();
+    renderHomework(allHomework);
+    btn.disabled = false; btn.textContent = '등록하기';
+  }
+
+  /* ── 숙제 삭제 ── */
+  async function deleteHomework(hwId) {
+    if (!confirm('이 숙제를 삭제할까요?')) return;
+    try {
+      await _tFetch(`tables/homework/${hwId}`, { method: 'DELETE' });
+      allHomework = allHomework.filter(h => h.id !== hwId);
+      renderHomework(allHomework);
+      YMS_UI.toast('숙제가 삭제되었습니다.');
+    } catch {
+      YMS_UI.toast('삭제 중 오류가 발생했습니다.');
+    }
+  }
+
+  ['hwDetailModal','hwRegModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) {
+      if (e.target === this) this.classList.add('hidden');
+    });
+  });
+
+  init();
+</script>
+</body>
+</html>

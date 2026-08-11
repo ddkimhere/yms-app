@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>수강료 · 교재비 · YMS</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1E3278">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--mustard:var(--periwinkle);--mustard-lt:var(--periwinkle-lt);--mustard-bg:var(--periwinkle-bg);--orange:var(--navy);--orange-lt:var(--navy-lt);--orange-dark:var(--navy-dark);--cream:var(--sky-bg);--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--shadow-lg:0 8px 32px rgba(30,50,120,.16);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;--font-en:'Nunito',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    .app-wrapper{max-width:430px;min-height:100vh;margin:0 auto;background:var(--sky-bg);position:relative;overflow-x:hidden;}
+    /* ── 상태 칩 ── */
+    .pay-paid    { background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; }
+    .pay-unpaid  { background:#FFF3E0; color:#E65100; border:1px solid #FFCC80; }
+    .pay-overdue { background:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; }
+
+    /* ── 히어로 카드 ── */
+    .pay-hero {
+      background: linear-gradient(135deg, #14245A, #1E3278);
+      border-radius: var(--radius-lg);
+      padding: 20px; color:#fff;
+      position:relative; overflow:hidden;
+    }
+    .pay-hero::after { content:'💳'; position:absolute; right:16px; bottom:8px; font-size:56px; opacity:.08; }
+    .pay-hero-label { font-size:11px; opacity:.6; letter-spacing:.5px; text-transform:uppercase; }
+    .pay-hero-total { font-family:var(--font-en); font-size:34px; font-weight:900; margin-top:4px; }
+    .pay-hero-breakdown { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+    .pay-hero-item {
+      background:rgba(255,255,255,.12); border-radius:var(--radius-sm);
+      padding:7px 14px; display:flex; flex-direction:column; gap:2px; min-width:80px;
+    }
+    .phi-label { font-size:10px; opacity:.65; }
+    .phi-val   { font-size:15px; font-weight:800; }
+    .pay-hero-tag {
+      display:inline-flex; align-items:center; gap:4px;
+      background:rgba(255,255,255,.15); border-radius:var(--radius-full);
+      padding:4px 12px; font-size:11px; font-weight:600; margin-top:12px;
+    }
+
+    /* ── 형제 합산 배너 ── */
+    .sibling-banner {
+      background:linear-gradient(135deg,#EEF3FB,#E8EDF8);
+      border:1px solid var(--periwinkle-lt);
+      border-radius:var(--radius-md); padding:14px 16px; margin-bottom:14px;
+    }
+    .sibling-banner-title { font-size:13px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+    .sibling-row { display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px dashed var(--periwinkle-lt); font-size:12px; }
+    .sibling-row:last-child { border-bottom:none; }
+    .sibling-name { font-weight:600; color:var(--charcoal); }
+    .sibling-amount { font-weight:700; color:var(--navy); }
+    .sibling-total-row { display:flex; justify-content:space-between; padding-top:8px; margin-top:4px; border-top:1.5px solid var(--periwinkle); font-size:14px; font-weight:800; color:var(--navy); }
+
+    /* ── 연체 배너 ── */
+    .overdue-banner { background:#FFEBEE; border:1px solid #FFCDD2; border-radius:var(--radius-md); padding:12px 16px; display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+    .overdue-banner-text { font-size:13px; font-weight:600; color:#C62828; flex:1; }
+
+    /* ── 월별 그룹 ── */
+    .month-group { margin-bottom:22px; }
+    .month-group-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .month-group-title { font-size:15px; font-weight:800; color:var(--charcoal); display:flex; align-items:center; gap:6px; }
+    .month-group-total { font-size:13px; font-weight:700; color:var(--navy); }
+
+    /* ── 수납 항목 카드 ── */
+    .pay-item {
+      background:var(--warm-white); border-radius:var(--radius-md);
+      padding:14px 16px; box-shadow:var(--shadow-sm);
+      border:1px solid var(--beige); margin-bottom:8px;
+      display:flex; align-items:center; gap:12px;
+      cursor:pointer; transition:transform .12s, box-shadow .12s;
+    }
+    .pay-item:hover { transform:translateY(-1px); box-shadow:var(--shadow-md); }
+    .pay-item.overdue { border-left:3px solid var(--absent); }
+    .pay-item.unpaid  { border-left:3px solid var(--late); }
+    .pay-item-icon { width:40px; height:40px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+    .pi-tuition { background:#EDE7F6; }
+    .pi-book    { background:#E3F2FD; }
+    .pi-etc     { background:var(--gray-bg); }
+    .pay-item-info { flex:1; min-width:0; }
+    .pay-item-title { font-size:14px; font-weight:700; color:var(--charcoal); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pay-item-sub { font-size:11px; color:var(--gray-mid); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .book-tag { background:#E3F2FD; color:#1565C0; border:1px solid #90CAF9; border-radius:var(--radius-sm); font-size:10px; font-weight:600; padding:2px 7px; margin-top:3px; display:inline-block; }
+    .pay-method-tag { display:inline-flex; align-items:center; gap:3px; border-radius:var(--radius-full); padding:2px 8px; font-size:10px; font-weight:700; }
+    .pm-cash     { background:#FFF8E1; color:#F57F17; border:1px solid #FFE082; }
+    .pm-transfer { background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; }
+    .pm-card     { background:#E3F2FD; color:#1565C0; border:1px solid #90CAF9; }
+    .pay-item-right { text-align:right; flex-shrink:0; }
+    .pay-item-amount { font-size:15px; font-weight:800; color:var(--charcoal); }
+    .pay-item-status { margin-top:4px; }
+
+    /* ── 납부 처리 버튼 ── */
+    .mark-paid-btn { flex:1; padding:8px 0; background:var(--present); color:#fff; border:none; border-radius:var(--radius-full); font-size:12px; font-weight:700; cursor:pointer; transition:opacity .15s; }
+    .mark-paid-btn:hover { opacity:.85; }
+    .mark-unpaid-btn { flex:1; padding:8px 0; background:var(--beige); color:var(--gray-dark); border:1px solid var(--beige-dark); border-radius:var(--radius-full); font-size:12px; font-weight:700; cursor:pointer; }
+
+    /* ── 교재비 입력 영역 ── */
+    .book-add-section { background:#EEF3FB; border:1px solid var(--periwinkle-lt); border-radius:var(--radius-md); padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+    .book-add-title { font-size:13px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:6px; }
+
+    /* ── 교재비 결제수단 안내 (학부모) ── */
+    .book-pay-notice {
+      background:linear-gradient(135deg,#FFF8E1,#FFF3CD);
+      border:1.5px solid #FFD54F; border-radius:var(--radius-md);
+      padding:12px 16px; margin-bottom:14px;
+    }
+    .book-pay-notice-title { font-size:13px; font-weight:800; color:#E65100; display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+    .book-pay-method-row { display:flex; gap:10px; margin-top:6px; }
+    .book-pay-method-item { flex:1; background:var(--warm-white); border:1.5px solid; border-radius:var(--radius-md); padding:10px 12px; text-align:center; }
+    .book-pay-method-item.cash { border-color:#FFD54F; }
+    .book-pay-method-item.transfer { border-color:#A5D6A7; }
+    .bpm-icon { font-size:22px; margin-bottom:4px; }
+    .bpm-label { font-size:12px; font-weight:800; color:var(--charcoal); }
+    .bpm-sub { font-size:10px; color:var(--gray-mid); margin-top:2px; line-height:1.4; }
+
+    /* ── 탭 필터 ── */
+    .type-tabs { display:flex; gap:8px; padding:12px 20px 0; overflow-x:auto; scrollbar-width:none; }
+    .type-tabs::-webkit-scrollbar { display:none; }
+    .type-tab { padding:7px 16px; border-radius:var(--radius-full); border:1.5px solid var(--beige-dark); font-size:12px; font-weight:600; cursor:pointer; background:var(--warm-white); color:var(--gray-mid); white-space:nowrap; transition:all .15s; }
+    .type-tab.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+    /* ── 학생 필터 칩 ── */
+    .sf-row { display:flex; gap:8px; overflow-x:auto; padding:8px 20px 0; scrollbar-width:none; }
+    .sf-row::-webkit-scrollbar { display:none; }
+    .sf-chip { padding:7px 14px; border-radius:var(--radius-full); border:1.5px solid var(--beige-dark); font-size:12px; font-weight:600; cursor:pointer; background:var(--warm-white); color:var(--gray-mid); white-space:nowrap; flex-shrink:0; transition:all .15s; }
+    .sf-chip.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+    /* ── 납부 안내 카드 공통 ── */
+    .pay-guide-card {
+      background: var(--warm-white);
+      border: 1px solid var(--beige-dark);
+      border-radius: var(--radius-md);
+      padding: 18px 16px;
+      margin-bottom: 12px;
+    }
+    .pay-guide-card-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 1.5px dashed var(--beige-dark);
+    }
+    .pay-guide-card-icon {
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .pgci-tuition { background: linear-gradient(135deg,#EDE7F6,#D1C4E9); }
+    .pgci-book    { background: linear-gradient(135deg,#E3F2FD,#BBDEFB); }
+    .pay-guide-card-title { font-size:14px; font-weight:800; color:var(--charcoal); }
+    .pay-guide-card-sub   { font-size:11px; color:var(--gray-mid); margin-top:1px; }
+
+    /* 결제수단 뱃지 행 */
+    .pgm-row { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+    .pgm-badge {
+      display: inline-flex; align-items:center; gap:4px;
+      padding: 5px 12px; border-radius: var(--radius-full);
+      font-size: 12px; font-weight: 700;
+    }
+    .pgm-qr       { background:#E8F5E9; color:#1B5E20; border:1px solid #A5D6A7; }
+    .pgm-card     { background:#E3F2FD; color:#0D47A1; border:1px solid #90CAF9; }
+    .pgm-transfer { background:#FFF3E0; color:#E65100; border:1px solid #FFCC80; }
+    .pgm-cash     { background:#F3E5F5; color:#4A148C; border:1px solid #CE93D8; }
+    .pgm-only     { background:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; font-size:10px; }
+
+    /* 계좌 행 */
+    .bank-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--beige); }
+    .bank-row:last-of-type { border-bottom:none; }
+    .bank-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+    .bank-kakao { background:#FEE500; }
+    .bank-info { flex:1; min-width:0; }
+    .bank-holder { font-size:13px; font-weight:800; color:var(--charcoal); }
+    .bank-number { font-family:var(--font-en); font-size:14px; font-weight:700; color:var(--navy); letter-spacing:.5px; margin-top:1px; }
+    .bank-sub { font-size:11px; color:var(--gray-mid); margin-top:2px; }
+    .bank-copy-btn {
+      padding: 6px 13px;
+      background: var(--periwinkle-bg);
+      border: 1px solid var(--periwinkle-lt);
+      border-radius: var(--radius-full);
+      font-size: 11px; font-weight: 700; color: var(--navy);
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+      transition: background .15s;
+    }
+    .bank-copy-btn:hover  { background: var(--periwinkle-lt); }
+    .bank-copy-btn.copied { background:#E8F5E9; border-color:#A5D6A7; color:#2E7D32; }
+
+    /* QR 섹션 */
+    .qr-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 10px; padding: 16px 0 8px;
+    }
+    .qr-img-box {
+      position: relative;
+      width: 164px; height: 164px;
+      border-radius: var(--radius-md);
+      border: 2.5px solid var(--navy);
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(30,50,120,.15);
+    }
+    .qr-img-box img { width:100%; height:100%; object-fit:contain; }
+    .qr-img-label {
+      position: absolute; bottom:0; left:0; right:0;
+      background: linear-gradient(transparent, rgba(30,50,120,.75));
+      color:#fff; font-size:10px; font-weight:700;
+      text-align:center; padding: 10px 6px 6px;
+    }
+    .qr-caption { font-size:12px; font-weight:700; color:var(--navy); text-align:center; }
+    .qr-sub     { font-size:10px; color:var(--gray-mid); text-align:center; margin-top:2px; }
+
+    /* 구분선 */
+    .pgd { display:flex; align-items:center; gap:8px; margin:12px 0 10px; }
+    .pgd::before, .pgd::after { content:''; flex:1; height:1px; background:var(--beige-dark); }
+    .pgd span { font-size:10px; color:var(--gray-mid); white-space:nowrap; }
+
+    /* 안내 섹션 헤더 */
+    .pg-section-label {
+      font-size:11px; font-weight:700; color:var(--gray-mid);
+      letter-spacing:.5px; text-transform:uppercase;
+      margin-bottom:8px; display:flex; align-items:center; gap:4px;
+    }
+
+    /* 카드 결제 안내 */
+    .card-notice {
+      background:linear-gradient(135deg,#E8EAF6,#EDE7F6);
+      border:1px solid #C5CAE9; border-radius:var(--radius-md);
+      padding:10px 14px; margin-top:10px;
+      font-size:11px; color:#283593; line-height:1.6;
+    }
+
+    /* 하위 호환 */
+    .pay-guide-title { font-size:13px; font-weight:800; color:var(--charcoal); display:flex; align-items:center; gap:6px; margin-bottom:12px; padding-bottom:8px; border-bottom:1.5px dashed var(--beige-dark); }
+    .discount-badge { display:inline-flex; align-items:center; gap:3px; background:#FFF3E0; border:1px solid #FFCC80; border-radius:var(--radius-full); padding:2px 10px; font-size:10px; font-weight:700; color:#E65100; margin-left:6px; }
+    .qr-section { text-align:center; padding:8px 0 4px; }
+    .qr-label { font-size:11px; color:var(--gray-mid); font-weight:600; margin-bottom:8px; }
+    .qr-caption-old { font-size:10px; color:var(--gray-mid); margin-top:6px; line-height:1.5; }
+
+    /* ── 결제수단 선택 버튼 ── */
+    .pay-method-selector { display:flex; gap:8px; }
+    .pm-btn { flex:1; padding:10px 0; border-radius:var(--radius-md); border:1.5px solid var(--beige-dark); font-size:13px; font-weight:700; cursor:pointer; background:var(--warm-white); color:var(--gray-mid); text-align:center; transition:all .15s; }
+    .pm-btn.active.cash { background:#FFF8E1; border-color:#FFD54F; color:#E65100; }
+    .pm-btn.active.transfer { background:#E8F5E9; border-color:#A5D6A7; color:#2E7D32; }
+    .pm-btn.active.card { background:#E3F2FD; border-color:#90CAF9; color:#1565C0; }
+
+    /* ── 권한 안내 배너 ── */
+    .role-info-banner { background:var(--periwinkle-bg); border:1px solid var(--periwinkle-lt); border-radius:var(--radius-md); padding:10px 14px; display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:12px; color:var(--navy); font-weight:600; }
+
+    /* ── 반별 일괄 등록 섹션 ── */
+    .bulk-section { background:var(--warm-white); border:1px solid var(--beige); border-radius:var(--radius-md); padding:16px; margin-bottom:14px; }
+    .bulk-title { font-size:13px; font-weight:800; color:var(--charcoal); margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+    .class-check-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--beige); }
+    .class-check-row:last-child { border-bottom:none; }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- App Bar -->
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <span style="font-size:17px;font-weight:700;color:#fff;" id="pageTitle">수강료 · 교재비</span>
+    </div>
+    <div class="app-bar-right">
+      <button class="icon-btn hidden" id="addTuitionBtn" title="수강료 등록" onclick="showAddTuitionModal()">➕</button>
+      <button class="btn btn-sm hidden" id="addBookBtn" onclick="showAddBookModal()"
+        style="height:36px;font-size:12px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius-full);">📘 교재비</button>
+    </div>
+  </header>
+
+  <!-- ① 학부모: 자녀 선택 -->
+  <div class="student-selector hidden" id="parentChildRow" style="padding:12px 20px 0;"></div>
+
+  <!-- ② 관리자·선생님: 학생 필터 -->
+  <div class="sf-row hidden" id="staffStudentRow"></div>
+
+  <!-- ③ 항목 유형 탭 -->
+  <div class="type-tabs" id="typeTabs">
+    <div class="type-tab active" data-type="ALL"     onclick="setTypeTab(this,'ALL')">전체</div>
+    <div class="type-tab"        data-type="TUITION" onclick="setTypeTab(this,'TUITION')">💜 수강료</div>
+    <div class="type-tab"        data-type="BOOK"    onclick="setTypeTab(this,'BOOK')">📘 교재비</div>
+  </div>
+
+  <!-- 히어로 요약 (학부모) -->
+  <div style="padding:14px 20px 0;" id="heroWrap">
+    <div class="pay-hero" id="payHero">
+      <div class="pay-hero-label">📅 이번 달 납부 현황</div>
+      <div class="pay-hero-total" id="heroTotal">₩0</div>
+      <div class="pay-hero-breakdown" id="heroBreakdown"></div>
+      <div class="pay-hero-tag" id="heroTag">-</div>
+    </div>
+  </div>
+
+  <!-- 연체 배너 -->
+  <div style="padding:0 20px;" class="hidden" id="overdueBannerWrap">
+    <div class="overdue-banner mt-12">
+      <span style="font-size:20px;">⚠️</span>
+      <div class="overdue-banner-text" id="overdueText">연체 항목이 있습니다.</div>
+    </div>
+  </div>
+
+  <!-- 형제 합산 배너 (자녀 2명 이상) -->
+  <div style="padding:14px 20px 0;" class="hidden" id="siblingBannerWrap"></div>
+
+  <!-- 교재비 결제수단 안내 (학부모 전용) — payGuideWrap에 통합되므로 숨김 처리 -->
+  <div id="bookPayNoticeWrap" class="hidden" style="padding:0 20px;"></div>
+
+  <!-- 권한 안내 (선생님) -->
+  <div class="hidden" id="teacherRoleInfo" style="padding:12px 20px 0;">
+    <div class="role-info-banner">
+      ℹ️ 선생님은 담당 반의 <strong>교재비 추가</strong>만 가능합니다. 수강료 납부 처리는 운영자에게 문의하세요.
+    </div>
+  </div>
+
+  <!-- 납부 계좌 안내 (학부모) -->
+  <div id="payGuideWrap" class="hidden" style="padding:14px 20px 0;">
+
+    <!-- ① 원비(수강료) 결제 안내 -->
+    <div class="pay-guide-card">
+      <div class="pay-guide-card-header">
+        <div class="pay-guide-card-icon pgci-tuition">💜</div>
+        <div>
+          <div class="pay-guide-card-title">원비 (수강료) 납부 방법</div>
+          <div class="pay-guide-card-sub">아래 3가지 방법 중 하나를 선택해주세요</div>
+        </div>
+      </div>
+
+      <!-- 결제수단 뱃지 -->
+      <div class="pgm-row">
+        <span class="pgm-badge pgm-qr">📲 다이로움 QR</span>
+        <span class="pgm-badge pgm-card">💳 카드결제</span>
+        <span class="pgm-badge pgm-transfer">🏦 계좌이체</span>
+      </div>
+
+      <!-- 방법 1: 다이로움 QR -->
+      <div class="pg-section-label">① 다이로움 QR 결제</div>
+      <div class="qr-wrap">
+        <div class="qr-img-box">
+          <img src="images/dairoum-qr.png" alt="익산 다이로움 QR코드"
+            onerror="this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;font-size:40px;\'>📲</div>'">
+          <div class="qr-img-label">익산 多e로움 가맹점</div>
+        </div>
+        <div class="qr-caption">와이엠에스 부송관 영어학원</div>
+        <div class="qr-sub">카메라로 QR을 스캔하여 결제</div>
+      </div>
+
+      <div class="pgd"><span>② 카드결제</span></div>
+      <div class="card-notice">
+        💳 카드 결제는 <strong>학원 방문 시</strong> 단말기로 진행합니다.<br>
+        원비는 현금·카드·계좌이체 모두 가능합니다.
+      </div>
+
+      <div class="pgd"><span>③ 계좌이체 (현금영수증)</span></div>
+      <!-- 황유진 계좌 — 원비용 -->
+      <div class="bank-row">
+        <div class="bank-icon bank-kakao">🐱</div>
+        <div class="bank-info">
+          <div class="bank-holder">황유진
+            <span style="display:inline-flex;align-items:center;gap:3px;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:40px;padding:2px 9px;font-size:10px;font-weight:700;color:#2E7D32;margin-left:6px;">🧾 현금영수증</span>
+          </div>
+          <div class="bank-number" id="acct2">7942-28-56906</div>
+          <div class="bank-sub">카카오뱅크 · 이체 후 문자 부탁드립니다</div>
+        </div>
+        <button class="bank-copy-btn" onclick="copyAccount('acct2', this)">복사</button>
+      </div>
+    </div>
+
+    <!-- ② 교재비 결제 안내 -->
+    <div class="pay-guide-card">
+      <div class="pay-guide-card-header">
+        <div class="pay-guide-card-icon pgci-book">📘</div>
+        <div>
+          <div class="pay-guide-card-title">교재비 납부 방법</div>
+          <div class="pay-guide-card-sub">교재비는 계좌이체만 가능합니다</div>
+        </div>
+      </div>
+
+      <!-- 결제수단 뱃지 -->
+      <div class="pgm-row">
+        <span class="pgm-badge pgm-transfer">🏦 계좌이체만 가능</span>
+        <span class="pgm-badge pgm-only">❌ QR·카드 불가</span>
+      </div>
+
+      <!-- 김소라 계좌 — 교재비용 -->
+      <div class="bank-row">
+        <div class="bank-icon bank-kakao">🐱</div>
+        <div class="bank-info">
+          <div class="bank-holder">김소라</div>
+          <div class="bank-number" id="acct1">3333-36-6373135</div>
+          <div class="bank-sub">카카오뱅크 · 교재비 전용 계좌</div>
+        </div>
+        <button class="bank-copy-btn" onclick="copyAccount('acct1', this)">복사</button>
+      </div>
+
+      <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:var(--radius-sm);padding:10px 14px;margin-top:6px;font-size:11px;color:#5D4037;line-height:1.7;">
+        ⚠️ 교재비는 <strong>위 계좌로 이체</strong>하신 후 문자 또는 카카오톡으로 알려주세요.<br>
+        운영자가 확인 후 납부 처리해드립니다.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 납부 목록 -->
+  <div class="page-content" style="padding-top:14px;" id="payList">
+    <div class="skeleton" style="height:70px;border-radius:12px;margin-bottom:8px;"></div>
+    <div class="skeleton" style="height:70px;border-radius:12px;margin-bottom:8px;"></div>
+    <div class="skeleton" style="height:70px;border-radius:12px;"></div>
+  </div>
+
+  <nav class="tab-bar" id="tabBar"></nav>
+</div>
+
+<!-- ── 상세/영수증 모달 ── -->
+<div id="detailModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🧾 납부 상세</div>
+    <div id="detailContent"></div>
+    <button class="btn btn-ghost btn-full mt-16"
+      onclick="document.getElementById('detailModal').classList.add('hidden')">닫기</button>
+  </div>
+</div>
+
+<!-- ── 수강료 등록 모달 (운영자 전용) ── -->
+<div id="addTuitionModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:92vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">➕ 수강료 등록 <span style="font-size:11px;color:var(--gray-mid);font-weight:400;">운영자 전용</span></div>
+    <form id="addTuitionForm" onsubmit="submitAddTuition(event)" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">학생</label>
+        <select class="form-input form-select" id="tStudentId" onchange="onTuitionStudentChange()"></select>
+      </div>
+      <div class="form-group" style="margin:0;" id="tClassWrap" style="display:none;">
+        <label class="form-label">수강반</label>
+        <input type="text" class="form-input" id="tClassName" readonly placeholder="학생 선택 시 자동 입력">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">납부 월</label>
+        <input type="month" class="form-input" id="tMonth" required>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">수강료 금액</label>
+        <input type="number" class="form-input" id="tAmount" placeholder="예) 280000" min="0" required>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">납부 상태</label>
+        <select class="form-input form-select" id="tStatus" onchange="onTuitionStatusChange()">
+          <option value="UNPAID">⏳ 미납</option>
+          <option value="PAID">✅ 납부 완료</option>
+          <option value="OVERDUE">⚠️ 연체</option>
+        </select>
+      </div>
+      <!-- 납부 완료 시: 결제수단 선택 -->
+      <div class="form-group hidden" style="margin:0;" id="tPayMethodWrap">
+        <label class="form-label">결제 수단</label>
+        <div class="pay-method-selector">
+          <button type="button" class="pm-btn cash" data-method="CASH" onclick="selectPayMethod(this,'tMethod')">💵 현금</button>
+          <button type="button" class="pm-btn transfer" data-method="TRANSFER" onclick="selectPayMethod(this,'tMethod')">🏦 계좌이체</button>
+          <button type="button" class="pm-btn card" data-method="CARD" onclick="selectPayMethod(this,'tMethod')">💳 카드</button>
+        </div>
+        <input type="hidden" id="tMethod" value="">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">납부 기한</label>
+        <input type="date" class="form-input" id="tDueDate">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">메모 (선택)</label>
+        <input type="text" class="form-input" id="tMemo" placeholder="예) 5월 수강료">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('addTuitionModal').classList.add('hidden')">취소</button>
+        <button type="submit" class="btn btn-primary" style="flex:2;" id="tSubmitBtn">등록하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── 교재비 추가 모달 (운영자 + 선생님) ── -->
+<div id="addBookModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:92vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📘 교재비 추가</div>
+
+    <!-- 교재비 결제 안내 (폼 내부) -->
+    <div style="background:linear-gradient(135deg,#FFF8E1,#FFF3CD);border:1.5px solid #FFD54F;border-radius:var(--radius-md);padding:10px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:8px;">
+      <span style="font-size:16px;">⚠️</span>
+      <div>
+        <div style="font-size:12px;font-weight:800;color:#E65100;">교재비 결제 수단 제한</div>
+        <div style="font-size:11px;color:#5D4037;margin-top:3px;line-height:1.5;">교재비는 <strong>현금 또는 계좌이체</strong>만 가능합니다.</div>
+      </div>
+    </div>
+
+    <form id="addBookForm" onsubmit="submitAddBook(event)" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">학생</label>
+        <select class="form-input form-select" id="bStudentId" onchange="onBookStudentChange()"></select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">수강반</label>
+        <input type="text" class="form-input" id="bClassName" readonly placeholder="학생 선택 시 자동 입력">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">대상 월</label>
+        <input type="month" class="form-input" id="bMonth" required>
+      </div>
+      <div class="book-add-section">
+        <div class="book-add-title">📚 교재 정보</div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">교재명</label>
+          <input type="text" class="form-input" id="bBookTitle" placeholder="예) Bricks Vocabulary Course Book C4" required>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">교재비 금액</label>
+          <input type="number" class="form-input" id="bAmount" placeholder="예) 18000" min="0" required>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">출판사 (선택)</label>
+          <input type="text" class="form-input" id="bPublisher" placeholder="예) Bricks Education">
+        </div>
+      </div>
+
+      <!-- ★ 교재비 결제수단: 현금/계좌이체만 -->
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">결제 수단 <span style="color:#E65100;font-size:11px;">현금·계좌이체만 가능</span></label>
+        <div class="pay-method-selector">
+          <button type="button" class="pm-btn cash" data-method="CASH" onclick="selectPayMethod(this,'bMethod')">💵 현금</button>
+          <button type="button" class="pm-btn transfer" data-method="TRANSFER" onclick="selectPayMethod(this,'bMethod')">🏦 계좌이체</button>
+        </div>
+        <input type="hidden" id="bMethod" value="">
+        <div style="font-size:11px;color:var(--gray-mid);margin-top:6px;">※ 미납 등록 시에도 선택해두면 나중에 확인이 편합니다</div>
+      </div>
+
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">납부 상태</label>
+        <select class="form-input form-select" id="bStatus">
+          <option value="UNPAID">⏳ 미납 (교재 전달 완료, 미수금)</option>
+          <option value="PAID">✅ 납부 완료</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">메모 (선택)</label>
+        <input type="text" class="form-input" id="bMemo" placeholder="예) C4 교재비">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('addBookModal').classList.add('hidden')">취소</button>
+        <button type="submit" class="btn btn-primary" style="flex:2;" id="bSubmitBtn">추가하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── 납부 처리 모달 (운영자: 결제수단 선택) ── -->
+<div id="markPaidModal" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="markPaidTitle">✅ 납부 처리</div>
+    <div id="markPaidInfo" style="background:var(--periwinkle-bg);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.7;"></div>
+
+    <div class="form-group" id="markPayMethodWrap">
+      <label class="form-label">결제 수단 선택</label>
+      <div class="pay-method-selector" id="markPayMethodBtns">
+        <!-- TUITION: 3가지 / BOOK: 2가지 — JS에서 동적 생성 -->
+      </div>
+      <input type="hidden" id="markMethod" value="">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">납부일</label>
+      <input type="date" class="form-input" id="markPaidDate">
+    </div>
+    <div class="form-group">
+      <label class="form-label">메모 (선택)</label>
+      <input type="text" class="form-input" id="markPaidMemo" placeholder="예) 5월 수강료 납부 완료">
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('markPaidModal').classList.add('hidden')">취소</button>
+      <button class="btn btn-primary" style="flex:2;" id="markPaidConfirmBtn" onclick="confirmMarkPaid()">납부 확인 완료</button>
+    </div>
+  </div>
+</div>
+
+<script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
+<script src="js/app.js"></script>
+<script>
+const user   = ymsPageInit(true);
+const fmtKRW = n => '₩' + Number(n||0).toLocaleString('ko-KR');
+
+const TYPE_META = {
+  TUITION: { label:'수강료', icon:'💜', iconCls:'pi-tuition', chipStyle:'background:#EDE7F6;color:#4527A0;border:1px solid #CE93D8;' },
+  BOOK:    { label:'교재비', icon:'📘', iconCls:'pi-book',    chipStyle:'background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9;' },
+  ETC:     { label:'기타',   icon:'📌', iconCls:'pi-etc',     chipStyle:'background:var(--gray-bg);color:var(--gray-mid);' },
+};
+const S_LABEL = { PAID:'✅ 완납', UNPAID:'⏳ 미납', OVERDUE:'⚠️ 연체' };
+const S_CLS   = { PAID:'pay-paid', UNPAID:'pay-unpaid', OVERDUE:'pay-overdue' };
+const PM_LABEL = { CASH:'💵 현금', TRANSFER:'🏦 이체', CARD:'💳 카드', '':'—' };
+const PM_CLS   = { CASH:'pm-cash', TRANSFER:'pm-transfer', CARD:'pm-card', '':'' };
+
+let isAdmin   = false;
+let isTeacher = false;
+let isParent  = false;
+
+let currentTypeFilter    = 'ALL';
+let currentStudentFilter = 'ALL';
+
+// DB에서 로드한 학생 목록
+let _allStudents = [];
+let _allClasses  = [];
+let _cachedPayments = null;
+
+// 납부처리 대기 항목
+let _pendingMarkPaid = null;
+
+// ── 초기화 ──────────────────────────────────────────────────
+async function init() {
+  if (!user) return;
+  isAdmin   = user.role === 'ADMIN';
+  isTeacher = user.role === 'TEACHER';
+  isParent  = user.role === 'PARENT';
+
+  // 선생님: 교재비 추가 전용 페이지로 이동
+  if (isTeacher) { showTeacherBookPage(); return; }
+
+  // 공통 데이터 로드
+  await loadMasterData();
+  setupRoleUI();
+  buildStudentSelectors();
+  renderTabBar();
+
+  // 기본 월 세팅
+  const mStr = new Date().toISOString().slice(0,7);
+  ['tMonth','bMonth'].forEach(id => { const el=document.getElementById(id); if(el) el.value=mStr; });
+  const today = new Date().toISOString().slice(0,10);
+  const markDate = document.getElementById('markPaidDate');
+  if (markDate) markDate.value = today;
+  // 수강료 기한 기본값: 해당 월 10일
+  const tDue = document.getElementById('tDueDate');
+  if (tDue) tDue.value = mStr + '-10';
+
+  loadPayments();
+}
+
+// ── 마스터 데이터 로드 (학생·반) ────────────────────────────
+async function loadMasterData() {
+  try {
+    const [rS, rC] = await Promise.all([
+      _tFetch('tables/students?limit=500'),
+      _tFetch('tables/classes?limit=200'),
+    ]);
+    _allStudents = rS.ok ? (await rS.json()).data || [] : [];
+    _allClasses  = rC.ok ? (await rC.json()).data || [] : [];
+  } catch(e) {
+    console.warn('[YMS] 마스터 데이터 로드 실패:', e);
+  }
+  // 데모 데이터 폴백
+  if (!_allStudents.length) _allStudents = YMS_DEMO.students.map(s=>({...s, className: s.classes?.[0]?.className||''}));
+}
+
+// ── 역할별 UI 세팅 ───────────────────────────────────────────
+function setupRoleUI() {
+  if (isAdmin) {
+    document.getElementById('addTuitionBtn').classList.remove('hidden');
+    document.getElementById('addBookBtn').classList.remove('hidden');
+    document.getElementById('staffStudentRow').classList.remove('hidden');
+    document.getElementById('heroWrap').classList.add('hidden');
+  } else if (isParent) {
+    document.getElementById('parentChildRow').classList.remove('hidden');
+    document.getElementById('payGuideWrap').classList.remove('hidden');
+    document.getElementById('bookPayNoticeWrap').classList.remove('hidden');
+  }
+}
+
+// ── 학생 선택 UI ─────────────────────────────────────────────
+function buildStudentSelectors() {
+  if (isParent) {
+    // 학부모: 내 자녀만 (DB childIds 또는 세션 user.childIds)
+    const childIds = user.childIds || [];
+    const children = _allStudents.filter(s => childIds.includes(s.id));
+    // DB에 없으면 데모 폴백
+    const students = children.length ? children : YMS_DEMO.students.slice(0,1);
+
+    const row = document.getElementById('parentChildRow');
+    row.innerHTML = '';
+    if (students.length > 1) {
+      const allChip = document.createElement('div');
+      allChip.className = 'student-chip active';
+      allChip.dataset.childId = 'ALL';
+      allChip.innerHTML = `<div class="chip-avatar">합</div>전체 합산`;
+      allChip.addEventListener('click', () => setParentChild(allChip, 'ALL'));
+      row.appendChild(allChip);
+    }
+    students.forEach((s, i) => {
+      const chip = document.createElement('div');
+      chip.className = `student-chip${students.length===1&&i===0?' active':''}`;
+      chip.dataset.childId = s.id;
+      chip.innerHTML = `<div class="chip-avatar">${s.name[0]}</div>${s.name}`;
+      chip.addEventListener('click', () => setParentChild(chip, s.id));
+      row.appendChild(chip);
+    });
+    currentStudentFilter = students.length>1 ? 'ALL' : students[0]?.id || 'ALL';
+
+  } else if (isAdmin) {
+    // 관리자: 전체 학생
+    const row = document.getElementById('staffStudentRow');
+    row.innerHTML = '';
+    const allChip = document.createElement('div');
+    allChip.className = 'sf-chip active';
+    allChip.textContent = '전체';
+    allChip.addEventListener('click', () => setStaffFilter(allChip, 'ALL'));
+    row.appendChild(allChip);
+
+    _allStudents.filter(s=>s.isActive!==false).forEach(s => {
+      const chip = document.createElement('div');
+      chip.className = 'sf-chip';
+      chip.textContent = s.name;
+      chip.dataset.sid = s.id;
+      chip.addEventListener('click', () => setStaffFilter(chip, s.id));
+      row.appendChild(chip);
+    });
+
+    // 모달 드롭다운 채우기
+    populateStudentDropdowns();
+  }
+}
+
+function populateStudentDropdowns() {
+  const students = _allStudents.filter(s=>s.isActive!==false);
+  [document.getElementById('tStudentId'), document.getElementById('bStudentId')].forEach(sel => {
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— 학생 선택 —</option>';
+    students.forEach(s => {
+      sel.innerHTML += `<option value="${s.id}" data-class="${s.className||''}" data-name="${s.name}">${s.name} · ${s.className||'반 미지정'}</option>`;
+    });
+  });
+}
+
+function onTuitionStudentChange() {
+  const sel = document.getElementById('tStudentId');
+  const opt = sel.options[sel.selectedIndex];
+  const cls = opt?.dataset.class || '';
+  document.getElementById('tClassName').value = cls;
+  // 반 수강료 자동 채우기
+  const classInfo = _allClasses.find(c => c.className === cls);
+  if (classInfo?.tuitionFee) document.getElementById('tAmount').value = classInfo.tuitionFee;
+}
+
+function onBookStudentChange() {
+  const sel = document.getElementById('bStudentId');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('bClassName').value = opt?.dataset.class || '';
+}
+
+function setParentChild(chip, childId) {
+  document.querySelectorAll('#parentChildRow .student-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  currentStudentFilter = childId;
+  loadPayments();
+}
+
+function setStaffFilter(chip, sid) {
+  document.querySelectorAll('#staffStudentRow .sf-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  currentStudentFilter = sid;
+  loadPayments();
+}
+
+function setTypeTab(el, type) {
+  document.querySelectorAll('.type-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentTypeFilter = type;
+  loadPayments();
+}
+
+// ── 결제수단 선택 버튼 ───────────────────────────────────────
+function selectPayMethod(btn, hiddenId) {
+  const parent = btn.closest('.pay-method-selector');
+  parent.querySelectorAll('.pm-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(hiddenId).value = btn.dataset.method;
+}
+
+function onTuitionStatusChange() {
+  const status = document.getElementById('tStatus').value;
+  const wrap   = document.getElementById('tPayMethodWrap');
+  wrap.classList.toggle('hidden', status !== 'PAID');
+}
+
+// ── 수납 데이터 로드 ─────────────────────────────────────────
+async function fetchAllPayments() {
+  try {
+    const res = await _tFetch('tables/payments?limit=500');
+    if (!res.ok) throw new Error();
+    const json = await res.json();
+    _cachedPayments = json.data || [];
+  } catch {
+    _cachedPayments = [...YMS_DEMO.payments];
+  }
+}
+
+function getFilteredPayments() {
+  let list = _cachedPayments ? [..._cachedPayments] : [...YMS_DEMO.payments];
+
+  if (isParent) {
+    const childIds = user.childIds || [];
+    const myChildren = childIds.length ? childIds : (YMS_DEMO.parentChildMap[user.id]||[]);
+    if (currentStudentFilter === 'ALL') {
+      list = list.filter(p => myChildren.includes(p.studentId));
+    } else {
+      list = list.filter(p => p.studentId === currentStudentFilter);
+    }
+  }
+  if (isAdmin && currentStudentFilter !== 'ALL') {
+    list = list.filter(p => p.studentId === currentStudentFilter);
+  }
+  if (currentTypeFilter !== 'ALL') {
+    list = list.filter(p => (p.type||'TUITION') === currentTypeFilter);
+  }
+  return list;
+}
+
+async function loadPayments() {
+  if (!_cachedPayments) await fetchAllPayments();
+  const filtered = getFilteredPayments();
+
+  if (isParent) {
+    const childIds = user.childIds || (YMS_DEMO.parentChildMap[user.id]||[]);
+    const allChildData = (_cachedPayments||YMS_DEMO.payments).filter(p=>childIds.includes(p.studentId));
+    updateHero(filtered);
+    updateSiblingBanner(allChildData);
+    updateOverdueBanner(allChildData);
+  } else {
+    document.getElementById('heroWrap').classList.add('hidden');
+    updateOverdueBanner(filtered);
+  }
+  renderList(filtered);
+}
+
+// ── 히어로 ─────────────────────────────────────────────────
+function updateHero(list) {
+  if (!isParent) return;
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const thisMonthList = list.filter(p => p.month===thisMonth);
+  const tuitionAmt = thisMonthList.filter(p=>p.type==='TUITION').reduce((s,p)=>s+Number(p.amount||0),0);
+  const bookAmt    = thisMonthList.filter(p=>p.type==='BOOK').reduce((s,p)=>s+Number(p.amount||0),0);
+  const paidAmt    = thisMonthList.reduce((s,p)=>s+Number(p.paidAmount||0),0);
+  const totalAmt   = tuitionAmt + bookAmt;
+  const unpaidAmt  = totalAmt - paidAmt;
+  document.getElementById('heroTotal').textContent = fmtKRW(totalAmt);
+  const bk = document.getElementById('heroBreakdown');
+  bk.innerHTML = '';
+  if (tuitionAmt) bk.innerHTML += `<div class="pay-hero-item"><span class="phi-label">💜 수강료</span><span class="phi-val">${fmtKRW(tuitionAmt)}</span></div>`;
+  if (bookAmt)    bk.innerHTML += `<div class="pay-hero-item"><span class="phi-label">📘 교재비</span><span class="phi-val">${fmtKRW(bookAmt)}</span></div>`;
+  if (unpaidAmt>0) bk.innerHTML += `<div class="pay-hero-item"><span class="phi-label">미납</span><span class="phi-val" style="color:#FF8A65;">${fmtKRW(unpaidAmt)}</span></div>`;
+  const tagEl = document.getElementById('heroTag');
+  const hasOverdue = list.some(p=>p.status==='OVERDUE');
+  if (hasOverdue) { tagEl.innerHTML='⚠️ 연체 항목 있음'; tagEl.style.background='rgba(244,67,54,.3)'; }
+  else if (totalAmt>0 && paidAmt>=totalAmt) { tagEl.innerHTML='✅ 이번 달 완납'; tagEl.style.background='rgba(76,175,80,.25)'; }
+  else { tagEl.innerHTML='📋 납부 대기 중'; tagEl.style.background='rgba(255,255,255,.15)'; }
+}
+
+// ── 형제 합산 배너 ──────────────────────────────────────────
+function updateSiblingBanner(allChildList) {
+  const wrap = document.getElementById('siblingBannerWrap');
+  if (!isParent) { wrap.classList.add('hidden'); return; }
+  const childIds = user.childIds || (YMS_DEMO.parentChildMap[user.id]||[]);
+  if (childIds.length < 2) { wrap.classList.add('hidden'); return; }
+  if (currentStudentFilter !== 'ALL') { wrap.classList.add('hidden'); return; }
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const students  = _allStudents.filter(s=>childIds.includes(s.id));
+  let rows='', grandTotal=0, grandPaid=0;
+  students.forEach(s => {
+    const sP = allChildList.filter(p=>p.studentId===s.id&&p.month===thisMonth);
+    const total=sP.reduce((sum,p)=>sum+Number(p.amount||0),0);
+    const paid =sP.reduce((sum,p)=>sum+Number(p.paidAmount||0),0);
+    grandTotal+=total; grandPaid+=paid;
+    const tuition=sP.filter(p=>p.type==='TUITION').reduce((s,p)=>s+Number(p.amount||0),0);
+    const book   =sP.filter(p=>p.type==='BOOK').reduce((s,p)=>s+Number(p.amount||0),0);
+    rows+=`<div class="sibling-row">
+      <div class="sibling-name">👤 ${s.name} <span style="color:var(--gray-mid);font-weight:400;">${s.grade||''}</span></div>
+      <div><span style="font-size:11px;color:var(--navy);margin-right:8px;">수강료 ${fmtKRW(tuition)}${book?` + 교재비 ${fmtKRW(book)}`:''}</span><span class="sibling-amount">${fmtKRW(total)}</span></div>
+    </div>`;
+  });
+  const unpaid=grandTotal-grandPaid;
+  wrap.classList.remove('hidden');
+  wrap.innerHTML=`<div class="sibling-banner">
+    <div class="sibling-banner-title">👨‍👩‍👧‍👦 이번 달 자녀 수강료 합산 (${thisMonth.replace('-','년 ')}월)</div>
+    ${rows}
+    <div class="sibling-total-row"><span>합산 금액</span><span>${fmtKRW(grandTotal)}</span></div>
+    ${unpaid>0?`<div style="font-size:11px;color:#E65100;text-align:right;margin-top:4px;">미납 ${fmtKRW(unpaid)}</div>`:`<div style="font-size:11px;color:#2E7D32;text-align:right;margin-top:4px;">✅ 전액 납부 완료</div>`}
+  </div>`;
+}
+
+// ── 연체 배너 ──────────────────────────────────────────────
+function updateOverdueBanner(list) {
+  const overdue = list.filter(p=>p.status==='OVERDUE');
+  const wrap = document.getElementById('overdueBannerWrap');
+  if (overdue.length>0) {
+    wrap.classList.remove('hidden');
+    document.getElementById('overdueText').textContent=`연체 항목 ${overdue.length}건이 있습니다. 빠른 납부 부탁드립니다.`;
+  } else { wrap.classList.add('hidden'); }
+}
+
+// ── 목록 렌더 ──────────────────────────────────────────────
+function renderList(list) {
+  const wrap = document.getElementById('payList');
+  wrap.innerHTML = '';
+  if (!list.length) { wrap.innerHTML=YMS_UI.renderEmpty('납부 내역이 없습니다'); return; }
+
+  const groups = {};
+  list.forEach(p => { const k=p.month||'0000-00'; if(!groups[k]) groups[k]=[]; groups[k].push(p); });
+  const months = Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+
+  months.forEach(month => {
+    const items   = groups[month];
+    const [y,m]   = month.split('-');
+    const total   = items.reduce((s,p)=>s+Number(p.amount||0),0);
+    const isPaidAll = items.every(p=>p.status==='PAID');
+    const groupEl = document.createElement('div');
+    groupEl.className='month-group';
+    groupEl.innerHTML=`<div class="month-group-header">
+      <div class="month-group-title">
+        ${isPaidAll?'✅':'📋'} ${y}년 ${Number(m)}월
+        ${isPaidAll?'<span class="badge badge-done" style="font-size:9px;">완납</span>':''}
+      </div>
+      <div class="month-group-total">${fmtKRW(total)}</div>
+    </div>`;
+
+    items.forEach(p => {
+      const type = p.type||'TUITION';
+      const meta = TYPE_META[type]||TYPE_META.TUITION;
+      const card = document.createElement('div');
+      card.className=`pay-item${p.status==='OVERDUE'?' overdue':p.status==='UNPAID'?' unpaid':''}`;
+
+      let subParts=[p.className||''];
+      if(!isParent && p.studentName) subParts.push(`👤 ${p.studentName}`);
+      if(p.dueDate) subParts.push(`기한 ${p.dueDate.slice(5)}`);
+      const pmTag = (p.payMethod||p.bookPayMethod)
+        ? `<span class="pay-method-tag ${PM_CLS[p.payMethod||p.bookPayMethod]||''}">${PM_LABEL[p.payMethod||p.bookPayMethod]||''}</span>` : '';
+
+      card.innerHTML=`
+        <div class="pay-item-icon ${meta.iconCls}">${meta.icon}</div>
+        <div class="pay-item-info">
+          <div class="pay-item-title">${meta.label}${p.bookTitle?` – ${p.bookTitle}`:(p.memo?` (${p.memo})`:'')} ${pmTag}</div>
+          <div class="pay-item-sub">${subParts.filter(Boolean).join(' · ')}</div>
+          ${type==='BOOK'&&p.bookTitle?`<span class="book-tag">📚 ${p.bookTitle}</span>`:''}
+        </div>
+        <div class="pay-item-right">
+          <div class="pay-item-amount">${fmtKRW(p.amount)}</div>
+          <div class="pay-item-status"><span class="chip ${S_CLS[p.status]||''}" style="font-size:10px;padding:2px 8px;">${S_LABEL[p.status]||p.status}</span></div>
+        </div>`;
+
+      // 운영자: 납부 처리 버튼
+      if (isAdmin) {
+        const btnWrap=document.createElement('div');
+        btnWrap.style.cssText='padding:0 16px 10px;display:flex;gap:8px;';
+        if (p.status!=='PAID') {
+          const paidBtn=document.createElement('button');
+          paidBtn.className='mark-paid-btn';
+          paidBtn.textContent='✅ 납부 처리';
+          paidBtn.addEventListener('click',(e)=>{ e.stopPropagation(); openMarkPaidModal(p); });
+          btnWrap.appendChild(paidBtn);
+        } else {
+          const unpaidBtn=document.createElement('button');
+          unpaidBtn.className='mark-unpaid-btn';
+          unpaidBtn.textContent='↩ 미납으로 되돌리기';
+          unpaidBtn.addEventListener('click',(e)=>{ e.stopPropagation(); markUnpaid(p.id); });
+          btnWrap.appendChild(unpaidBtn);
+        }
+        const outerWrap=document.createElement('div');
+        outerWrap.style.cssText='background:var(--warm-white);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);border:1px solid var(--beige);margin-bottom:8px;overflow:hidden;';
+        outerWrap.appendChild(card);
+        outerWrap.appendChild(btnWrap);
+        card.style.cssText='margin-bottom:0;border-radius:0;box-shadow:none;border:none;border-bottom:1px solid var(--beige);';
+        card.addEventListener('click',()=>openDetail(p));
+        groupEl.appendChild(outerWrap);
+        return;
+      }
+      card.addEventListener('click',()=>openDetail(p));
+      groupEl.appendChild(card);
+    });
+    wrap.appendChild(groupEl);
+  });
+}
+
+// ── 납부 처리 모달 열기 ─────────────────────────────────────
+function openMarkPaidModal(p) {
+  _pendingMarkPaid = p;
+  const type = p.type||'TUITION';
+  document.getElementById('markPaidTitle').textContent = type==='BOOK' ? '📘 교재비 납부 처리' : '💜 수강료 납부 처리';
+  document.getElementById('markPaidInfo').innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:var(--charcoal);">${p.studentName||''} · ${p.className||''}</div>
+    <div style="margin-top:4px;font-size:12px;color:var(--gray-mid);">${(p.month||'').replace('-','년 ')}월 ${TYPE_META[type]?.label||''}</div>
+    <div style="margin-top:8px;font-size:20px;font-weight:900;color:var(--navy);">${fmtKRW(p.amount)}</div>
+    ${type==='BOOK'?'<div style="margin-top:6px;font-size:11px;color:#E65100;font-weight:600;">⚠️ 교재비는 현금·계좌이체만 가능</div>':''}`;
+
+  // 결제수단 버튼 동적 생성
+  const btnArea = document.getElementById('markPayMethodBtns');
+  btnArea.innerHTML='';
+  document.getElementById('markMethod').value='';
+  const methods = type==='BOOK'
+    ? [['CASH','cash','💵 현금'],['TRANSFER','transfer','🏦 계좌이체']]
+    : [['CASH','cash','💵 현금'],['TRANSFER','transfer','🏦 계좌이체'],['CARD','card','💳 카드']];
+  methods.forEach(([val,cls,label])=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className=`pm-btn ${cls}`;
+    btn.dataset.method=val;
+    btn.textContent=label;
+    btn.onclick=()=>selectPayMethod(btn,'markMethod');
+    btnArea.appendChild(btn);
+  });
+
+  document.getElementById('markPaidDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('markPaidMemo').value = '';
+  document.getElementById('markPaidModal').classList.remove('hidden');
+}
+
+async function confirmMarkPaid() {
+  const p = _pendingMarkPaid;
+  if (!p) return;
+  const method = document.getElementById('markMethod').value;
+  if (!method) { YMS_UI.toast('결제 수단을 선택해주세요'); return; }
+  const paidAt = document.getElementById('markPaidDate').value;
+  const memo   = document.getElementById('markPaidMemo').value;
+  document.getElementById('markPaidModal').classList.add('hidden');
+  await markPaid(p.id, p.type||'TUITION', method, paidAt, memo);
+}
+
+async function markPaid(payId, type, method, paidAt, memo) {
+  const src  = _cachedPayments||YMS_DEMO.payments;
+  const item = src.find(p=>p.id===payId);
+  if (!item) return;
+  const patch = {
+    status:'PAID', paidAmount:item.amount,
+    paidAt: paidAt||new Date().toISOString(),
+    [type==='BOOK'?'bookPayMethod':'payMethod']: method,
+    ...(memo?{memo}:{}),
+  };
+  try {
+    const res=await _tFetch(`tables/payments/${payId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+    if(!res.ok) throw new Error();
+    Object.assign(item,patch);
+  } catch {
+    Object.assign(item,patch);
+  }
+  YMS_UI.toast('✅ 납부 처리 완료!');
+  _cachedPayments=null;
+  loadPayments();
+}
+
+async function markUnpaid(payId) {
+  const src  = _cachedPayments||YMS_DEMO.payments;
+  const item = src.find(p=>p.id===payId);
+  if (!item) return;
+  const patch={status:'UNPAID',paidAmount:0,paidAt:null,payMethod:'',bookPayMethod:''};
+  try {
+    const res=await _tFetch(`tables/payments/${payId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+    if(!res.ok) throw new Error();
+    Object.assign(item,patch);
+  } catch { Object.assign(item,patch); }
+  YMS_UI.toast('↩ 미납으로 되돌렸습니다');
+  _cachedPayments=null;
+  loadPayments();
+}
+
+// ── 상세 모달 ──────────────────────────────────────────────
+function openDetail(p) {
+  const type=p.type||'TUITION'; const meta=TYPE_META[type]||TYPE_META.TUITION;
+  const [y,m]=(p.month||'0000-00').split('-');
+  const pmKey = type==='BOOK'?p.bookPayMethod:p.payMethod;
+  document.getElementById('detailContent').innerHTML=`
+    <div style="background:var(--sky-bg);border-radius:var(--radius-md);padding:20px;">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:32px;">${meta.icon}</div>
+        <div style="font-size:18px;font-weight:800;">YMS Master Track</div>
+        <div style="font-size:12px;color:var(--gray-mid);">${meta.label} 납부 영수증</div>
+      </div>
+      ${row('항목',`<span class="chip" style="${meta.chipStyle}">${meta.icon} ${meta.label}</span>`)}
+      ${row('납부 월',`${y}년 ${Number(m)}월`)}
+      ${row('학생',p.studentName||'')}
+      ${row('수강반',p.className||'')}
+      ${type==='BOOK'&&p.bookTitle?`<div style="margin:10px 0;padding:10px 12px;background:#E3F2FD;border-radius:var(--radius-sm);border:1px solid #90CAF9;"><div style="font-size:11px;font-weight:700;color:#1565C0;margin-bottom:4px;">📘 교재 정보</div><div style="font-size:13px;font-weight:700;color:#1565C0;">${p.bookTitle}</div>${p.bookPublisher?`<div style="font-size:11px;color:#1976D2;">${p.bookPublisher}</div>`:''}</div>`:''}
+      ${row('납부 기한',p.dueDate||'')}
+      ${row('상태',`<span class="chip ${S_CLS[p.status]||''}" style="font-size:11px;">${S_LABEL[p.status]||p.status}</span>`)}
+      ${pmKey?row('결제 수단',`<span class="pay-method-tag ${PM_CLS[pmKey]||''}">${PM_LABEL[pmKey]||pmKey}</span>`):''}
+      ${p.paidAt?row('납부일시',p.paidAt.slice(0,16).replace('T',' ')):''}
+      ${p.memo?row('메모',p.memo):''}
+      <div style="display:flex;justify-content:space-between;padding:14px 0 0;font-size:16px;font-weight:800;"><span>금액</span><span style="color:var(--navy);">${fmtKRW(p.amount)}</span></div>
+    </div>
+    ${p.status!=='PAID'&&isParent?`<div style="margin-top:12px;padding:12px;background:var(--periwinkle-bg);border:1px solid var(--periwinkle-lt);border-radius:var(--radius-md);"><div style="font-size:12px;font-weight:600;color:var(--navy);">💡 납부 안내</div><div style="font-size:12px;color:var(--gray-dark);margin-top:4px;line-height:1.6;">${type==='BOOK'?'교재비는 <strong>현금 또는 계좌이체</strong>로만 납부 가능합니다.':'납부 관련 문의는 학원 원장님께 연락해 주세요.'}</div></div>`:''}
+  `;
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+function row(label,val){return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed var(--beige-dark);font-size:13px;"><span style="color:var(--gray-mid);">${label}</span><span style="font-weight:600;">${val}</span></div>`;}
+
+// ── 수강료 등록 (운영자 전용) ────────────────────────────────
+function showAddTuitionModal() {
+  populateStudentDropdowns();
+  document.getElementById('addTuitionModal').classList.remove('hidden');
+}
+async function submitAddTuition(e) {
+  e.preventDefault();
+  const btn=document.getElementById('tSubmitBtn');
+  btn.disabled=true; btn.textContent='등록 중...';
+
+  const sel       = document.getElementById('tStudentId');
+  const studentId = sel.value;
+  const opt       = sel.options[sel.selectedIndex];
+  const studentName = opt?.dataset.name || '';
+  const className   = document.getElementById('tClassName').value;
+  const status      = document.getElementById('tStatus').value;
+  const amount      = Number(document.getElementById('tAmount').value);
+  const method      = status==='PAID' ? document.getElementById('tMethod').value : '';
+
+  if (status==='PAID' && !method) {
+    YMS_UI.toast('결제 수단을 선택해주세요'); btn.disabled=false; btn.textContent='등록하기'; return;
+  }
+  const newPay={
+    studentId, studentName, className,
+    month:   document.getElementById('tMonth').value,
+    type:    'TUITION', amount,
+    paidAmount: status==='PAID'?amount:0,
+    status, payMethod: method,
+    paidAt:  status==='PAID'?new Date().toISOString():null,
+    dueDate: document.getElementById('tDueDate').value || document.getElementById('tMonth').value+'-10',
+    memo:    document.getElementById('tMemo').value,
+    addedBy:'ADMIN',
+  };
+  try {
+    const res=await _tFetch('tables/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newPay)});
+    if(!res.ok) throw new Error();
+  } catch(er){ console.warn(er); }
+
+  document.getElementById('addTuitionModal').classList.add('hidden');
+  document.getElementById('addTuitionForm').reset();
+  document.getElementById('tPayMethodWrap').classList.add('hidden');
+  YMS_UI.toast('수강료가 등록되었습니다! 💜');
+  _cachedPayments=null; loadPayments();
+  btn.disabled=false; btn.textContent='등록하기';
+}
+
+// ── 교재비 추가 (운영자 + 선생님) ────────────────────────────
+function showAddBookModal() {
+  populateStudentDropdowns();
+  document.getElementById('addBookModal').classList.remove('hidden');
+}
+async function submitAddBook(e) {
+  e.preventDefault();
+  const btn=document.getElementById('bSubmitBtn');
+  btn.disabled=true; btn.textContent='추가 중...';
+
+  const sel       = document.getElementById('bStudentId');
+  const studentId = sel.value;
+  const opt       = sel.options[sel.selectedIndex];
+  const studentName = opt?.dataset.name || '';
+  const className   = document.getElementById('bClassName').value;
+  const bookTitle   = document.getElementById('bBookTitle').value;
+  const amount      = Number(document.getElementById('bAmount').value);
+  const method      = document.getElementById('bMethod').value;
+  const status      = document.getElementById('bStatus').value;
+
+  if (!studentId) { YMS_UI.toast('학생을 선택해주세요'); btn.disabled=false; btn.textContent='추가하기'; return; }
+
+  const newBook={
+    studentId, studentName, className,
+    month:    document.getElementById('bMonth').value,
+    type:     'BOOK', bookTitle,
+    bookPublisher: document.getElementById('bPublisher').value||'',
+    amount, paidAmount: status==='PAID'?amount:0,
+    status, bookPayMethod: method,
+    paidAt: status==='PAID'?new Date().toISOString():null,
+    dueDate: document.getElementById('bMonth').value+'-10',
+    memo:   document.getElementById('bMemo').value||`${bookTitle} 교재비`,
+    addedBy: isAdmin?'ADMIN':`TEACHER:${user.id}`,
+  };
+  try {
+    const res=await _tFetch('tables/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newBook)});
+    if(!res.ok) throw new Error();
+  } catch(er){ console.warn(er); }
+
+  document.getElementById('addBookModal').classList.add('hidden');
+  document.getElementById('addBookForm').reset();
+  // 결제수단 버튼 초기화
+  document.querySelectorAll('#addBookForm .pm-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('bMethod').value='';
+  YMS_UI.toast('교재비가 추가되었습니다! 📘');
+  _cachedPayments=null; loadPayments();
+  btn.disabled=false; btn.textContent='추가하기';
+}
+
+// ── 계좌번호 복사 ───────────────────────────────────────────
+function copyAccount(elId, btn) {
+  const num=document.getElementById(elId)?.textContent?.trim();
+  if (!num) return;
+  const fallback=()=>{
+    const ta=document.createElement('textarea'); ta.value=num; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  };
+  (navigator.clipboard?.writeText(num)||Promise.reject()).catch(fallback).finally(()=>{
+    btn.textContent='✅ 복사됨'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='복사'; btn.classList.remove('copied'); },2000);
+    YMS_UI.toast('계좌번호가 복사되었습니다! 📋');
+  });
+  navigator.clipboard?.writeText(num).then(()=>{
+    btn.textContent='✅ 복사됨'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='복사'; btn.classList.remove('copied'); },2000);
+    YMS_UI.toast('계좌번호가 복사되었습니다! 📋');
+  }).catch(fallback);
+}
+
+// ── 탭바 ──────────────────────────────────────────────────
+function renderTabBar() { ymsRenderTabBar('payment.html'); }
+
+// ── 선생님 전용: 반별 교재비 일괄 등록 페이지 ──────────────────
+async function showTeacherBookPage() {
+  await loadMasterData();
+  const teacherClasses = user.teacherClasses || [];
+
+  // 담당 반 목록 (classData 기준 + 담당반 이름으로 필터)
+  let myClasses = _allClasses.filter(c => teacherClasses.includes(c.className) && c.isActive !== false);
+  // DB에 반 데이터가 없으면 학생 목록에서 반 이름으로 역산
+  if (!myClasses.length && teacherClasses.length) {
+    myClasses = teacherClasses.map(cn => ({ id: cn, className: cn }));
+  }
+  // 그마저도 없으면 데모 폴백
+  if (!myClasses.length) {
+    myClasses = [...new Set(YMS_DEMO.students.map(s=>s.classes?.[0]?.className||'').filter(Boolean))]
+      .map(cn=>({ id: cn, className: cn }));
+  }
+
+  document.querySelector('.app-wrapper').innerHTML=`
+    <header class="app-bar">
+      <div class="app-bar-left">
+        <button class="icon-btn" onclick="window.location.href='teacher-home.html'">←</button>
+        <span style="font-size:17px;font-weight:700;color:#fff;">📘 교재비 일괄 등록</span>
+      </div>
+    </header>
+    <div class="page-content" style="padding-top:16px;">
+
+      <!-- 안내 배너 -->
+      <div style="background:linear-gradient(135deg,#EEF3FB,#E8EDF8);border:1.5px solid var(--periwinkle-lt);border-radius:var(--radius-md);padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:8px;">
+        <span style="font-size:18px;">📋</span>
+        <div>
+          <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px;">반별 일괄 등록</div>
+          <div style="font-size:12px;color:var(--gray-dark);line-height:1.6;">반을 선택하면 해당 반 학생 전체에게<br>동일한 교재비가 자동으로 등록됩니다.</div>
+        </div>
+      </div>
+
+      <!-- 등록 폼 카드 -->
+      <div style="background:var(--warm-white);border:1px solid var(--beige);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);">
+        <div style="font-size:14px;font-weight:800;color:var(--charcoal);margin-bottom:16px;display:flex;align-items:center;gap:6px;">📚 교재비 등록</div>
+        <form id="teacherBookForm" onsubmit="submitTeacherBulkBook(event)" style="display:flex;flex-direction:column;gap:14px;">
+
+          <!-- 반 선택 -->
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">반 선택</label>
+            <select class="form-input form-select" id="tb_class" onchange="onTeacherClassChange()">
+              <option value="">— 반 선택 —</option>
+              ${myClasses.map(c=>`<option value="${c.className}">${c.className}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- 학생 미리보기 -->
+          <div id="tb_studentPreview" style="display:none;">
+            <div style="font-size:12px;font-weight:700;color:var(--gray-mid);margin-bottom:6px;">👥 등록 대상 학생</div>
+            <div id="tb_studentList" style="background:var(--sky-bg);border:1px solid var(--beige-dark);border-radius:var(--radius-md);padding:10px 12px;font-size:13px;color:var(--charcoal);line-height:1.9;max-height:140px;overflow-y:auto;"></div>
+            <div id="tb_studentCount" style="font-size:11px;color:var(--gray-mid);margin-top:4px;text-align:right;"></div>
+          </div>
+
+          <!-- 대상 월 -->
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">대상 월</label>
+            <input type="month" class="form-input" id="tb_month" required value="${new Date().toISOString().slice(0,7)}">
+          </div>
+
+          <!-- 교재 정보 -->
+          <div style="background:#EEF3FB;border:1px solid var(--periwinkle-lt);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:12px;">
+            <div style="font-size:13px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:6px;">📚 교재 정보</div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">교재명</label>
+              <input type="text" class="form-input" id="tb_title" placeholder="예) Bricks Vocabulary Course Book C4" required>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">교재비 금액 (1인당)</label>
+              <input type="number" class="form-input" id="tb_amount" placeholder="예) 18000" min="0" required oninput="updateBulkTotal()">
+            </div>
+          </div>
+
+          <!-- 합계 미리보기 -->
+          <div id="tb_totalPreview" style="display:none;background:linear-gradient(135deg,#E8EDF8,#EEF3FB);border:1.5px solid var(--periwinkle);border-radius:var(--radius-md);padding:12px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:700;color:var(--navy);">💰 총 등록 금액</span>
+              <span id="tb_totalAmount" style="font-size:18px;font-weight:900;color:var(--navy);">₩0</span>
+            </div>
+            <div id="tb_totalSub" style="font-size:11px;color:var(--gray-mid);margin-top:4px;"></div>
+          </div>
+
+          <!-- 납부 상태 -->
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">납부 상태</label>
+            <select class="form-input form-select" id="tb_status">
+              <option value="UNPAID">⏳ 미납 (교재 전달 완료, 미수금)</option>
+              <option value="PAID">✅ 납부 완료</option>
+            </select>
+          </div>
+
+          <!-- 메모 -->
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">메모 (선택)</label>
+            <input type="text" class="form-input" id="tb_memo" placeholder="예) C4 교재비">
+          </div>
+
+          <!-- 등록 버튼 -->
+          <button type="submit" class="btn btn-primary btn-full" id="tb_submitBtn" style="height:48px;font-size:15px;">
+            📘 반 전체 교재비 등록
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <nav class="tab-bar">
+      <a href="teacher-home.html" class="tab-item">🏠<span>홈</span></a>
+      <a href="homework.html"     class="tab-item">📖<span>수업</span></a>
+      <a href="#" class="tab-item" onclick="return false;">✅<span>출결</span></a>
+      <a href="notices.html"      class="tab-item">📢<span>공지</span></a>
+      <a href="payment.html"      class="tab-item active">📘<span>교재비</span></a>
+    </nav>
+  `;
+}
+
+// 반 선택 변경 시 학생 목록 미리보기
+function onTeacherClassChange() {
+  const className = document.getElementById('tb_class').value;
+  const previewWrap = document.getElementById('tb_studentPreview');
+  const totalPreview = document.getElementById('tb_totalPreview');
+
+  if (!className) {
+    previewWrap.style.display = 'none';
+    totalPreview.style.display = 'none';
+    return;
+  }
+
+  // 해당 반 활성 학생 필터링
+  let students = _allStudents.filter(s => s.className === className && s.isActive !== false);
+  if (!students.length) {
+    // 데모 폴백
+    students = YMS_DEMO.students.filter(s => (s.classes?.[0]?.className||'') === className);
+  }
+
+  const listEl  = document.getElementById('tb_studentList');
+  const countEl = document.getElementById('tb_studentCount');
+
+  if (students.length) {
+    listEl.innerHTML = students.map(s =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--warm-white);border:1px solid var(--beige-dark);border-radius:var(--radius-full);padding:2px 10px;margin:2px 4px 2px 0;font-size:12px;">👤 ${s.name}</span>`
+    ).join('');
+    countEl.textContent = `총 ${students.length}명`;
+    previewWrap.style.display = 'block';
+  } else {
+    listEl.innerHTML = '<span style="color:var(--gray-mid);font-size:12px;">해당 반 학생이 없습니다.</span>';
+    countEl.textContent = '';
+    previewWrap.style.display = 'block';
+  }
+  updateBulkTotal();
+}
+
+// 금액 입력 시 합계 미리보기 갱신
+function updateBulkTotal() {
+  const className = document.getElementById('tb_class')?.value;
+  const amount    = Number(document.getElementById('tb_amount')?.value || 0);
+  const totalPrev = document.getElementById('tb_totalPreview');
+  if (!className || !amount) { if(totalPrev) totalPrev.style.display='none'; return; }
+
+  let students = _allStudents.filter(s => s.className === className && s.isActive !== false);
+  if (!students.length) students = YMS_DEMO.students.filter(s => (s.classes?.[0]?.className||'') === className);
+
+  const total = amount * students.length;
+  document.getElementById('tb_totalAmount').textContent = '₩' + total.toLocaleString('ko-KR');
+  document.getElementById('tb_totalSub').textContent    = `${students.length}명 × ₩${amount.toLocaleString('ko-KR')}`;
+  if(totalPrev) totalPrev.style.display = 'block';
+}
+
+// 반 전체 학생 일괄 POST
+async function submitTeacherBulkBook(e) {
+  e.preventDefault();
+  const btn       = document.getElementById('tb_submitBtn');
+  const className = document.getElementById('tb_class').value;
+  const bookTitle = document.getElementById('tb_title').value.trim();
+  const amount    = Number(document.getElementById('tb_amount').value);
+  const month     = document.getElementById('tb_month').value;
+  const status    = document.getElementById('tb_status').value;
+  const memo      = document.getElementById('tb_memo').value || `${bookTitle} 교재비`;
+
+  if (!className) { YMS_UI.toast('반을 선택해주세요'); return; }
+  if (!bookTitle) { YMS_UI.toast('교재명을 입력해주세요'); return; }
+  if (!amount)    { YMS_UI.toast('교재비 금액을 입력해주세요'); return; }
+
+  // 해당 반 활성 학생 목록
+  let students = _allStudents.filter(s => s.className === className && s.isActive !== false);
+  if (!students.length) students = YMS_DEMO.students.filter(s => (s.classes?.[0]?.className||'') === className);
+  if (!students.length) { YMS_UI.toast('해당 반에 학생이 없습니다'); return; }
+
+  btn.disabled = true;
+  btn.textContent = `⏳ 등록 중... (0/${students.length})`;
+
+  const now = new Date().toISOString();
+  let successCount = 0;
+
+  const results = await Promise.allSettled(
+    students.map(async (s, i) => {
+      const newBook = {
+        studentId:  s.id,
+        studentName: s.name,
+        className,
+        month,
+        type:        'BOOK',
+        bookTitle,
+        amount,
+        paidAmount:  status === 'PAID' ? amount : 0,
+        status,
+        payMethod:   '',
+        paidAt:      status === 'PAID' ? now : null,
+        dueDate:     month + '-10',
+        memo,
+        addedBy:     `TEACHER:${user?.id || ''}`,
+      };
+      const res = await _tFetch('tables/payments', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(newBook),
+      });
+      if (!res.ok) throw new Error(`${s.name} 등록 실패`);
+      successCount++;
+      // 진행 상황 버튼 업데이트
+      if (btn) btn.textContent = `⏳ 등록 중... (${successCount}/${students.length})`;
+      return res;
+    })
+  );
+
+  const failCount = results.filter(r => r.status === 'rejected').length;
+
+  btn.disabled = false;
+  btn.textContent = '📘 반 전체 교재비 등록';
+
+  if (failCount === 0) {
+    YMS_UI.toast(`✅ ${students.length}명 교재비 등록 완료!`);
+  } else {
+    YMS_UI.toast(`⚠️ ${successCount}명 성공, ${failCount}명 실패`);
+  }
+
+  // 폼 초기화
+  document.getElementById('teacherBookForm').reset();
+  document.getElementById('tb_month').value = new Date().toISOString().slice(0, 7);
+  document.getElementById('tb_studentPreview').style.display = 'none';
+  document.getElementById('tb_totalPreview').style.display   = 'none';
+}
+
+// ── 시작 ───────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

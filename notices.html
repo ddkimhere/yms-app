@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>공지사항 · YMS Master Track</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1E3278">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    .app-wrapper{max-width:430px;min-height:100vh;margin:0 auto;background:var(--sky-bg);position:relative;overflow-x:hidden;}
+
+    /* ── 공지 카드 ── */
+    .notice-card {
+      background: var(--warm-white);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--beige);
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .notice-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .notice-card.important { border-left: 3px solid var(--absent); }
+
+    .notice-card-header { display: flex; align-items: flex-start; gap: 8px; }
+    .notice-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--navy); flex-shrink: 0; margin-top: 6px;
+      transition: background .2s;
+    }
+    .notice-dot.read { background: var(--gray-light); }
+
+    .notice-card-title {
+      flex: 1; font-size: 14px; font-weight: 700;
+      color: var(--charcoal); line-height: 1.45;
+    }
+    .notice-card-title.read { font-weight: 400; color: var(--gray-dark); }
+
+    .notice-card-meta {
+      display: flex; align-items: center; gap: 6px;
+      margin-top: 8px; flex-wrap: wrap;
+    }
+    .notice-date { font-size: 11px; color: var(--gray-mid); }
+    .notice-author { font-size: 11px; color: var(--gray-mid); }
+
+    /* 유형 칩 */
+    .chip-important { background:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; border-radius:var(--radius-full); font-size:10px; font-weight:700; padding:2px 8px; }
+    .chip-general   { background:var(--periwinkle-bg); color:var(--navy); border:1px solid var(--periwinkle-lt); border-radius:var(--radius-full); font-size:10px; font-weight:700; padding:2px 8px; }
+    .chip-target    { background:var(--gray-bg); color:var(--gray-dark); border:1px solid var(--beige-dark); border-radius:var(--radius-full); font-size:10px; font-weight:600; padding:2px 8px; }
+    .chip-new       { background:var(--navy); color:#fff; border-radius:var(--radius-full); font-size:9px; font-weight:800; padding:2px 7px; }
+
+    /* ── 필터 탭 ── */
+    .filter-row { display:flex; gap:8px; padding:12px 20px 0; overflow-x:auto; scrollbar-width:none; }
+    .filter-row::-webkit-scrollbar { display:none; }
+    .filter-chip {
+      padding:7px 16px; border-radius:var(--radius-full);
+      border:1.5px solid var(--beige-dark); font-size:12px; font-weight:600;
+      cursor:pointer; background:var(--warm-white); color:var(--gray-mid);
+      white-space:nowrap; transition:all .15s; flex-shrink:0;
+    }
+    .filter-chip.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+    /* ── 공지 상세 ── */
+    .notice-detail-badge-row { display:flex; align-items:center; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+    .notice-detail-title { font-size:20px; font-weight:800; color:var(--charcoal); line-height:1.4; }
+    .notice-detail-meta  { font-size:12px; color:var(--gray-mid); margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .notice-detail-content {
+      font-size:14px; line-height:1.85;
+      color:var(--gray-dark);
+      background:var(--sky-bg);
+      border-radius:var(--radius-md);
+      padding:18px;
+      margin-top:16px;
+      white-space:pre-line;
+      border:1px solid var(--beige);
+    }
+
+    /* ── 작성 폼 ── */
+    .notice-reg-form { display:flex; flex-direction:column; gap:14px; }
+
+    /* ── 미읽음 배너 ── */
+    .unread-banner {
+      background:linear-gradient(135deg,#EEF3FB,#E8EDF8);
+      border:1px solid var(--periwinkle-lt);
+      border-radius:var(--radius-md);
+      padding:10px 14px;
+      display:flex; align-items:center; gap:8px;
+      margin:8px 20px 0;
+      font-size:13px; font-weight:600; color:var(--navy);
+    }
+
+    /* ── 삭제 버튼 (관리자/선생님) ── */
+    .notice-del-btn {
+      padding:6px 14px; border-radius:var(--radius-full);
+      border:1px solid #FFCDD2; background:#FFEBEE; color:#C62828;
+      font-size:12px; font-weight:700; cursor:pointer; transition:opacity .15s;
+    }
+    .notice-del-btn:hover { opacity:.75; }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- App Bar -->
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <span style="font-size:17px;font-weight:700;color:#fff;">📢 공지사항</span>
+    </div>
+    <div class="app-bar-right">
+      <!-- 관리자·선생님만 표시 -->
+      <button class="icon-btn hidden" id="writeBtn" onclick="showWriteModal()" title="공지 작성">✏️</button>
+    </div>
+  </header>
+
+  <!-- 미읽음 배너 -->
+  <div id="unreadBanner" class="hidden">
+    <div class="unread-banner">
+      <span>🔔</span>
+      <span id="unreadBannerText">읽지 않은 공지가 있습니다</span>
+    </div>
+  </div>
+
+  <!-- 필터 탭 -->
+  <div class="filter-row">
+    <div class="filter-chip active" data-filter="ALL"       onclick="setFilter(this,'ALL')">전체</div>
+    <div class="filter-chip"        data-filter="IMPORTANT" onclick="setFilter(this,'IMPORTANT')">🔴 중요</div>
+    <div class="filter-chip"        data-filter="UNREAD"    onclick="setFilter(this,'UNREAD')">🟠 안 읽음</div>
+  </div>
+
+  <!-- 공지 목록 -->
+  <div class="page-content" style="padding-top:12px;" id="noticeListWrap">
+    <div class="skeleton" style="height:80px;border-radius:16px;margin-bottom:10px;"></div>
+    <div class="skeleton" style="height:80px;border-radius:16px;margin-bottom:10px;"></div>
+    <div class="skeleton" style="height:80px;border-radius:16px;"></div>
+  </div>
+
+  <nav class="tab-bar" id="tabBar"></nav>
+</div>
+
+<!-- ── 공지 상세 모달 ── -->
+<div id="noticeDetailModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div id="noticeDetailContent"></div>
+    <div id="noticeDetailActions" style="margin-top:12px;display:flex;gap:8px;"></div>
+    <button class="btn btn-ghost btn-full mt-12"
+      onclick="document.getElementById('noticeDetailModal').classList.add('hidden')">닫기</button>
+  </div>
+</div>
+
+<!-- ── 공지 작성 모달 (관리자·선생님) ── -->
+<div id="writeModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📢 공지 작성</div>
+    <form class="notice-reg-form" id="noticeRegForm" onsubmit="submitNotice(event)">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">제목</label>
+        <input type="text" class="form-input" id="noticeTitle" placeholder="공지 제목 입력" required>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">유형</label>
+        <select class="form-input form-select" id="noticeType">
+          <option value="GENERAL">📢 일반</option>
+          <option value="IMPORTANT">🔴 중요</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">대상</label>
+        <select class="form-input form-select" id="noticeTarget">
+          <option value="ALL">전체</option>
+          <!-- 반 목록 동적 로드 -->
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">내용</label>
+        <textarea class="form-input" id="noticeContent" rows="6"
+          placeholder="공지 내용을 입력하세요" style="resize:vertical;" required></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-ghost" style="flex:1;"
+          onclick="document.getElementById('writeModal').classList.add('hidden')">취소</button>
+        <button type="submit" class="btn btn-primary" style="flex:2;" id="noticeSubmitBtn">등록하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
+<script src="js/app.js"></script>
+<script>
+const user = ymsPageInit(true);
+
+const isAdmin   = user?.role === 'ADMIN';
+const isTeacher = user?.role === 'TEACHER';
+const isStudent = user?.role === 'STUDENT';
+const isParent  = user?.role === 'PARENT';
+const canWrite  = isAdmin || isTeacher;
+
+/* ── 읽음 상태: localStorage로 관리 ─────────────────────────
+   key: yms_read_notices  value: JSON array of notice IDs     */
+const READ_KEY = 'yms_read_notices';
+function getReadSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(READ_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function markRead(id) {
+  const s = getReadSet(); s.add(id);
+  localStorage.setItem(READ_KEY, JSON.stringify([...s]));
+}
+
+let _allNotices  = [];   // 로드된 전체 공지 (표시용)
+let _allClasses  = [];   // 반 목록 (작성폼 대상 드롭다운)
+let _currentFilter = 'ALL';
+let _myClassName  = '';  // 학생의 소속 반
+
+/* ── 초기화 ──────────────────────────────────────────────── */
+async function init() {
+  if (!user) return;
+
+  // 작성 버튼 노출 (관리자·선생님)
+  if (canWrite) document.getElementById('writeBtn').classList.remove('hidden');
+
+  // 학생이면 내 반 먼저 조회 (공지 필터링용)
+  if (isStudent) await loadStudentClass();
+
+  // 반 목록 로드 (작성폼 대상 드롭다운)
+  if (canWrite) await loadClasses();
+
+  await loadNotices();
+  ymsRenderTabBar('notices.html');
+}
+
+/* ── 학생 소속 반 조회 ───────────────────────────────────── */
+async function loadStudentClass() {
+  try {
+    const sid = user.studentId || user._tableId;
+    if (sid) {
+      const r = await _tFetch(`tables/students/${sid}`);
+      if (r.ok) { const j = await r.json(); _myClassName = j.className || ''; return; }
+    }
+    // studentId 없으면 이름 검색
+    const r2 = await _tFetch(`tables/students?search=${encodeURIComponent(user.name)}&limit=5`);
+    if (r2.ok) {
+      const j = await r2.json();
+      const found = (j.data || []).find(s => s.name === user.name);
+      _myClassName = found?.className || '';
+    }
+  } catch(e) { console.warn('[YMS] 학생 반 조회 실패', e); }
+}
+
+/* ── 반 목록 로드 ────────────────────────────────────────── */
+async function loadClasses() {
+  try {
+    const r = await _tFetch('tables/classes?limit=200');
+    if (r.ok) _allClasses = (await r.json()).data || [];
+  } catch(e) { console.warn('[YMS] 반 목록 로드 실패', e); }
+
+  // 작성폼 대상 드롭다운 채우기
+  const sel = document.getElementById('noticeTarget');
+  sel.innerHTML = '<option value="ALL">전체</option>';
+  _allClasses
+    .filter(c => c.isActive !== false)
+    .forEach(c => {
+      sel.innerHTML += `<option value="${c.className}">${c.className}</option>`;
+    });
+}
+
+/* ── 공지 목록 로드 ──────────────────────────────────────── */
+async function loadNotices() {
+  const wrap = document.getElementById('noticeListWrap');
+  wrap.innerHTML = `
+    <div class="skeleton" style="height:80px;border-radius:16px;margin-bottom:10px;"></div>
+    <div class="skeleton" style="height:80px;border-radius:16px;margin-bottom:10px;"></div>
+    <div class="skeleton" style="height:80px;border-radius:16px;"></div>`;
+
+  try {
+    const r = await _tFetch('tables/notices?limit=100&sort=created_at');
+    if (!r.ok) throw new Error('fetch fail');
+    const json = await r.json();
+    let list = (json.data || []).filter(n => n.isActive !== false);
+
+    // 최신순 정렬
+    list.sort((a, b) => (b.publishedAt || b.created_at || 0) > (a.publishedAt || a.created_at || 0) ? 1 : -1);
+
+    // ── 역할별 공지 필터링 ──────────────────────────────────
+    // 관리자·선생님: 전체 공지 모두 표시
+    // 학생: 전체 공지 + 내 반 공지
+    // 학부모: 전체 공지 + (자녀 반 공지 — 반 정보 없으면 전체만)
+    if (isStudent) {
+      list = list.filter(n =>
+        n.targetType === 'ALL' ||
+        !n.targetType ||          // targetType 미입력도 전체로 간주
+        (n.targetClassName && _myClassName && n.targetClassName === _myClassName)
+      );
+    } else if (isParent) {
+      list = list.filter(n =>
+        n.targetType === 'ALL' ||
+        !n.targetType
+      );
+    }
+    // 선생님·관리자는 필터 없이 전부 표시
+
+    _allNotices = list;
+  } catch(e) {
+    console.warn('[YMS] 공지 로드 실패', e);
+    _allNotices = [];
+  }
+
+  // 미읽음 배너
+  const readSet = getReadSet();
+  const unreadCount = _allNotices.filter(n => !readSet.has(n.id)).length;
+  const banner = document.getElementById('unreadBanner');
+  if (unreadCount > 0) {
+    banner.classList.remove('hidden');
+    document.getElementById('unreadBannerText').textContent = `읽지 않은 공지 ${unreadCount}개가 있습니다`;
+  } else {
+    banner.classList.add('hidden');
+  }
+
+  renderNotices();
+}
+
+/* ── 공지 목록 렌더 ──────────────────────────────────────── */
+function renderNotices() {
+  const readSet = getReadSet();
+  let list = [..._allNotices];
+
+  if (_currentFilter === 'IMPORTANT') {
+    list = list.filter(n => n.noticeType === 'IMPORTANT');
+  } else if (_currentFilter === 'UNREAD') {
+    list = list.filter(n => !readSet.has(n.id));
+  }
+
+  const wrap = document.getElementById('noticeListWrap');
+  wrap.innerHTML = '';
+
+  if (!list.length) {
+    wrap.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--gray-mid);font-size:14px;">
+      <div style="font-size:32px;margin-bottom:8px;">📭</div>
+      <div>${_currentFilter === 'UNREAD' ? '읽지 않은 공지가 없습니다' : '등록된 공지사항이 없습니다'}</div>
+    </div>`;
+    return;
+  }
+
+  list.forEach(notice => {
+    const isRead     = readSet.has(notice.id);
+    const isImportant = notice.noticeType === 'IMPORTANT';
+    const targetLabel = notice.targetType === 'ALL' ? '전체' : (notice.targetClassName || '특정 반');
+    const dateStr    = fmtDate(notice.publishedAt || notice.created_at);
+
+    const card = document.createElement('div');
+    card.className = `notice-card${isImportant ? ' important' : ''}`;
+    card.innerHTML = `
+      <div class="notice-card-header">
+        <div class="notice-dot${isRead ? ' read' : ''}"></div>
+        <div class="notice-card-title${isRead ? ' read' : ''}">${escHtml(notice.title || '(제목 없음)')}</div>
+        ${isImportant ? '<span style="font-size:14px;flex-shrink:0;">🔴</span>' : ''}
+      </div>
+      <div class="notice-card-meta">
+        <span class="${isImportant ? 'chip-important' : 'chip-general'}">${isImportant ? '🔴 중요' : '📢 일반'}</span>
+        <span class="chip-target">🎯 ${targetLabel}</span>
+        <span class="notice-date">${dateStr}</span>
+        ${notice.authorName ? `<span class="notice-author">· ${notice.authorName}</span>` : ''}
+        ${!isRead ? '<span class="chip-new">NEW</span>' : ''}
+      </div>`;
+    card.addEventListener('click', () => openDetail(notice));
+    wrap.appendChild(card);
+  });
+}
+
+/* ── 필터 변경 ───────────────────────────────────────────── */
+function setFilter(el, filter) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  _currentFilter = filter;
+  renderNotices();
+}
+
+/* ── 공지 상세 열기 ──────────────────────────────────────── */
+function openDetail(notice) {
+  // 읽음 처리
+  markRead(notice.id);
+  renderNotices(); // 뱃지·dot 갱신
+
+  const isImportant  = notice.noticeType === 'IMPORTANT';
+  const targetLabel  = notice.targetType === 'ALL' ? '전체' : (notice.targetClassName || '특정 반');
+  const dateStr      = fmtDate(notice.publishedAt || notice.created_at);
+  const bodyText     = notice.content || '(내용 없음)';
+
+  document.getElementById('noticeDetailContent').innerHTML = `
+    <div class="notice-detail-badge-row">
+      <span class="${isImportant ? 'chip-important' : 'chip-general'}">${isImportant ? '🔴 중요' : '📢 일반'}</span>
+      <span class="chip-target">🎯 ${targetLabel}</span>
+    </div>
+    <div class="notice-detail-title">${escHtml(notice.title || '(제목 없음)')}</div>
+    <div class="notice-detail-meta">
+      <span>📅 ${dateStr}</span>
+      ${notice.authorName ? `<span>✍️ ${escHtml(notice.authorName)}</span>` : ''}
+    </div>
+    <div class="notice-detail-content">${escHtml(bodyText)}</div>
+  `;
+
+  // 삭제 버튼 (관리자는 모두, 선생님은 본인 작성만)
+  const actEl = document.getElementById('noticeDetailActions');
+  actEl.innerHTML = '';
+  const canDelete = isAdmin || (isTeacher && notice.authorId === user.id);
+  if (canDelete) {
+    const delBtn = document.createElement('button');
+    delBtn.className = 'notice-del-btn';
+    delBtn.textContent = '🗑 삭제';
+    delBtn.onclick = () => deleteNotice(notice);
+    actEl.appendChild(delBtn);
+  }
+
+  document.getElementById('noticeDetailModal').classList.remove('hidden');
+
+  // 미읽음 배너 갱신
+  updateUnreadBanner();
+}
+
+/* ── 미읽음 배너 갱신 ────────────────────────────────────── */
+function updateUnreadBanner() {
+  const readSet = getReadSet();
+  const unreadCount = _allNotices.filter(n => !readSet.has(n.id)).length;
+  const banner = document.getElementById('unreadBanner');
+  if (unreadCount > 0) {
+    banner.classList.remove('hidden');
+    document.getElementById('unreadBannerText').textContent = `읽지 않은 공지 ${unreadCount}개가 있습니다`;
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+/* ── 공지 작성 모달 열기 ─────────────────────────────────── */
+function showWriteModal() {
+  document.getElementById('noticeRegForm').reset();
+  document.getElementById('writeModal').classList.remove('hidden');
+}
+
+/* ── 공지 등록 (POST) ────────────────────────────────────── */
+async function submitNotice(e) {
+  e.preventDefault();
+  const btn = document.getElementById('noticeSubmitBtn');
+  btn.disabled = true; btn.textContent = '등록 중...';
+
+  const titleVal   = document.getElementById('noticeTitle').value.trim();
+  const typeVal    = document.getElementById('noticeType').value;
+  const targetVal  = document.getElementById('noticeTarget').value;
+  const contentVal = document.getElementById('noticeContent').value.trim();
+
+  const isTargetClass = targetVal !== 'ALL';
+  const newNotice = {
+    title:      titleVal,
+    content:    contentVal,
+    noticeType: typeVal,
+    targetType: isTargetClass ? 'CLASS' : 'ALL',
+    authorId:   user.id || '',
+    authorName: user.name || '',
+    authorRole: user.role || '',
+    publishedAt: new Date().toISOString(),
+    isActive:   true,
+  };
+  if (isTargetClass) newNotice.targetClassName = targetVal;
+
+  try {
+    const res = await _tFetch('tables/notices', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(newNotice),
+    });
+    if (!res.ok) throw new Error('POST 실패');
+    const saved = await res.json();
+    // 작성자는 자동 읽음 처리
+    markRead(saved.id);
+    YMS_UI.toast('공지가 등록되었습니다! 📢');
+    document.getElementById('writeModal').classList.add('hidden');
+    await loadNotices();
+  } catch(err) {
+    console.error('[YMS] 공지 등록 실패', err);
+    YMS_UI.toast('등록 중 오류가 발생했습니다.');
+  }
+
+  btn.disabled = false; btn.textContent = '등록하기';
+}
+
+/* ── 공지 삭제 (PATCH isActive=false) ───────────────────── */
+async function deleteNotice(notice) {
+  if (!confirm(`"${notice.title}" 공지를 삭제하시겠습니까?`)) return;
+  try {
+    const res = await _tFetch(`tables/notices/${notice.id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ isActive: false }),
+    });
+    if (!res.ok) throw new Error();
+    document.getElementById('noticeDetailModal').classList.add('hidden');
+    YMS_UI.toast('공지가 삭제되었습니다.');
+    await loadNotices();
+  } catch(e) {
+    YMS_UI.toast('삭제 중 오류가 발생했습니다.');
+  }
+}
+
+/* ── 탭바 렌더 ───────────────────────────────────────────── */
+// renderTabBar → ymsRenderTabBar 로 통합 (js/app.js)
+function renderTabBar() { ymsRenderTabBar('notices.html'); }
+
+/* ── 유틸 ────────────────────────────────────────────────── */
+function fmtDate(val) {
+  if (!val) return '';
+  const d = new Date(typeof val === 'number' ? val : val);
+  if (isNaN(d)) return '';
+  const now = new Date();
+  const diffMs  = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH   = Math.floor(diffMin / 60);
+  const diffD   = Math.floor(diffH / 24);
+  if (diffMin < 1)  return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffH   < 24) return `${diffH}시간 전`;
+  if (diffD   < 7)  return `${diffD}일 전`;
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/* ── 모달 오버레이 클릭 닫기 ─────────────────────────────── */
+['noticeDetailModal', 'writeModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) this.classList.add('hidden');
+  });
+});
+
+/* ── URL 파라미터: 특정 공지 자동 열기 ───────────────────── */
+const _noticeIdParam = new URLSearchParams(window.location.search).get('id');
+
+/* ── 시작 ────────────────────────────────────────────────── */
+init().then(() => {
+  if (_noticeIdParam) {
+    const found = _allNotices.find(n => n.id === _noticeIdParam);
+    if (found) openDetail(found);
+  }
+});
+</script>
+</body>
+</html>

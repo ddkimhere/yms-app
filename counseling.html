@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>상담 · YMS Master Track</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E8B84B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--mustard:var(--periwinkle);--mustard-lt:var(--periwinkle-lt);--mustard-bg:var(--periwinkle-bg);--orange:var(--navy);--orange-lt:var(--navy-lt);--orange-dark:var(--navy-dark);--cream:var(--sky-bg);--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--shadow-lg:0 8px 32px rgba(30,50,120,.16);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;--font-en:'Nunito',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    .app-wrapper{max-width:430px;min-height:100vh;margin:0 auto;background:var(--sky-bg);position:relative;overflow-x:hidden;}
+    /* Status Chip */
+    .cs-status-pending  { background:#FFF3E0; color:#E65100; border:1px solid #FFCC80; }
+    .cs-status-replied  { background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; }
+
+    /* Counseling Card */
+    .cs-card {
+      background: var(--warm-white);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--beige);
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform .15s;
+    }
+    .cs-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .cs-card.unread { border-left: 3px solid var(--orange); }
+
+    .cs-card-header {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 8px;
+    }
+    .cs-card-title {
+      font-size: 14px; font-weight: 700;
+      color: var(--charcoal); flex: 1; line-height: 1.4;
+    }
+    .cs-card-meta {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 8px; flex-wrap: wrap;
+    }
+    .cs-card-preview {
+      font-size: 12px; color: var(--gray-mid);
+      margin-top: 6px;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+
+    /* Reply bubble */
+    .reply-bubble {
+      background: var(--mustard-bg);
+      border: 1px solid var(--mustard-lt);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      margin-top: 10px;
+    }
+    .reply-bubble-label {
+      font-size: 11px; font-weight: 700;
+      color: var(--orange); margin-bottom: 6px;
+    }
+    .reply-bubble-text {
+      font-size: 13px; color: var(--gray-dark);
+      line-height: 1.6;
+    }
+
+    /* Write Form */
+    .write-form { display: flex; flex-direction: column; gap: 14px; }
+
+    .category-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .category-btn {
+      padding: 10px 4px; text-align: center;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--beige-dark);
+      background: var(--warm-white);
+      font-size: 12px; font-weight: 600;
+      color: var(--gray-mid); cursor: pointer;
+      transition: all .15s;
+    }
+    .category-btn.active {
+      background: var(--mustard-bg);
+      border-color: var(--mustard);
+      color: var(--orange);
+    }
+
+    /* Teacher reply input */
+    .reply-input-wrap {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <!-- App Bar -->
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <span style="font-size:17px;font-weight:700;color:var(--charcoal);">상담</span>
+    </div>
+    <div class="app-bar-right">
+      <button class="icon-btn" id="writeBtn" onclick="showWriteModal()" title="상담 신청">✏️</button>
+    </div>
+  </header>
+
+  <!-- Filter Tabs -->
+  <div style="display:flex;gap:8px;padding:12px 20px 0;">
+    <div class="filter-chip active" style="padding:7px 16px;border-radius:9999px;border:1.5px solid var(--orange);font-size:13px;font-weight:600;cursor:pointer;background:var(--orange);color:#fff;" onclick="setFilter(this,'ALL')">전체</div>
+    <div class="filter-chip" style="padding:7px 16px;border-radius:9999px;border:1.5px solid var(--beige-dark);font-size:13px;font-weight:600;cursor:pointer;background:var(--warm-white);color:var(--gray-mid);" onclick="setFilter(this,'PENDING')">⏳ 답변 대기</div>
+    <div class="filter-chip" style="padding:7px 16px;border-radius:9999px;border:1.5px solid var(--beige-dark);font-size:13px;font-weight:600;cursor:pointer;background:var(--warm-white);color:var(--gray-mid);" onclick="setFilter(this,'REPLIED')">✅ 답변 완료</div>
+  </div>
+
+  <!-- Stats Row (Teacher/Admin only) -->
+  <div id="teacherStats" class="hidden" style="display:flex;gap:10px;padding:12px 20px 0;">
+    <div style="flex:1;background:var(--warm-white);border-radius:var(--radius-md);padding:12px;text-align:center;box-shadow:var(--shadow-sm);">
+      <div style="font-size:20px;font-weight:800;color:var(--orange);" id="pendingCount">-</div>
+      <div style="font-size:11px;color:var(--gray-mid);">답변 대기</div>
+    </div>
+    <div style="flex:1;background:var(--warm-white);border-radius:var(--radius-md);padding:12px;text-align:center;box-shadow:var(--shadow-sm);">
+      <div style="font-size:20px;font-weight:800;color:var(--present);" id="repliedCount">-</div>
+      <div style="font-size:11px;color:var(--gray-mid);">답변 완료</div>
+    </div>
+    <div style="flex:1;background:var(--warm-white);border-radius:var(--radius-md);padding:12px;text-align:center;box-shadow:var(--shadow-sm);">
+      <div style="font-size:20px;font-weight:800;color:var(--charcoal);" id="totalCount">-</div>
+      <div style="font-size:11px;color:var(--gray-mid);">전체</div>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div class="page-content" style="padding-top:12px;" id="csList"></div>
+
+  <!-- Tab Bar -->
+  <nav class="tab-bar" id="tabBar"></nav>
+</div>
+
+<!-- Counseling Detail Modal -->
+<div id="csDetailModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div id="csDetailContent"></div>
+    <!-- Teacher reply area -->
+    <div id="replyArea" class="hidden reply-input-wrap">
+      <div style="font-size:13px;font-weight:700;color:var(--charcoal);margin-bottom:10px;">💬 답변 작성</div>
+      <textarea class="form-input" id="replyText" rows="4" placeholder="답변 내용을 입력하세요" style="resize:none;"></textarea>
+      <button class="btn btn-primary btn-full mt-12" onclick="submitReply()">답변 등록</button>
+    </div>
+    <button class="btn btn-ghost btn-full mt-12" onclick="document.getElementById('csDetailModal').classList.add('hidden')">닫기</button>
+  </div>
+</div>
+
+<!-- Write Counseling Modal -->
+<div id="writeModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:92vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ 상담 신청</div>
+    <form class="write-form" id="writeForm" onsubmit="submitCounseling(event)">
+      <!-- Student (for parent with multiple children) -->
+      <div class="form-group" style="margin:0;" id="studentSelectWrap">
+        <label class="form-label">자녀 선택</label>
+        <select class="form-input form-select" id="csStudentId">
+          <option value="s001">김민준 (중2)</option>
+          <option value="s002">이서연 (초6)</option>
+        </select>
+      </div>
+      <!-- Category -->
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">상담 유형</label>
+        <div class="category-grid" id="categoryGrid">
+          <div class="category-btn active" data-cat="학습" onclick="selectCat(this)">📖 학습</div>
+          <div class="category-btn" data-cat="진도" onclick="selectCat(this)">📈 진도</div>
+          <div class="category-btn" data-cat="수업시간" onclick="selectCat(this)">🕐 수업시간</div>
+          <div class="category-btn" data-cat="숙제" onclick="selectCat(this)">📝 숙제</div>
+          <div class="category-btn" data-cat="교재" onclick="selectCat(this)">📚 교재</div>
+          <div class="category-btn" data-cat="기타" onclick="selectCat(this)">💬 기타</div>
+        </div>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">제목</label>
+        <input type="text" class="form-input" id="csTitle" placeholder="상담 제목을 입력하세요" required>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">내용</label>
+        <textarea class="form-input" id="csContent" rows="5" placeholder="궁금하신 점이나 요청 사항을 자세히 적어주세요." style="resize:none;" required></textarea>
+      </div>
+      <!-- Preferred date -->
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">희망 상담 날짜 (선택)</label>
+        <input type="date" class="form-input" id="csPrefDate">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('writeModal').classList.add('hidden')">취소</button>
+        <button type="submit" class="btn btn-primary" style="flex:2;" id="writeSubmitBtn">신청하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
+<script src="js/app.js"></script>
+<script>
+  const user = ymsPageInit(true);
+  let csFilter = 'ALL';
+  let allCs = [];
+  let currentCsId = null;
+  let selectedCategory = '학습';
+
+  const categoryIcons = { 학습:'📖', 진도:'📈', 수업시간:'🕐', 숙제:'📝', 교재:'📚', 기타:'💬' };
+
+  function init() {
+    if (!user) return;
+
+    const role = user.role;
+    const isTeacher = role === 'TEACHER';
+    const isAdmin   = role === 'ADMIN';
+    const isParent  = role === 'PARENT';
+    const isStudent = role === 'STUDENT';
+
+    // Hide write button for teacher/admin (they reply, not write)
+    if (isTeacher || isAdmin) {
+      document.getElementById('writeBtn').classList.add('hidden');
+      const stats = document.getElementById('teacherStats');
+      stats.classList.remove('hidden');
+      stats.style.display = 'flex';
+    }
+
+    // Student can write counseling too (show write button)
+    if (isStudent) {
+      document.getElementById('writeBtn').classList.remove('hidden');
+      // Student selects self; hide the child picker
+      document.getElementById('studentSelectWrap').classList.add('hidden');
+    }
+
+    // Hide student select if not parent
+    if (!isParent && !isStudent) {
+      document.getElementById('studentSelectWrap').classList.add('hidden');
+    }
+
+    // Tab Bar
+    ymsRenderTabBar('counseling.html');
+
+    loadList();
+  }
+
+  function loadList() {
+    allCs = [...YMS_DEMO.counseling];
+
+    const pending = allCs.filter(c => c.status === 'PENDING').length;
+    const replied = allCs.filter(c => c.status === 'REPLIED').length;
+
+    const pEl = document.getElementById('pendingCount');
+    const rEl = document.getElementById('repliedCount');
+    const tEl = document.getElementById('totalCount');
+    if (pEl) pEl.textContent = pending;
+    if (rEl) rEl.textContent = replied;
+    if (tEl) tEl.textContent = allCs.length;
+
+    renderList(allCs);
+  }
+
+  function renderList(list) {
+    const filtered = csFilter === 'ALL' ? list : list.filter(c => c.status === csFilter);
+    const wrap = document.getElementById('csList');
+    wrap.innerHTML = '';
+
+    if (filtered.length === 0) {
+      wrap.innerHTML = YMS_UI.renderEmpty('상담 내역이 없습니다');
+      return;
+    }
+
+    filtered.forEach(cs => {
+      const isUnread = !cs.isRead && user.role !== 'PARENT';
+      const card = document.createElement('div');
+      card.className = `cs-card${isUnread ? ' unread' : ''}`;
+      const statusCls = cs.status === 'PENDING' ? 'cs-status-pending' : 'cs-status-replied';
+      const statusLabel = cs.status === 'PENDING' ? '⏳ 답변 대기' : '✅ 답변 완료';
+      const catIcon = categoryIcons[cs.category] || '💬';
+      card.innerHTML = `
+        <div class="cs-card-header">
+          <div class="cs-card-title">${cs.title}</div>
+          <span class="chip ${statusCls}" style="font-size:10px;padding:3px 8px;white-space:nowrap;">${statusLabel}</span>
+        </div>
+        <div class="cs-card-preview">${cs.content}</div>
+        <div class="cs-card-meta">
+          <span class="chip chip-mustard" style="font-size:10px;">${catIcon} ${cs.category}</span>
+          <span style="font-size:11px;color:var(--gray-mid);">학생: ${cs.studentName}</span>
+          <span style="font-size:11px;color:var(--gray-light);">·</span>
+          <span style="font-size:11px;color:var(--gray-mid);">${YMS_Date.fromNow(cs.createdAt)}</span>
+        </div>
+      `;
+      card.addEventListener('click', () => openDetail(cs));
+      wrap.appendChild(card);
+    });
+  }
+
+  function setFilter(el, f) {
+    document.querySelectorAll('.filter-chip').forEach(c => {
+      c.style.background = 'var(--warm-white)';
+      c.style.color = 'var(--gray-mid)';
+      c.style.borderColor = 'var(--beige-dark)';
+    });
+    el.style.background = 'var(--orange)';
+    el.style.color = '#fff';
+    el.style.borderColor = 'var(--orange)';
+    csFilter = f;
+    renderList(allCs);
+  }
+
+  function openDetail(cs) {
+    currentCsId = cs.id;
+    const isTeacher = user.role === 'TEACHER' || user.role === 'ADMIN';
+    const catIcon = categoryIcons[cs.category] || '💬';
+
+    const content = document.getElementById('csDetailContent');
+    content.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <span class="chip chip-mustard">${catIcon} ${cs.category}</span>
+        <span class="chip ${cs.status==='PENDING'?'cs-status-pending':'cs-status-replied'}" style="font-size:11px;">
+          ${cs.status === 'PENDING' ? '⏳ 답변 대기' : '✅ 답변 완료'}
+        </span>
+      </div>
+      <h2 style="font-size:19px;font-weight:800;color:var(--charcoal);line-height:1.35;">${cs.title}</h2>
+      <div style="font-size:12px;color:var(--gray-mid);margin:8px 0 14px;">
+        학생: <strong>${cs.studentName}</strong> · 학부모: ${cs.parentName} · ${YMS_Date.fromNow(cs.createdAt)}
+      </div>
+      <div style="background:var(--cream);border-radius:var(--radius-md);padding:14px 16px;font-size:14px;line-height:1.7;color:var(--gray-dark);">${cs.content}</div>
+      ${cs.reply ? `
+        <div class="reply-bubble" style="margin-top:14px;">
+          <div class="reply-bubble-label">💬 ${cs.teacherName} 선생님 답변 · ${YMS_Date.fromNow(cs.repliedAt)}</div>
+          <div class="reply-bubble-text">${cs.reply}</div>
+        </div>` : `
+        <div style="margin-top:14px;padding:12px;background:var(--cream);border-radius:var(--radius-md);text-align:center;color:var(--gray-mid);font-size:13px;">
+          아직 답변이 등록되지 않았습니다
+        </div>`
+      }
+    `;
+
+    // Show reply area for teacher/admin if no reply yet
+    const replyArea = document.getElementById('replyArea');
+    if (isTeacher && cs.status === 'PENDING') {
+      replyArea.classList.remove('hidden');
+      document.getElementById('replyText').value = '';
+    } else {
+      replyArea.classList.add('hidden');
+    }
+
+    document.getElementById('csDetailModal').classList.remove('hidden');
+  }
+
+  async function submitReply() {
+    const text = document.getElementById('replyText').value.trim();
+    if (!text) { YMS_UI.toast('답변 내용을 입력해주세요'); return; }
+
+    await new Promise(r => setTimeout(r, 400));
+
+    // Update demo data
+    const cs = YMS_DEMO.counseling.find(c => c.id === currentCsId);
+    if (cs) {
+      cs.status = 'REPLIED';
+      cs.reply = text;
+      cs.repliedAt = new Date().toISOString();
+      cs.isRead = true;
+    }
+
+    document.getElementById('csDetailModal').classList.add('hidden');
+    YMS_UI.toast('답변이 등록되었습니다 ✅');
+    loadList();
+  }
+
+  function selectCat(el) {
+    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    selectedCategory = el.dataset.cat;
+  }
+
+  function showWriteModal() {
+    document.getElementById('writeModal').classList.remove('hidden');
+  }
+
+  async function submitCounseling(e) {
+    e.preventDefault();
+    const btn = document.getElementById('writeSubmitBtn');
+    btn.disabled = true; btn.textContent = '신청 중...';
+
+    await new Promise(r => setTimeout(r, 500));
+
+    const role = user.role;
+    const isStudentRole = role === 'STUDENT';
+    const studentId = isStudentRole ? (user.studentId || 's001') : (document.getElementById('csStudentId')?.value || 's001');
+    const studentObj = YMS_DEMO.students.find(s => s.id === studentId);
+    const newCs = {
+      id: 'cs_' + Date.now(),
+      studentId: studentId,
+      studentName: studentObj?.name || (isStudentRole ? user.name : '김민준'),
+      parentName: isStudentRole ? user.name : user.name,
+      parentId: user.id,
+      teacherId: 'u-t001', teacherName: '박민준',
+      category: selectedCategory,
+      title: document.getElementById('csTitle').value,
+      content: document.getElementById('csContent').value,
+      status: 'PENDING',
+      reply: null, repliedAt: null,
+      createdAt: new Date().toISOString(), isRead: true,
+    };
+
+    YMS_DEMO.counseling.unshift(newCs);
+    document.getElementById('writeModal').classList.add('hidden');
+    document.getElementById('writeForm').reset();
+    YMS_UI.toast('상담이 신청되었습니다! 선생님이 답변을 남겨드릴게요 💬');
+    loadList();
+
+    btn.disabled = false; btn.textContent = '신청하기';
+  }
+
+  ['csDetailModal','writeModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) {
+      if (e.target === this) this.classList.add('hidden');
+    });
+  });
+
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>로그인 · YMS Master Track</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1E3278">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* CSS 변수 인라인 폴백 — 외부 파일 로드 실패 시에도 동작 */
+    :root {
+      --navy:          #1E3278;
+      --navy-dark:     #14245A;
+      --navy-lt:       #2A4099;
+      --periwinkle:    #7492D5;
+      --periwinkle-lt: #A8BDE8;
+      --periwinkle-bg: #EEF3FB;
+      --sky-bg:        #F4F7FD;
+      --warm-white:    #FFFFFF;
+      --charcoal:      #1A2340;
+      --gray-dark:     #3D4A6B;
+      --gray-mid:      #7A87A8;
+      --gray-light:    #BDC6DC;
+      --gray-bg:       #EDF0F7;
+      --beige:         #E3E8F4;
+      --beige-dark:    #C8D1E8;
+      --present:       #2E9E6B;
+      --absent:        #E04040;
+      --mustard:       var(--periwinkle);
+      --mustard-lt:    var(--periwinkle-lt);
+      --mustard-bg:    var(--periwinkle-bg);
+      --orange:        var(--navy);
+      --orange-lt:     var(--navy-lt);
+      --orange-dark:   var(--navy-dark);
+      --cream:         var(--sky-bg);
+      --shadow-sm:     0 1px 4px rgba(30,50,120,.08);
+      --shadow-md:     0 4px 16px rgba(30,50,120,.12);
+      --radius-sm:     8px;
+      --radius-md:     16px;
+      --radius-lg:     24px;
+      --radius-xl:     32px;
+      --radius-full:   9999px;
+      --font-kr:       'Noto Sans KR', -apple-system, sans-serif;
+      --font-en:       'Nunito', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: var(--font-kr);
+      background: var(--sky-bg);
+      color: var(--charcoal);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .app-wrapper {
+      max-width: 430px;
+      min-height: 100vh;
+      margin: 0 auto;
+      background: var(--sky-bg);
+      position: relative;
+      overflow-x: hidden;
+    }
+    .login-btn-wrap { position: relative; }
+    .login-btn-spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <div class="login-page">
+    <!-- Hero -->
+    <div class="login-hero" style="
+      background: linear-gradient(160deg, #14245A 0%, #1E3278 55%, #2A4099 100%);
+      padding: 48px 28px 44px;
+      position: relative; overflow: hidden;
+    ">
+      <!-- 배경 장식 원 -->
+      <div style="
+        position:absolute; width:260px; height:260px; border-radius:50%;
+        background:rgba(116,146,213,.18); top:-80px; right:-60px;
+      "></div>
+      <div style="
+        position:absolute; width:160px; height:160px; border-radius:50%;
+        background:rgba(255,255,255,.06); bottom:-40px; left:-40px;
+      "></div>
+
+      <div class="login-brand" style="position:relative;z-index:1;">
+        <!-- 로고 + 텍스트 -->
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px;">
+          <img src="images/yms-logo.png" alt="YMS 로고"
+            style="width:68px; height:68px; border-radius:50%;
+                   box-shadow:0 4px 18px rgba(0,0,0,.35);
+                   object-fit:cover; flex-shrink:0;">
+          <div>
+            <div style="
+              font-family:var(--font-en); font-size:24px; font-weight:900;
+              color:#fff; letter-spacing:-0.5px; line-height:1.1;
+            ">YMS Master Track</div>
+            <div style="
+              font-size:11px; color:rgba(255,255,255,.65);
+              margin-top:4px; letter-spacing:.3px;
+            ">LEARNING INSTITUTE · ENGLISH &amp; MATH</div>
+          </div>
+        </div>
+        <div style="
+          font-size:13px; color:rgba(255,255,255,.7);
+          background:rgba(255,255,255,.1);
+          border:1px solid rgba(255,255,255,.2);
+          border-radius:var(--radius-full);
+          display:inline-block; padding:5px 14px;
+          backdrop-filter:blur(4px);
+        ">환영합니다. 오늘의 학습 흐름을 바로 확인해보세요.</div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div class="login-form-wrap" style="border-radius:28px 28px 0 0; margin-top:-12px;">
+      <!-- Role Selector: 시각적 안내용 (로그인 시 DB role로 자동 결정) -->
+      <div class="mb-16" id="roleSelectorWrap" style="display:none;"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" for="loginId">아이디</label>
+          <div class="input-wrap">
+            <input type="text" id="loginId" class="form-input"
+              placeholder="아이디를 입력하세요" autocomplete="username" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">비밀번호</label>
+          <div class="input-wrap">
+            <input type="password" id="password" class="form-input"
+              placeholder="비밀번호를 입력하세요" autocomplete="current-password" required>
+            <span class="input-icon" onclick="togglePw()" id="pwEye">👁</span>
+          </div>
+          <div class="form-error hidden" id="loginError">아이디 또는 비밀번호를 확인해주세요.</div>
+        </div>
+
+        <div class="login-btn-wrap mt-20">
+          <button type="submit" class="btn btn-primary btn-full btn-lg" id="loginBtn">
+            <span id="loginBtnText">로그인</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Divider -->
+
+
+      <!-- ── PWA 설치 배너 (Android Chrome / 지원 브라우저에서만 표시) ── -->
+      <div id="pwaInstallBanner" class="hidden" style="
+        margin-top:16px;
+        background:linear-gradient(135deg,#FFF8E7,#FFF3CD);
+        border:1.5px solid var(--mustard-lt);
+        border-radius:var(--radius-md);
+        padding:14px 16px;
+        display:flex; align-items:center; gap:12px;
+      ">
+        <img src="images/icon-192.png" alt="YMS 아이콘"
+          style="width:44px;height:44px;border-radius:12px;flex-shrink:0;object-fit:cover;">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:800;color:var(--charcoal);">앱으로 설치하기</div>
+          <div style="font-size:11px;color:var(--gray-mid);margin-top:2px;line-height:1.5;">
+            홈 화면에 추가하면 앱처럼 빠르게 실행돼요!
+          </div>
+        </div>
+        <button class="pwa-install-btn" onclick="ymsInstallApp()" style="
+          padding:8px 14px;
+          background:var(--mustard); color:#fff;
+          border:none; border-radius:var(--radius-full);
+          font-size:12px; font-weight:700; cursor:pointer;
+          white-space:nowrap; flex-shrink:0;
+        ">📲 설치</button>
+      </div>
+
+      <!-- iOS 설치 안내 (Safari 전용) -->
+      <div id="iosInstallHint" class="hidden" style="
+        margin-top:14px;
+        background:#F0F4FF; border:1px solid #C5D5FF;
+        border-radius:var(--radius-md); padding:12px 14px;
+        font-size:12px; color:#3F51B5; line-height:1.7;
+      ">
+        📱 <strong>iPhone에서 앱으로 설치하려면:</strong><br>
+        Safari 하단 <strong>공유 버튼 (⎙)</strong> → <strong>"홈 화면에 추가"</strong> 탭해주세요.
+      </div>
+
+      <!-- Footer Links -->
+      <div class="flex-center mt-20" style="gap:16px;">
+        <a href="#" style="font-size:12px;color:var(--gray-mid);">아이디 찾기</a>
+        <span style="color:var(--gray-light)">|</span>
+        <a href="#" style="font-size:12px;color:var(--gray-mid);">비밀번호 재설정</a>
+      </div>
+
+      <div class="text-center mt-16">
+        <small style="color:var(--gray-light);">YMS Master Track v1.0 · PWA</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── 퍼블리시 환경 base 경로 픽스
+  (function(){
+    const href = window.location.href.split('?')[0].split('#')[0];
+    const base = href.substring(0, href.lastIndexOf('/') + 1);
+    if (!document.querySelector('base')) {
+      const el = document.createElement('base');
+      el.href = base;
+      document.head.insertBefore(el, document.head.firstChild);
+    }
+    window._YMS_BASE = base;
+    window._ymsGo = function(p){ window.location.href = base + p; };
+  })();
+</script>
+<script src="js/app.js"></script>
+<script>
+  // ── 역할 선택 UI는 제거 (DB role로 자동 라우팅) ──────────────
+  // selectedRole 변수 불필요 → 삭제
+
+  function togglePw() {
+    const pw = document.getElementById('password');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+  }
+
+  async function handleLogin(e, isDemoFill = false) {
+    if (e) e.preventDefault();
+
+    const loginId  = document.getElementById('loginId').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl    = document.getElementById('loginError');
+    const btn      = document.getElementById('loginBtn');
+    const btnText  = document.getElementById('loginBtnText');
+
+    if (!loginId || !password) {
+      errEl.textContent = '아이디와 비밀번호를 모두 입력해주세요.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    errEl.classList.add('hidden');
+    btn.disabled = true;
+    btnText.innerHTML = `<div class="login-btn-spinner"></div>`;
+
+    try {
+      let userData = null;
+
+      // ══ 1순위: Table API users 테이블에서 실계정 인증 (role 검사 없음) ══
+      if (YMS_CONFIG.TABLE_AUTH) {
+        userData = await YMS_Auth.loginWithTable(loginId, password);
+        if (userData) {
+          console.log('[YMS] Table 로그인 성공:', userData.user.name, '/', userData.user.role);
+        }
+      }
+
+      // ══ 2순위: 데모 계정 폴백 (admin01, teacher01 등) ══
+      // role 조건 제거 — 아이디 + 비밀번호만 확인
+      if (!userData) {
+        const demoMap = {
+          'parent01':  { token: 'demo_token_parent',  user: YMS_DEMO.user_parent  },
+          'parent02':  { token: 'demo_token_parent2', user: YMS_DEMO.user_parent2 },
+          'student01': { token: 'demo_token_student', user: YMS_DEMO.user_student },
+          'teacher01': { token: 'demo_token_teacher', user: YMS_DEMO.user_teacher },
+          'admin01':   { token: 'demo_token_admin',   user: YMS_DEMO.user_admin   },
+        };
+        const match = demoMap[loginId];
+        if (match && password === 'YMS1234!') {
+          userData = match;
+          console.log('[YMS] 데모 로그인 성공:', match.user.name, '/', match.user.role);
+        }
+      }
+
+      if (!userData) {
+        errEl.textContent = '아이디 또는 비밀번호를 확인해주세요.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btnText.textContent = '로그인';
+        return;
+      }
+
+      YMS_Auth.save(userData.token, userData.user);
+
+      // ── DB에 저장된 role로 자동 라우팅 ──
+      const role = userData.user.role;
+      console.log('[YMS] 라우팅:', role);
+      if      (role === 'TEACHER') _ymsGo('teacher-home.html');
+      else if (role === 'ADMIN')   _ymsGo('admin.html');
+      else if (role === 'STUDENT') _ymsGo('student-home.html');
+      else                         _ymsGo('parent-home.html');
+
+    } catch (err) {
+      console.error('[YMS] 로그인 오류:', err);
+      errEl.textContent = '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btnText.textContent = '로그인';
+    }
+  }
+
+  // ── PWA 설치 배너 표시 로직 ──────────────────────────────
+  (function initPWABanner() {
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+    const isStandalone = window.navigator.standalone === true
+      || window.matchMedia('(display-mode: standalone)').matches;
+
+    // 이미 설치된 경우 배너 숨김
+    if (isStandalone) return;
+
+    if (isIOS && isSafari) {
+      // iOS Safari: 수동 안내 표시
+      document.getElementById('iosInstallHint').classList.remove('hidden');
+    }
+
+    // Android/Chrome의 beforeinstallprompt는 app.js에서 처리
+    // → pwa-install-btn 클래스 버튼을 보이게 함
+    window.addEventListener('beforeinstallprompt', () => {
+      document.getElementById('pwaInstallBanner').classList.remove('hidden');
+    });
+  })();
+</script>
+</body>
+</html>

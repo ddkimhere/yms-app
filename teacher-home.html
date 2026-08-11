@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>선생님 홈 · YMS Master Track</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E8B84B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--mustard:var(--periwinkle);--mustard-lt:var(--periwinkle-lt);--mustard-bg:var(--periwinkle-bg);--orange:var(--navy);--orange-lt:var(--navy-lt);--orange-dark:var(--navy-dark);--cream:var(--sky-bg);--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--shadow-lg:0 8px 32px rgba(30,50,120,.16);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;--font-en:'Nunito',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    .app-wrapper{max-width:430px;min-height:100vh;margin:0 auto;background:var(--sky-bg);position:relative;overflow-x:hidden;}
+    .class-card {
+      background: var(--warm-white);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--beige);
+      margin-bottom: 12px;
+    }
+    .class-card-header {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 10px;
+    }
+    .class-name {
+      font-size: 16px; font-weight: 700;
+      color: var(--charcoal);
+    }
+    .class-meta {
+      font-size: 12px; color: var(--gray-mid);
+      margin-top: 2px;
+    }
+    .class-time-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--mustard-bg);
+      border: 1px solid var(--mustard-lt);
+      border-radius: var(--radius-full);
+      padding: 4px 12px;
+      font-size: 12px; font-weight: 700;
+      color: var(--orange);
+      white-space: nowrap;
+    }
+    .class-actions {
+      display: flex; gap: 8px;
+      margin-top: 14px;
+    }
+    .class-actions .btn {
+      flex: 1; padding: 10px 0;
+      font-size: 13px;
+    }
+
+    .teacher-stat {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--warm-white);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .teacher-stat-icon {
+      width: 42px; height: 42px;
+      border-radius: var(--radius-sm);
+      background: var(--mustard-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .teacher-stat-info .stat-val {
+      font-size: 20px; font-weight: 800;
+      color: var(--charcoal);
+    }
+    .teacher-stat-info .stat-lbl {
+      font-size: 12px; color: var(--gray-mid);
+    }
+
+    /* Homework Register Modal */
+    .hw-register-form { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Attendance Quick Sheet */
+    .att-student-row {
+      display: flex; align-items: center;
+      padding: 10px 0; gap: 12px;
+      border-bottom: 1px solid var(--beige);
+    }
+    .att-student-row:last-child { border-bottom: none; }
+    .att-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--mustard-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: var(--orange);
+      flex-shrink: 0;
+    }
+    .att-student-name {
+      font-size: 14px; font-weight: 600;
+      color: var(--charcoal); flex: 1;
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <!-- App Bar -->
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <span class="app-bar-title">Master Track</span>
+    </div>
+    <div class="app-bar-right">
+      <button class="icon-btn" onclick="window.location.href='notices.html'">🔔</button>
+      <button class="icon-btn" onclick="showMyPage()">👤</button>
+    </div>
+  </header>
+
+  <!-- Greeting -->
+  <div class="greeting-section">
+    <div class="greeting-name" id="greetName">선생님, 안녕하세요 👋</div>
+    <div class="greeting-sub" id="greetSub">오늘 수업 일정을 확인하세요</div>
+  </div>
+
+  <div class="page-content" style="padding-top:16px;">
+
+    <!-- Today's Classes -->
+    <div class="section-header">
+      <div class="section-title">📅 오늘 수업</div>
+      <span id="todayDateLabel" style="font-size:12px;color:var(--gray-mid);"></span>
+    </div>
+
+    <div id="todayClassList">
+      <div class="skeleton" style="height:140px;border-radius:16px;margin-bottom:12px;"></div>
+    </div>
+
+
+  </div>
+
+  <!-- Tab Bar -->
+  <nav class="tab-bar" id="tabBar"></nav>
+</div>
+
+<!-- Homework Register Modal -->
+<div id="hwRegModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ 숙제 등록</div>
+    <form class="hw-register-form" id="hwRegForm" onsubmit="submitHomework(event)">
+      <input type="hidden" id="hwClassId">
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">숙제 제목</label>
+        <input type="text" class="form-input" id="hwTitle" placeholder="예) Unit 5 단어 암기 10개" required>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">내용</label>
+        <textarea class="form-input" id="hwContent" rows="3" placeholder="숙제 내용을 입력하세요" style="resize:none;"></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">마감일</label>
+        <input type="date" class="form-input" id="hwDueDate">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button type="button" class="btn btn-ghost" style="flex:1;" onclick="closeHwRegModal()">취소</button>
+        <button type="submit" class="btn btn-primary" style="flex:2;" id="hwRegSubmitBtn">등록하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Attendance Modal -->
+<div id="attModal" class="modal-overlay hidden">
+  <div class="modal-sheet" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✅ 출결 입력</div>
+    <div id="attModalClassLabel" style="font-size:13px;color:var(--gray-mid);margin-bottom:14px;"></div>
+    <div id="attStudentList"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeAttModal()">취소</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="submitAttendance()">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- My Page Modal -->
+<div id="myModal" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">MY</div>
+    <div id="myPageContent"></div>
+    <button class="btn btn-ghost btn-full mt-12" onclick="document.getElementById('myModal').classList.add('hidden')">닫기</button>
+  </div>
+</div>
+
+<script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
+<script src="js/app.js"></script>
+<script>
+  const user = ymsPageInit(true);
+  // ADMIN도 teacher-home 접근 허용 — TEACHER/ADMIN 이외 역할은 차단
+  if (user && user.role !== 'TEACHER' && user.role !== 'ADMIN') {
+    _ymsGo('login.html');
+  }
+
+  let attStatus = {}; // studentId -> status
+  let currentClassId = null;
+  let _myClasses = [];  // DB에서 로드한 반 목록
+
+  function init() {
+    if (!user) return;
+    ymsRenderTabBar('teacher-home.html');
+    const isAdmin = (user.role === 'ADMIN');
+    document.getElementById('greetName').textContent =
+      isAdmin ? `${user.name} 관리자님, 안녕하세요 👋` : `${user.name} 선생님, 안녕하세요 👋`;
+    document.getElementById('greetSub').textContent =
+      isAdmin ? `YMS Master Track · 관리자 수업 관리 모드` : `YMS Master Track · 오늘도 수고 많으세요`;
+
+    const today = new Date();
+    document.getElementById('todayDateLabel').textContent =
+      `${today.getMonth()+1}월 ${today.getDate()}일 (${['일','월','화','수','목','금','토'][today.getDay()]})`;
+
+    loadAndRenderClasses();
+  }
+
+  // ── DB에서 반 목록 로드 (ADMIN=전체, TEACHER=담당 반만) ─────
+  async function loadAndRenderClasses() {
+    try {
+      const res  = await _tFetch('tables/classes?limit=200');
+      const json = res.ok ? await res.json() : { data: [] };
+      const all  = json.data || [];
+
+      if (user.role === 'TEACHER') {
+        // 담당 반: DB의 teacherName 또는 사용자 세션의 teacherClasses 목록과 매칭
+        const myCls = Array.isArray(user.teacherClasses) ? user.teacherClasses : [];
+        _myClasses = all.filter(c =>
+          c.teacherName === user.name ||
+          myCls.includes(c.className) ||
+          myCls.includes(c.id)
+        );
+        // DB 매칭 없으면 세션의 반 이름으로 더미 생성
+        if (_myClasses.length === 0 && myCls.length > 0) {
+          _myClasses = myCls.map((cn, i) => ({
+            id: 'cls_fallback_' + i, className: cn,
+            subject: '', levelCode: '', teacherName: user.name,
+            studentCount: 0, startTime: '', endTime: '',
+          }));
+        }
+      } else {
+        // ADMIN: 전체 반 표시
+        _myClasses = all;
+      }
+    } catch(e) {
+      console.warn('[YMS] 반 목록 로드 실패, 데모 데이터 사용', e);
+      _myClasses = [];
+    }
+    renderTeacherHome();
+  }
+
+  function renderTeacherHome() {
+    const classes = _myClasses.length ? _myClasses : YMS_DEMO.teacherClasses;
+    const todayHw = YMS_DEMO.todayHomework;
+
+    // Class cards
+    const listEl = document.getElementById('todayClassList');
+    listEl.innerHTML = '';
+    if (classes.length === 0) {
+      listEl.innerHTML = YMS_UI.renderEmpty('오늘 수업이 없습니다');
+    } else {
+      classes.forEach(cls => {
+        const card = document.createElement('div');
+        card.className = 'class-card';
+        card.innerHTML = `
+          <div class="class-card-header">
+            <div>
+              <div class="class-name">${cls.className}</div>
+              <div class="class-meta">${cls.subject} · ${cls.levelCode} · 학생 ${cls.studentCount}명</div>
+            </div>
+            <span class="class-time-badge">🕐 ${cls.startTime}–${cls.endTime}</span>
+          </div>
+          <div class="class-actions">
+            <button class="btn btn-outline btn-sm" onclick="showAttModal('${cls.id || cls.classId}')">✅ 출결 입력</button>
+            <button class="btn btn-primary btn-sm" onclick="showHwRegModal('${cls.id || cls.classId}')">✏️ 숙제 등록</button>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
+  }
+
+  // ── Homework Registration ────────────────────
+  function showHwRegModal(classId) {
+    currentClassId = classId;
+    if (classId) document.getElementById('hwClassId').value = classId;
+    // Default due date = tomorrow
+    const tom = new Date(); tom.setDate(tom.getDate() + 1);
+    document.getElementById('hwDueDate').value = tom.toISOString().slice(0, 10);
+    document.getElementById('hwRegModal').classList.remove('hidden');
+  }
+  function closeHwRegModal() {
+    document.getElementById('hwRegModal').classList.add('hidden');
+    document.getElementById('hwRegForm').reset();
+  }
+
+  async function submitHomework(e) {
+    e.preventDefault();
+    const btn = document.getElementById('hwRegSubmitBtn');
+    btn.disabled = true; btn.textContent = '등록 중...';
+
+    const cls = _myClasses.find(c => c.id === currentClassId || c.classId === currentClassId);
+    const payload = {
+      classId:     currentClassId || '',
+      className:   cls?.className  || '',
+      subject:     cls?.subject    || '',
+      teacherId:   user?.id        || '',
+      teacherName: user?.name      || '',
+      title:       document.getElementById('hwTitle').value.trim(),
+      content:     document.getElementById('hwContent').value.trim(),
+      dueAt:       document.getElementById('hwDueDate').value
+        ? new Date(document.getElementById('hwDueDate').value + 'T21:00:00+09:00').toISOString() : null,
+      isVisible:   true,
+    };
+
+    try {
+      const res = await _tFetch('tables/homework', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      closeHwRegModal();
+      YMS_UI.toast('숙제가 등록되었습니다! 📚');
+      await loadAndRenderClasses(); // 홈 갱신
+    } catch(err) {
+      console.error('[YMS] 숙제 등록 실패:', err);
+      YMS_UI.toast('❌ 등록 실패: ' + err.message);
+    }
+
+    btn.disabled = false; btn.textContent = '등록하기';
+  }
+
+  // ── Attendance ───────────────────────────────
+  async function showAttModal(classId) {
+    currentClassId = classId;
+    // _myClasses(DB) → YMS_DEMO 순으로 폴백
+    const cls = _myClasses.find(c => c.id === classId || c.classId === classId)
+              || YMS_DEMO.teacherClasses.find(c => c.classId === classId)
+              || _myClasses[0] || YMS_DEMO.teacherClasses[0];
+    document.getElementById('attModalClassLabel').textContent = `📋 ${cls?.className || '반'} 출결 입력`;
+
+    const listEl = document.getElementById('attStudentList');
+    listEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-mid);font-size:13px;">학생 목록 불러오는 중...</div>';
+    attStatus = {};
+    document.getElementById('attModal').classList.remove('hidden');
+
+    // DB에서 해당 반 학생 조회
+    let students = [];
+    try {
+      const stuRes  = await _tFetch('tables/students?limit=200');
+      const stuJson = stuRes.ok ? await stuRes.json() : { data: [] };
+      const allStu  = stuJson.data || [];
+      students = allStu.filter(s =>
+        (cls?.id && s.classId === cls.id) ||
+        (cls?.className && s.className === cls.className)
+      );
+    } catch(e) { /* 무시 */ }
+    // DB에 학생 없으면 데모 폴백
+    if (students.length === 0) {
+      students = YMS_DEMO.students.slice(0, cls?.studentCount || 3);
+    }
+
+    listEl.innerHTML = '';
+    students.forEach(s => {
+      attStatus[s.id] = 'PRESENT'; // default present
+      const row = document.createElement('div');
+      row.className = 'att-student-row';
+      row.dataset.studentId = s.id;
+      row.innerHTML = `
+        <div class="att-avatar">${(s.name||'?')[0]}</div>
+        <div class="att-student-name">${s.name} <small style="color:var(--gray-mid);">${s.grade || ''}</small></div>
+        <div class="att-toggle-group">
+          <button class="att-toggle present active" data-id="${s.id}" data-status="PRESENT" onclick="setAtt(this,'${s.id}','PRESENT')">출석</button>
+          <button class="att-toggle late" data-id="${s.id}" data-status="LATE" onclick="setAtt(this,'${s.id}','LATE')">지각</button>
+          <button class="att-toggle absent" data-id="${s.id}" data-status="ABSENT" onclick="setAtt(this,'${s.id}','ABSENT')">결석</button>
+        </div>
+      `;
+      listEl.appendChild(row);
+    });
+  }
+
+  function setAtt(btn, studentId, status) {
+    attStatus[studentId] = status;
+    const group = btn.closest('.att-toggle-group');
+    group.querySelectorAll('.att-toggle').forEach(b => {
+      b.classList.remove('active');
+      if (b.dataset.status === status) b.classList.add('active');
+    });
+  }
+
+  function closeAttModal() {
+    document.getElementById('attModal').classList.add('hidden');
+  }
+
+  async function submitAttendance() {
+    const saveBtn = document.querySelector('#attModal .btn-primary');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const cls   = _myClasses.find(c => c.id === currentClassId || c.classId === currentClassId)
+                || _myClasses[0];
+
+    // attStudentList에 렌더링된 학생 행 수집
+    const rows = document.querySelectorAll('#attStudentList .att-student-row');
+
+    // rows가 없는 경우 (attStatus만 있을 때) 도 처리
+    const studentIds = rows.length
+      ? Array.from(rows).map(r => r.dataset?.studentId).filter(Boolean)
+      : Object.keys(attStatus);
+
+    let successCount = 0;
+    const errors = [];
+
+    // 기존 오늘 기록 조회 (PATCH vs POST 판단)
+    let existingMap = {};
+    try {
+      const exRes = await _tFetch(`tables/attendance?limit=500`, { cache: 'no-store' });
+      if (exRes.ok) {
+        const exJson = await exRes.json();
+        (exJson.data || []).forEach(r => {
+          if (r.date === today && r.className === cls?.className) {
+            existingMap[r.studentId] = r.id;
+          }
+        });
+      }
+    } catch(e) { /* 무시 */ }
+
+    for (const studentId of studentIds) {
+      const status = attStatus[studentId] || 'PRESENT';
+      const existingId = existingMap[studentId] || null;
+      const stu = document.querySelector(`#attStudentList .att-student-row[data-student-id="${studentId}"]`);
+      const studentName = stu?.querySelector('.att-student-name')?.textContent?.split('\n')[0]?.trim() || '';
+
+      try {
+        if (existingId) {
+          await _tFetch(`tables/attendance/${existingId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          });
+        } else {
+          await _tFetch('tables/attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId,
+              studentName,
+              classId:     cls?.id || currentClassId || '',
+              className:   cls?.className || '',
+              date:        today,
+              status,
+              teacherId:   user.id,
+              teacherName: user.name || '',
+              memo:        '',
+            }),
+          });
+        }
+        successCount++;
+      } catch(e) {
+        errors.push(studentName || studentId);
+      }
+    }
+
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장하기'; }
+    closeAttModal();
+
+    if (errors.length === 0) {
+      YMS_UI.toast(`✅ ${successCount}명 출결이 저장되었습니다!`);
+    } else {
+      YMS_UI.toast(`⚠️ 일부 저장 실패: ${errors.join(', ')}`);
+    }
+  }
+
+  // ── My Page ──────────────────────────────────
+  function showMyPage() {
+    const content = document.getElementById('myPageContent');
+    content.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--mustard-bg);border:2px solid var(--mustard);display:flex;align-items:center;justify-content:center;font-size:22px;">👩‍🏫</div>
+        <div>
+          <div style="font-size:18px;font-weight:700;">${user?.name || '-'} 선생님</div>
+          <div style="font-size:12px;color:var(--gray-mid);">선생님 · ${user?.academyName || 'YMS Master Track'}</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:12px;">
+        <button class="btn btn-ghost btn-full" onclick="alert('설정 (추후 지원)')">⚙️ 설정</button>
+        <button class="btn btn-ghost btn-full" style="color:var(--absent);" onclick="YMS_Auth.logout()">🚪 로그아웃</button>
+      </div>
+    `;
+    document.getElementById('myModal').classList.remove('hidden');
+  }
+
+  // Close modals on overlay click
+  ['hwRegModal','attModal','myModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) {
+      if (e.target === this) this.classList.add('hidden');
+    });
+  });
+
+  init();
+</script>
+</body>
+</html>

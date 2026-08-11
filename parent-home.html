@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>홈 · YMS Master Track</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E8B84B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--mustard:var(--periwinkle);--mustard-lt:var(--periwinkle-lt);--mustard-bg:var(--periwinkle-bg);--orange:var(--navy);--orange-lt:var(--navy-lt);--orange-dark:var(--navy-dark);--cream:var(--sky-bg);--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--shadow-lg:0 8px 32px rgba(30,50,120,.16);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;--font-en:'Nunito',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    .app-wrapper{max-width:430px;min-height:100vh;margin:0 auto;background:var(--sky-bg);position:relative;overflow-x:hidden;}
+    /* 홈 화면 전용: empty-state 높이 축소 */
+    .page-content .empty-state {
+      padding: 16px 12px;
+      gap: 6px;
+    }
+    .page-content .empty-icon { font-size: 28px; }
+    .page-content .empty-msg  { font-size: 12px; }
+
+    .hw-card-content {
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .hw-card-content:hover { background: var(--cream); border-radius: var(--radius-md); }
+
+    .unread-badge {
+      background: var(--orange);
+      color: #fff;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      font-size: 10px; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-left: 6px;
+    }
+
+    /* Modal Homework Detail */
+    .hw-detail-subject {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--mustard-bg);
+      border-radius: var(--radius-full);
+      padding: 4px 14px;
+      font-size: 13px; font-weight: 700;
+      color: var(--orange);
+      margin-bottom: 12px;
+    }
+    .hw-detail-title {
+      font-size: 20px; font-weight: 800;
+      color: var(--charcoal);
+      line-height: 1.3;
+    }
+    .hw-detail-meta {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin: 12px 0;
+    }
+    .hw-detail-content {
+      font-size: 14px; line-height: 1.7;
+      color: var(--gray-dark);
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <!-- App Bar -->
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <span class="app-bar-title">Master Track</span>
+    </div>
+    <div class="app-bar-right">
+      <button class="icon-btn" onclick="window.location.href='notices.html'" title="공지사항">🔔</button>
+      <button class="icon-btn" onclick="showMyPage()" title="MY">👤</button>
+    </div>
+  </header>
+
+  <!-- Greeting + Student Selector -->
+  <div class="greeting-section">
+    <div class="greeting-name" id="greetName">안녕하세요 👋</div>
+    <div class="greeting-sub" id="greetSub">오늘 학습 현황을 확인해보세요</div>
+  </div>
+
+  <!-- Student Chips -->
+  <div class="student-selector" id="studentSelector"></div>
+
+  <!-- Main Content -->
+  <div class="page-content" style="padding-top:12px;">
+
+    <!-- 최신 숙제 -->
+    <div class="section-header">
+      <div class="section-title">📖 최신 숙제</div>
+      <a href="homework.html" class="section-more">전체보기</a>
+    </div>
+    <div class="card" style="padding:8px 16px;">
+      <div id="hwList"><div class="skeleton" style="height:80px;border-radius:10px;"></div></div>
+    </div>
+
+    <!-- 출석 현황 -->
+    <div class="section-header mt-4">
+      <div class="section-title">✅ 출석 현황</div>
+      <a href="attendance.html" class="section-more">전체보기</a>
+    </div>
+    <div class="card" style="padding:16px;">
+      <div id="attSummaryArea">
+        <div class="skeleton" style="height:60px;border-radius:10px;"></div>
+      </div>
+    </div>
+
+    <!-- 공지사항 -->
+    <div class="section-header mt-4">
+      <div class="section-title">📢 공지사항 <span id="unreadCount"></span></div>
+      <a href="notices.html" class="section-more">전체보기</a>
+    </div>
+    <div class="card" style="padding:8px 16px;">
+      <div id="noticeList"><div class="skeleton" style="height:80px;border-radius:10px;"></div></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Tab Bar -->
+  <nav class="tab-bar" id="tabBar"></nav>
+</div>
+
+<!-- Homework Detail Modal -->
+<div id="hwModal" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="hwModalContent"></div>
+    <button class="btn btn-ghost btn-full mt-16" onclick="closeHwModal()">닫기</button>
+  </div>
+</div>
+
+<!-- My Page Modal -->
+<div id="myModal" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">MY</div>
+    <div id="myPageContent"></div>
+    <button class="btn btn-ghost btn-full mt-12" onclick="document.getElementById('myModal').classList.add('hidden')">닫기</button>
+  </div>
+</div>
+
+<script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
+<script src="js/app.js"></script>
+<script>
+  const user = ymsPageInit(true);
+  let students = [];        // 자녀 students 레코드 목록
+  let selectedStudent = null; // 현재 선택된 자녀 전체 객체
+
+  /* ══════════════════════════════════════════════
+     초기화: 자녀 목록 로드
+  ══════════════════════════════════════════════ */
+  async function init() {
+    if (!user) return;
+    ymsRenderTabBar('parent-home.html');
+    document.getElementById('greetName').textContent = `안녕하세요, ${user.name}님 👋`;
+    document.getElementById('greetSub').textContent  = `YMS Master Track · 오늘 학습 현황`;
+
+    // ── 스켈레톤 유지 (로딩 중 표시) ──
+    document.getElementById('hwList').innerHTML     = '<div class="skeleton" style="height:180px;border-radius:10px;"></div>';
+    document.getElementById('noticeList').innerHTML = '<div class="skeleton" style="height:120px;border-radius:10px;"></div>';
+
+    // ── 전체 students + users 테이블 한 번에 가져오기 ──
+    // (childIds 파싱이 어떻게 저장됐든 모두 대응하기 위해 전체 조회)
+    let allStudents = [];
+    try {
+      const r = await _tFetch('tables/students?limit=500', { cache: 'no-store' });
+      if (r.ok) allStudents = (await r.json()).data || [];
+    } catch(e) { /* 무시 */ }
+
+    // ── 자녀 찾기: 3단계 우선순위 ──
+
+    // 1단계: users.childIds → students.id 직접 매칭
+    const rawChildIds = user.childIds;
+    const childIds = Array.isArray(rawChildIds)
+      ? rawChildIds
+      : (rawChildIds || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    if (childIds.length) {
+      students = allStudents.filter(s => childIds.includes(s.id));
+    }
+
+    // 2단계: students.parentId = 현재 users.id 매칭
+    if (!students.length) {
+      students = allStudents.filter(s => s.parentId === user.id);
+    }
+
+    // 3단계: users 테이블에서 STUDENT role이고 이름이 같은 학생의 parentId 링크
+    if (!students.length && user.id) {
+      try {
+        const ur = await _tFetch('tables/users?limit=500', { cache: 'no-store' });
+        if (ur.ok) {
+          const userList = (await ur.json()).data || [];
+          // 이 PARENT 계정의 childIds가 세션에서 파싱 안 됐을 때 users DB 직접 확인
+          const parentRecord = userList.find(u => u.id === user.id);
+          if (parentRecord?.childIds) {
+            const ids = (parentRecord.childIds || '').split(',').map(s => s.trim()).filter(Boolean);
+            students = allStudents.filter(s => ids.includes(s.id));
+          }
+        }
+      } catch(e) { /* 무시 */ }
+    }
+
+    // ── 자녀 없음 안내 ──
+    if (!students.length) {
+      document.getElementById('studentSelector').innerHTML =
+        `<div style="padding:8px 20px;font-size:13px;color:var(--gray-mid);">
+           연결된 자녀 계정이 없습니다. 관리자에게 문의해 주세요.
+         </div>`;
+      document.getElementById('hwList').innerHTML        = YMS_UI.renderEmpty('자녀 계정 연결 후 확인 가능합니다');
+      document.getElementById('attSummaryArea').innerHTML = YMS_UI.renderEmpty('자녀 계정 연결 후 확인 가능합니다');
+      document.getElementById('noticeList').innerHTML     = YMS_UI.renderEmpty('자녀 계정 연결 후 확인 가능합니다');
+      return;
+    }
+
+    // ── 자녀 칩 + 첫 번째 자녀 데이터 로드 ──
+    renderStudentChips(students);
+    selectedStudent = students[0];
+    await loadHomeData(students[0]);
+  }
+
+  /* ── 자녀 선택 칩 렌더링 ── */
+  function renderStudentChips(list) {
+    const wrap = document.getElementById('studentSelector');
+    wrap.innerHTML = '';
+    list.forEach((s, i) => {
+      const chip = document.createElement('div');
+      chip.className = `student-chip${i === 0 ? ' active' : ''}`;
+      chip.innerHTML = `<div class="chip-avatar">${(s.name || '?')[0]}</div>${s.name}`;
+      chip.addEventListener('click', () => {
+        wrap.querySelectorAll('.student-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedStudent = s;
+        loadHomeData(s);
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  /* ══════════════════════════════════════════════
+     자녀별 홈 데이터 로드 (숙제 + 출결 + 공지)
+  ══════════════════════════════════════════════ */
+  async function loadHomeData(student) {
+    if (!student) return;
+
+    // ── 숙제 / 출결 / 공지 병렬 조회 ──
+    const [hwData, attData, noticeData] = await Promise.allSettled([
+      fetchHomework(student),
+      fetchAttendance(student),
+      fetchNotices(),
+    ]);
+
+    const hw      = hwData.status      === 'fulfilled' ? hwData.value      : [];
+    const attRecs = attData.status     === 'fulfilled' ? attData.value     : [];
+    const notices = noticeData.status  === 'fulfilled' ? noticeData.value  : [];
+
+    // ── 출석 현황 렌더링 ──
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const monthAtt  = attRecs.filter(a => a.date && a.date.startsWith(thisMonth));
+    const presentCnt = monthAtt.filter(a => a.status === 'PRESENT').length;
+    const lateCnt    = monthAtt.filter(a => a.status === 'LATE').length;
+    const absentCnt  = monthAtt.filter(a => a.status === 'ABSENT').length;
+    const lastRec    = attRecs[0];
+    const attLabels  = { PRESENT: '출석 ✅', LATE: '지각 ⚠️', ABSENT: '결석 ❌' };
+    document.getElementById('attSummaryArea').innerHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:${lastRec ? '12px' : '0'};">
+        <div style="flex:1;text-align:center;background:#E8F5EF;border-radius:10px;padding:10px 0;">
+          <div style="font-size:20px;font-weight:800;color:#2E9E6B;">${presentCnt}</div>
+          <div style="font-size:11px;color:#2E9E6B;margin-top:2px;">출석</div>
+        </div>
+        <div style="flex:1;text-align:center;background:#FFF4E0;border-radius:10px;padding:10px 0;">
+          <div style="font-size:20px;font-weight:800;color:#E8A020;">${lateCnt}</div>
+          <div style="font-size:11px;color:#E8A020;margin-top:2px;">지각</div>
+        </div>
+        <div style="flex:1;text-align:center;background:#FFEBEB;border-radius:10px;padding:10px 0;">
+          <div style="font-size:20px;font-weight:800;color:#E04040;">${absentCnt}</div>
+          <div style="font-size:11px;color:#E04040;margin-top:2px;">결석</div>
+        </div>
+      </div>
+      ${lastRec ? `<div style="font-size:12px;color:var(--gray-mid);">최근 출결: <strong style="color:var(--charcoal);">${lastRec.date}</strong> · ${attLabels[lastRec.status] || lastRec.status}${lastRec.className ? ' · ' + lastRec.className : ''}</div>` : '<div style="font-size:12px;color:var(--gray-mid);">이번 달 출결 기록이 없습니다</div>'}
+    `;
+
+    // ── 숙제 목록 렌더링 ──
+    const hwListEl = document.getElementById('hwList');
+    hwListEl.innerHTML = '';
+    if (!hw.length) {
+      hwListEl.innerHTML = YMS_UI.renderEmpty('등록된 숙제가 없습니다');
+    } else {
+      hw.slice(0, 5).forEach(h => hwListEl.appendChild(renderHomeworkItem(h, openHwModal)));
+    }
+
+    // ── 공지 목록 렌더링 ──
+    const noticeListEl = document.getElementById('noticeList');
+    noticeListEl.innerHTML = '';
+    document.getElementById('unreadCount').innerHTML = '';
+    if (!notices.length) {
+      noticeListEl.innerHTML = YMS_UI.renderEmpty('등록된 공지가 없습니다');
+    } else {
+      notices.slice(0, 3).forEach(n => noticeListEl.appendChild(renderNoticeItem(n, openNoticeDetail)));
+    }
+  }
+
+  /* ── 숙제 조회: 소속 반 기준 ── */
+  async function fetchHomework(student) {
+    const r = await _tFetch('tables/homework?limit=300', { cache: 'no-store' });
+    if (!r.ok) return [];
+    const all = (await r.json()).data || [];
+
+    // 필터 기준: 이 학생의 반 (className 또는 classId)
+    let filtered = all.filter(h => {
+      if (!h.isVisible && h.isVisible !== undefined) return false;
+      // 반 이름 매칭
+      if (student.className && h.className === student.className) return true;
+      // classId 매칭
+      if (student.classId && h.classId === student.classId) return true;
+      // 반 정보 없으면 전체 표시 (관대한 폴백)
+      if (!student.className && !student.classId) return true;
+      return false;
+    });
+
+    // 마감 지난 것 제외 (1일 유예)
+    filtered = filtered.filter(h =>
+      !h.dueAt || (new Date(h.dueAt).getTime() - Date.now()) > -86400000 * 1
+    );
+
+    // 최신순 정렬
+    filtered.sort((a, b) => (b.created_at || b.createdAt || 0) - (a.created_at || a.createdAt || 0));
+    return filtered;
+  }
+
+  /* ── 출결 조회: studentId 기준 ── */
+  async function fetchAttendance(student) {
+    const r = await _tFetch('tables/attendance?limit=500', { cache: 'no-store' });
+    if (!r.ok) return [];
+    const all = (await r.json()).data || [];
+
+    // studentId로 정확 매칭
+    const recs = all.filter(a => a.studentId === student.id);
+    // 날짜 내림차순
+    recs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    return recs;
+  }
+
+  /* ── 공지 조회 ── */
+  async function fetchNotices() {
+    const r = await _tFetch('tables/notices?limit=100', { cache: 'no-store' });
+    if (!r.ok) return [];
+    const list = (await r.json()).data || [];
+    // 활성 공지 + 전체 대상만 (학부모는 반 정보가 없으므로 ALL만)
+    return list
+      .filter(n => n.isActive !== false && (n.targetType === 'ALL' || !n.targetType))
+      .sort((a, b) => (b.publishedAt || b.created_at || 0) > (a.publishedAt || a.created_at || 0) ? 1 : -1);
+  }
+
+  /* ── 숙제 상세 모달 ── */
+  function openHwModal(hw) {
+    const content = document.getElementById('hwModalContent');
+    content.innerHTML = `
+      <div class="hw-detail-subject">${YMS_UI.subjectEmoji(hw.subject)} ${hw.subject || '숙제'}</div>
+      <div class="hw-detail-title">${hw.title}</div>
+      <div class="hw-detail-meta">
+        <span class="chip chip-gray">${hw.className || '-'}</span>
+        ${hw.dueAt ? `<span class="chip chip-orange">📅 ${YMS_Date.dueLabel(hw.dueAt)}</span>` : ''}
+      </div>
+      <div style="font-size:12px;color:var(--gray-mid);margin-bottom:4px;">
+        선생님: ${hw.teacherName || '-'} · ${YMS_Date.fromNow(hw.created_at || hw.createdAt)}
+      </div>
+      <div class="hw-detail-content">${hw.content || '내용 없음'}</div>
+    `;
+    document.getElementById('hwModal').classList.remove('hidden');
+  }
+
+  function closeHwModal() {
+    document.getElementById('hwModal').classList.add('hidden');
+  }
+
+  function openNoticeDetail(notice) {
+    _ymsGo(`notices.html?id=${notice.id}`);
+  }
+
+  /* ── MY 페이지 ── */
+  function showMyPage() {
+    const content = document.getElementById('myPageContent');
+    const childNames = students.map(s => s.name).join(', ') || '-';
+    content.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--mustard-bg);border:2px solid var(--mustard);display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>
+        <div>
+          <div style="font-size:18px;font-weight:700;">${user?.name || '-'}</div>
+          <div style="font-size:12px;color:var(--gray-mid);">학부모 · ${user?.academyName || 'YMS Master Track'}</div>
+        </div>
+      </div>
+      <div style="background:var(--periwinkle-bg);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--navy);">
+        👦 자녀: <strong>${childNames}</strong>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:12px;">
+        <button class="btn btn-ghost btn-full" onclick="_ymsGo('attendance.html')">📋 출결 확인</button>
+        <button class="btn btn-ghost btn-full" onclick="_ymsGo('counseling.html')">💬 상담 신청</button>
+        <button class="btn btn-ghost btn-full" style="color:var(--absent);" onclick="YMS_Auth.logout()">🚪 로그아웃</button>
+      </div>
+    `;
+    document.getElementById('myModal').classList.remove('hidden');
+  }
+
+  // 모달 오버레이 클릭 닫기
+  document.getElementById('hwModal').addEventListener('click', function(e) {
+    if (e.target === this) closeHwModal();
+  });
+  document.getElementById('myModal').addEventListener('click', function(e) {
+    if (e.target === this) document.getElementById('myModal').classList.add('hidden');
+  });
+
+  init();
+</script>
+</body>
+</html>

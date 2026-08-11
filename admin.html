@@ -1,0 +1,2281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>관리자 대시보드 · YMS Master Track</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E8B84B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--mustard:var(--periwinkle);--mustard-lt:var(--periwinkle-lt);--mustard-bg:var(--periwinkle-bg);--orange:var(--navy);--orange-lt:var(--navy-lt);--orange-dark:var(--navy-dark);--cream:var(--sky-bg);--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--shadow-lg:0 8px 32px rgba(30,50,120,.16);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;--font-en:'Nunito',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    body { overflow-x: hidden; }
+    .admin-layout { min-height: 100vh; }
+
+    /* Mobile sidebar toggle */
+    .admin-sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.4); z-index: 200;
+    }
+    .admin-sidebar-overlay.show { display: block; }
+
+    @media (max-width: 767px) {
+      .admin-sidebar {
+        position: fixed; left: -240px; top: 0; height: 100vh;
+        z-index: 201; transition: left .25s;
+      }
+      .admin-sidebar.open { left: 0; }
+      .admin-main { margin-left: 0 !important; }
+    }
+
+    /* Recent Activity */
+    .activity-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--beige);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--mustard-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .activity-text { flex: 1; font-size: 13px; color: var(--charcoal); }
+    .activity-time { font-size: 11px; color: var(--gray-mid); margin-top: 2px; }
+
+    /* Student / Teacher Table */
+    .admin-table-header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .search-input-wrap { position: relative; flex: 1; max-width: 280px; }
+    .search-input-wrap input {
+      width: 100%; padding: 10px 14px 10px 36px;
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius-full);
+      font-size: 13px; font-family: var(--font-kr);
+      background: var(--warm-white); color: var(--charcoal);
+      outline: none;
+    }
+    .search-input-wrap input:focus { border-color: var(--mustard); }
+    .search-icon {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px; color: var(--gray-mid);
+    }
+
+    /* Classes grid */
+    .classes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .class-admin-card {
+      background: var(--warm-white);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--beige);
+    }
+    .class-admin-card-title {
+      font-size: 16px; font-weight: 700;
+      color: var(--charcoal); margin-bottom: 6px;
+    }
+    .class-admin-meta { font-size: 12px; color: var(--gray-mid); }
+    .class-admin-stats {
+      display: flex; gap: 16px; margin-top: 12px;
+    }
+    .class-stat { text-align: center; }
+    .class-stat-num { font-size: 18px; font-weight: 800; color: var(--charcoal); }
+    .class-stat-lbl { font-size: 11px; color: var(--gray-mid); }
+
+    /* Content sections */
+    .admin-section { margin-bottom: 28px; }
+
+    /* Progress bar */
+    .progress-bar-wrap { background: var(--beige); border-radius: 4px; height: 6px; overflow: hidden; }
+    .progress-bar { height: 6px; background: var(--orange); border-radius: 4px; }
+
+    /* ── 결제 수단 선택 버튼 (pm-btn) ─────────────────────── */
+    .pm-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 7px 14px;
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius-full);
+      background: var(--warm-white);
+      color: var(--charcoal);
+      font-size: 13px; font-weight: 600;
+      font-family: var(--font-kr);
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .pm-btn:hover {
+      border-color: var(--periwinkle);
+      background: var(--periwinkle-bg);
+      color: var(--navy);
+    }
+    .pm-btn.active,
+    .pm-btn.active.cash,
+    .pm-btn.active.transfer,
+    .pm-btn.active.card {
+      border-color: var(--navy) !important;
+      background: var(--navy) !important;
+      color: #fff !important;
+      box-shadow: 0 2px 8px rgba(30,50,120,.25);
+    }
+    .pm-btn.cash.active   { background: #2e7d32 !important; border-color: #2e7d32 !important; }
+    .pm-btn.transfer.active { background: var(--navy) !important; border-color: var(--navy) !important; }
+    .pm-btn.card.active   { background: #6a1b9a !important; border-color: #6a1b9a !important; }
+
+    /* ── 수납 요약 카드 ──────────────────────────────────── */
+    .pay-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .pay-summary-card {
+      background: var(--warm-white);
+      border: 1px solid var(--beige);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .pay-summary-label {
+      font-size: 11px; color: var(--gray-mid); margin-bottom: 6px;
+    }
+    .pay-summary-value {
+      font-size: 18px; font-weight: 800; color: var(--charcoal);
+    }
+    /* ── 수납 필터 버튼 (btn-sm / btn-ghost) ─────────────── */
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid var(--beige-dark);
+      background: var(--warm-white);
+      color: var(--charcoal);
+      font-family: var(--font-kr);
+      transition: all .15s;
+    }
+    .btn-sm:hover { border-color: var(--periwinkle); color: var(--navy); }
+    .btn-ghost {
+      background: var(--warm-white);
+      color: var(--gray-dark);
+      border: 1.5px solid var(--beige-dark);
+    }
+    .btn-ghost:hover { border-color: var(--periwinkle); color: var(--navy); }
+  </style>
+</head>
+<body>
+<div class="admin-layout" id="adminLayout">
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="admin-sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-sidebar-header">
+      <div class="admin-sidebar-logo">YMS Master Track</div>
+      <div class="admin-sidebar-sub">Admin Dashboard</div>
+    </div>
+
+    <nav class="admin-nav">
+      <div class="admin-nav-section">메인</div>
+      <button class="admin-nav-item active" id="nav-dashboard" onclick="switchSection('dashboard',this)">
+        <span class="nav-icon">📊</span> 대시보드
+      </button>
+      <button class="admin-nav-item" id="nav-students" onclick="switchSection('students',this)">
+        <span class="nav-icon">👨‍🎓</span> 학생 관리
+      </button>
+      <button class="admin-nav-item" id="nav-classes" onclick="switchSection('classes',this)">
+        <span class="nav-icon">🏫</span> 반 관리
+      </button>
+      <button class="admin-nav-item" id="nav-teachers" onclick="switchSection('teachers',this)">
+        <span class="nav-icon">👩‍🏫</span> 선생님 관리
+      </button>
+
+      <div class="admin-nav-section">운영</div>
+      <button class="admin-nav-item" id="nav-notices" onclick="switchSection('notices',this)">
+        <span class="nav-icon">📢</span> 공지 관리
+      </button>
+      <button class="admin-nav-item" id="nav-attendance" onclick="switchSection('attendance',this)">
+        <span class="nav-icon">✅</span> 출결 현황
+      </button>
+      <button class="admin-nav-item" id="nav-payments" onclick="switchSection('payments',this)">
+        <span class="nav-icon">💳</span> 수납 관리
+      </button>
+      <button class="admin-nav-item" id="nav-counseling" onclick="switchSection('counseling',this)">
+        <span class="nav-icon">💬</span> 상담 관리
+      </button>
+
+      <button class="admin-nav-item" id="nav-accounts" onclick="switchSection('accounts',this)">
+        <span class="nav-icon">👤</span> 계정 관리
+      </button>
+      <button class="admin-nav-item" id="nav-classes-mgmt" onclick="switchSection('classes-mgmt',this)">
+        <span class="nav-icon">🏫</span> 반 관리
+      </button>
+
+      <div class="admin-nav-section">설정</div>
+      <a class="admin-nav-item" href="teacher-home.html" style="text-decoration:none;color:rgba(255,255,255,.75);">
+        <span class="nav-icon">👩‍🏫</span> 선생님 화면
+      </a>
+      <a class="admin-nav-item" href="launch-guide.html" style="text-decoration:none;color:rgba(255,255,255,.75);">
+        <span class="nav-icon">🚀</span> 상용화 가이드
+      </a>
+      <button class="admin-nav-item" style="color:rgba(255,255,255,.4);" onclick="YMS_Auth.logout()">
+        <span class="nav-icon">🚪</span> 로그아웃
+      </button>
+    </nav>
+
+    <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,.1);">
+      <div style="font-size:12px;color:rgba(255,255,255,.4);">관리자: <span id="adminNameLabel">-</span></div>
+      <div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:2px;">YMS Master Track v1.3</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+    <!-- Top Bar -->
+    <div class="admin-topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button style="display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--charcoal);" id="menuToggle" onclick="toggleSidebar()">☰</button>
+        <span class="admin-topbar-title" id="topbarTitle">대시보드</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn btn-sm btn-secondary" onclick="switchSection('notices',document.getElementById('nav-notices'))">📢 공지 작성</button>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--mustard-bg);border:2px solid var(--mustard);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;">🏫</div>
+      </div>
+    </div>
+
+    <!-- Admin Content -->
+    <div class="admin-content">
+
+      <!-- Dashboard Section -->
+      <section class="admin-section" id="section-dashboard">
+        <div class="admin-stat-grid">
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon orange">🎓</div>
+            <div class="admin-stat-info">
+              <div class="stat-label">전체 학생</div>
+              <div class="stat-value" id="dashStudents">-</div>
+              <div class="stat-change">활성 학생</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon mustard">👩‍🏫</div>
+            <div class="admin-stat-info">
+              <div class="stat-label">선생님</div>
+              <div class="stat-value" id="dashTeachers">-</div>
+              <div class="stat-change">담당 교사</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon green">🏫</div>
+            <div class="admin-stat-info">
+              <div class="stat-label">운영 반</div>
+              <div class="stat-value" id="dashClasses">-</div>
+              <div class="stat-change">진행 중</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon blue">✅</div>
+            <div class="admin-stat-info">
+              <div class="stat-label">오늘 출석</div>
+              <div class="stat-value" id="dashToday">-</div>
+              <div class="stat-change">명 출석</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity + Class Status -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px;">
+          <!-- Recent Activity -->
+          <div class="admin-table-wrap" style="padding:20px;">
+            <div style="font-size:16px;font-weight:700;color:var(--charcoal);margin-bottom:14px;">⚡ 최근 활동</div>
+            <div id="activityList"></div>
+          </div>
+
+          <!-- Homework Stats -->
+          <div class="admin-table-wrap" style="padding:20px;">
+            <div style="font-size:16px;font-weight:700;color:var(--charcoal);margin-bottom:14px;">📖 이번 주 숙제</div>
+            <div id="hwStatsList"></div>
+          </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px;">
+          <button class="admin-stat-card" style="border:none;cursor:pointer;text-align:left;padding:16px;" onclick="switchSection('students',document.getElementById('nav-students'))">
+            <div style="font-size:28px;margin-bottom:8px;">👨‍🎓</div>
+            <div style="font-size:14px;font-weight:700;color:var(--charcoal);">학생 목록</div>
+            <div style="font-size:12px;color:var(--gray-mid);">등록·조회·수정</div>
+          </button>
+          <button class="admin-stat-card" style="border:none;cursor:pointer;text-align:left;padding:16px;" onclick="switchSection('payments',document.getElementById('nav-payments'))">
+            <div style="font-size:28px;margin-bottom:8px;">💳</div>
+            <div style="font-size:14px;font-weight:700;color:var(--charcoal);">수납 관리</div>
+            <div style="font-size:12px;color:var(--gray-mid);">납부 현황·연체</div>
+          </button>
+          <button class="admin-stat-card" style="border:none;cursor:pointer;text-align:left;padding:16px;" onclick="switchSection('counseling',document.getElementById('nav-counseling'))">
+            <div style="font-size:28px;margin-bottom:8px;">💬</div>
+            <div style="font-size:14px;font-weight:700;color:var(--charcoal);">상담 목록</div>
+            <div style="font-size:12px;color:var(--gray-mid);">요청·답변 확인</div>
+          </button>
+          <button class="admin-stat-card" style="border:none;cursor:pointer;text-align:left;padding:16px;" onclick="switchSection('attendance',document.getElementById('nav-attendance'))">
+            <div style="font-size:28px;margin-bottom:8px;">✅</div>
+            <div style="font-size:14px;font-weight:700;color:var(--charcoal);">출결 현황</div>
+            <div style="font-size:12px;color:var(--gray-mid);">오늘 출결 확인</div>
+          </button>
+          <button class="admin-stat-card" style="border:none;cursor:pointer;text-align:left;padding:16px;" onclick="switchSection('notices',document.getElementById('nav-notices'))">
+            <div style="font-size:28px;margin-bottom:8px;">📢</div>
+            <div style="font-size:14px;font-weight:700;color:var(--charcoal);">공지 작성</div>
+            <div style="font-size:12px;color:var(--gray-mid);">전체·반별 공지</div>
+          </button>
+          <button class="admin-stat-card" style="border:none;cursor:pointer;text-align:left;padding:16px;" onclick="window.location.href='calendar.html'">
+            <div style="font-size:28px;margin-bottom:8px;">📅</div>
+            <div style="font-size:14px;font-weight:700;color:var(--charcoal);">캘린더</div>
+            <div style="font-size:12px;color:var(--gray-mid);">수업·일정 관리</div>
+          </button>
+          <button class="admin-stat-card" style="border:none;cursor:pointer;text-align:left;padding:16px;background:linear-gradient(135deg,#EEF3FB 0%,#dce6f8 100%);border:1px solid var(--periwinkle-lt,#A8BDE8);" onclick="_ymsGo('teacher-home.html')">
+            <div style="font-size:28px;margin-bottom:8px;">👩‍🏫</div>
+            <div style="font-size:14px;font-weight:700;color:var(--navy,#1E3278);">선생님 화면</div>
+            <div style="font-size:12px;color:var(--gray-mid);">수업·출결·숙제 입력</div>
+          </button>
+        </div>
+      </section>
+
+      <!-- Students Section -->
+      <section class="admin-section hidden" id="section-students">
+        <div class="admin-table-header">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="학생 이름 검색" id="studentSearch" oninput="filterStudents()">
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm" id="gradeUpBtn"
+              style="background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;font-size:12px;"
+              onclick="confirmGradeUp()">🎓 학년 승급</button>
+            <button class="btn btn-primary btn-sm" onclick="showAddStudentPanel()">+ 학생 등록</button>
+          </div>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>이름</th><th>학년</th><th>학교</th><th>담당 반</th><th>담당 선생님</th><th>상태</th><th>액션</th>
+              </tr>
+            </thead>
+            <tbody id="studentTableBody"></tbody>
+          </table>
+        </div>
+        <!-- 학생 추가 폼 -->
+        <div id="studentAddPanel" class="hidden" style="margin-top:20px;background:var(--warm-white);border:1px solid var(--beige);border-radius:var(--radius-lg);padding:20px;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px;" id="studentFormTitle">➕ 학생 등록</div>
+          <input type="hidden" id="studentEditId">
+          <form id="studentAddForm" onsubmit="submitStudentForm(event)">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">이름 <span style="color:red">*</span></label>
+                <input type="text" class="form-input" id="stuName" required placeholder="예) 김민준">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">학년</label>
+                <input type="text" class="form-input" id="stuGrade" placeholder="예) 중2, 초6">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">학교명</label>
+                <input type="text" class="form-input" id="stuSchool" placeholder="예) 서울중학교">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">담당 반 <span style="color:red">*</span></label>
+                <select class="form-input form-select" id="stuClass" onchange="onStudentClassChange()">
+                  <option value="">-- 반 선택 --</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">담당 선생님</label>
+                <input type="text" class="form-input" id="stuTeacher" placeholder="반 선택 시 자동 입력" readonly style="background:#f5f5f5;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">레벨 코드</label>
+                <input type="text" class="form-input" id="stuLevel" placeholder="반 선택 시 자동 입력" readonly style="background:#f5f5f5;">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button type="submit" class="btn btn-primary">저장</button>
+              <button type="button" class="btn btn-ghost" onclick="document.getElementById('studentAddPanel').classList.add('hidden')">취소</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Classes Section -->
+      <section class="admin-section hidden" id="section-classes">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+          <button class="btn btn-primary btn-sm" onclick="switchSection('classes-mgmt', document.getElementById('nav-classes-mgmt'))">⚙️ 반 관리 (추가/수정)</button>
+        </div>
+        <div class="classes-grid" id="classGrid"></div>
+      </section>
+
+      <!-- Teachers Section -->
+      <section class="admin-section hidden" id="section-teachers">
+        <div class="admin-table-header">
+          <div style="font-size:16px;font-weight:700;">선생님 목록</div>
+          <button class="btn btn-primary btn-sm" onclick="switchSection('accounts', document.getElementById('nav-accounts'))">+ 계정 등록</button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>이름</th><th>아이디</th><th>연락처</th><th>담당 반</th><th>상태</th></tr>
+            </thead>
+            <tbody id="teacherTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Notices Section -->
+      <section class="admin-section hidden" id="section-notices">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+          <button class="btn btn-primary btn-sm" onclick="showNoticeWritePanel()">+ 공지 작성</button>
+        </div>
+        <div id="noticeWritePanel" class="hidden" style="background:var(--warm-white);border-radius:var(--radius-md);padding:20px;margin-bottom:20px;box-shadow:var(--shadow-sm);">
+          <div style="font-size:16px;font-weight:700;margin-bottom:14px;">📢 공지 작성</div>
+          <form onsubmit="submitAdminNotice(event)" style="display:flex;flex-direction:column;gap:12px;">
+            <input type="text" class="form-input" id="adminNoticeTitle" placeholder="제목 입력" required>
+            <div style="display:flex;gap:10px;">
+              <select class="form-input form-select" id="adminNoticeType" style="flex:1;">
+                <option value="GENERAL">일반</option>
+                <option value="IMPORTANT">중요</option>
+              </select>
+              <select class="form-input form-select" id="adminNoticeTarget" style="flex:1;">
+                <option value="ALL">전체</option>
+                <!-- 반 목록 동적 로드 -->
+              </select>
+            </div>
+            <textarea class="form-input" id="adminNoticeContent" rows="4" placeholder="공지 내용" style="resize:none;" required></textarea>
+            <div style="display:flex;gap:10px;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('noticeWritePanel').classList.add('hidden')">취소</button>
+              <button type="submit" class="btn btn-primary btn-sm">등록하기</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>제목</th><th>유형</th><th>대상</th><th>작성자</th><th>등록일</th></tr>
+            </thead>
+            <tbody id="adminNoticeTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Attendance Section -->
+      <section class="admin-section hidden" id="section-attendance">
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px;">오늘 출결 현황</div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>학생</th><th>학년</th><th>반</th><th>출결</th></tr>
+            </thead>
+            <tbody id="attTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Payments Section -->
+      <section class="admin-section hidden" id="section-payments">
+        <div class="admin-table-header">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div style="font-size:16px;font-weight:700;">수납 관리</div>
+            <span id="overduePayCount" style="background:var(--absent);color:#fff;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:700;"></span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm" onclick="showAdminAddTuition()" style="background:var(--navy);color:#fff;">➕ 수강료 등록</button>
+            <button class="btn btn-sm btn-ghost" onclick="window.location.href='payment.html'">상세 보기 →</button>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon blue">💰</div>
+            <div class="admin-stat-info">
+              <div class="stat-label">이번 달 수납</div>
+              <div class="stat-value" id="payTotalAmount">-</div>
+              <div class="stat-change" id="payPaidCount">-</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon orange">⏳</div>
+            <div class="admin-stat-info">
+              <div class="stat-label">미납</div>
+              <div class="stat-value" id="payUnpaidAmount">-</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon" style="background:#FFEBEE;">⚠️</div>
+            <div class="admin-stat-info">
+              <div class="stat-label">연체</div>
+              <div class="stat-value" style="color:var(--absent);" id="payOverdueAmount">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 납부 방법 요약 안내 배너 -->
+        <div style="margin-bottom:16px;">
+          <!-- 원비 (수강료+교재비 통합) -->
+          <div style="background:linear-gradient(135deg,#EDE7F6,#E8EAF6);border:1.5px solid #C5CAE9;border-radius:var(--radius-md);padding:12px 14px;">
+            <div style="font-size:12px;font-weight:800;color:#283593;margin-bottom:6px;">💜 원비 (수강료 + 교재비)</div>
+            <div style="display:flex;gap:16px;font-size:11px;color:#3949AB;flex-wrap:wrap;">
+              <span>📲 다이로움 QR</span>
+              <span>💳 카드결제</span>
+              <span>🏦 계좌이체 (황유진)</span>
+              <span style="font-size:10px;color:#7986CB;font-family:var(--font-en);">7942-28-56906</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 필터 + 검색 -->
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-sm" id="padm-all"     onclick="setAdminPayFilter('ALL',this)"     style="background:var(--navy);color:#fff;">전체</button>
+          <button class="btn btn-sm btn-ghost" id="padm-unpaid"  onclick="setAdminPayFilter('UNPAID',this)">⏳ 미납만</button>
+          <button class="btn btn-sm btn-ghost" id="padm-overdue" onclick="setAdminPayFilter('OVERDUE',this)">⚠️ 연체만</button>
+          <div style="margin-left:auto;">
+            <input type="month" id="adminPayMonth" class="form-input" style="height:34px;font-size:12px;padding:6px 12px;"
+              onchange="renderPayTable()">
+          </div>
+        </div>
+
+        <div class="admin-table-wrap" style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead><tr>
+              <th>학생</th><th>납부 월</th><th>항목</th><th>수강반 / 교재명</th>
+              <th>금액</th><th>결제 수단</th><th>상태</th><th>납부일</th><th>처리</th>
+            </tr></thead>
+            <tbody id="payTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── 수강료 등록 모달 (admin 전용) ── -->
+      <div id="adminAddTuitionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:var(--radius-lg);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;margin:16px;">
+          <div style="font-size:18px;font-weight:700;margin-bottom:20px;">➕ 수강료 등록</div>
+          <form id="adminTuitionForm" onsubmit="submitAdminTuition(event)" style="display:flex;flex-direction:column;gap:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">학생</label>
+                <select class="form-input form-select" id="at_student" onchange="onAdminTuitionStudentChange()"><option value="">— 선택 —</option></select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">수강반</label>
+                <input type="text" class="form-input" id="at_class" readonly placeholder="자동 입력">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">납부 월</label>
+                <input type="month" class="form-input" id="at_month" required>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">납부 기한</label>
+                <input type="date" class="form-input" id="at_due">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">수강료 금액</label>
+                <input type="number" class="form-input" id="at_amount" placeholder="예) 280000" min="0" required>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">납부 상태</label>
+                <select class="form-input form-select" id="at_status" onchange="onAdminTuitionStatusChange()">
+                  <option value="UNPAID">⏳ 미납</option>
+                  <option value="PAID">✅ 납부 완료</option>
+                  <option value="OVERDUE">⚠️ 연체</option>
+                </select>
+              </div>
+            </div>
+            <!-- 결제 수단 (납부 완료 시) -->
+            <div class="form-group hidden" id="at_methodWrap" style="margin:0;">
+              <label class="form-label">결제 수단</label>
+              <div style="display:flex;gap:8px;">
+                <button type="button" class="pm-btn cash" data-method="CASH" onclick="selectAdminMethod(this)">💵 현금</button>
+                <button type="button" class="pm-btn transfer" data-method="TRANSFER" onclick="selectAdminMethod(this)">🏦 계좌이체</button>
+                <button type="button" class="pm-btn card" data-method="CARD" onclick="selectAdminMethod(this)">💳 카드</button>
+              </div>
+              <input type="hidden" id="at_method" value="">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">메모 (선택)</label>
+              <input type="text" class="form-input" id="at_memo" placeholder="예) 6월 수강료">
+            </div>
+            <!-- 반별 일괄 등록 -->
+            <details style="border:1px solid var(--beige);border-radius:var(--radius-md);padding:12px;">
+              <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--navy);">📋 반 전체 일괄 등록 (고급)</summary>
+              <div style="margin-top:12px;font-size:12px;color:var(--gray-mid);margin-bottom:8px;">선택한 반의 모든 학생에게 같은 월·금액으로 수강료를 한 번에 등록합니다.</div>
+              <div class="form-group" style="margin:0 0 8px;">
+                <label class="form-label">대상 반</label>
+                <select class="form-input form-select" id="at_bulkClass"><option value="">— 반 선택 —</option></select>
+              </div>
+              <button type="button" class="btn btn-sm" style="background:var(--navy);color:#fff;" onclick="submitBulkTuition()">📋 일괄 등록</button>
+            </details>
+            <div style="display:flex;gap:10px;">
+              <button type="button" class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('adminAddTuitionModal').style.display='none'">취소</button>
+              <button type="submit" class="btn btn-primary" style="flex:2;" id="at_submitBtn">등록하기</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ── 빠른 납부 처리 미니 모달 ── -->
+      <div id="adminQuickPayModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:var(--radius-lg);padding:24px;width:100%;max-width:380px;margin:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px;">✅ 납부 처리</div>
+          <div id="qpStudentInfo" style="font-size:13px;color:var(--gray-mid);margin-bottom:18px;"></div>
+
+
+
+          <div style="margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:600;color:var(--gray-dark);margin-bottom:8px;">결제 수단</div>
+            <div id="qpMethodBtns" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+            <input type="hidden" id="qpMethod" value="">
+          </div>
+          <div style="margin-bottom:18px;">
+            <div style="font-size:12px;font-weight:600;color:var(--gray-dark);margin-bottom:6px;">납부일</div>
+            <input type="date" id="qpPaidAt" class="form-input" style="height:36px;font-size:13px;">
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-ghost" style="flex:1;" onclick="closeQuickPayModal()">취소</button>
+            <button class="btn btn-primary" style="flex:2;" onclick="confirmQuickPay()">납부 완료</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- 계정 관리 Section                                      -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section class="admin-section hidden" id="section-accounts">
+        <div class="admin-table-header">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:16px;font-weight:700;">계정 관리</span>
+            <span id="acctCount" style="background:var(--mustard-bg);color:var(--orange);border:1px solid var(--mustard-lt);padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:700;">-</span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="showAddAcctPanel()">➕ 계정 추가</button>
+        </div>
+
+        <!-- 역할 필터 탭 -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+          <button id="acctTab_ADMIN"   class="btn btn-sm btn-ghost" onclick="renderAcctTabBar('ADMIN')">🏫 관리자</button>
+          <button id="acctTab_TEACHER" class="btn btn-sm btn-ghost" onclick="renderAcctTabBar('TEACHER')">👩‍🏫 선생님</button>
+          <button id="acctTab_PARENT"  class="btn btn-sm btn-ghost" onclick="renderAcctTabBar('PARENT')">👨‍👩‍👧 학부모</button>
+          <button id="acctTab_STUDENT" class="btn btn-sm btn-ghost" onclick="renderAcctTabBar('STUDENT')">🎓 학생</button>
+        </div>
+
+        <!-- 계정 테이블 -->
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead><tr>
+              <th>이름</th><th>아이디</th><th>역할</th><th>연락처</th><th>연결 정보</th><th>관리</th>
+            </tr></thead>
+            <tbody id="acctTableBody">
+              <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-mid);">로딩 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 계정 추가/수정 폼 -->
+        <div id="acctPanel" class="hidden" style="margin-top:20px;background:var(--warm-white);border:1px solid var(--beige);border-radius:var(--radius-lg);padding:20px;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px;" id="acctFormTitle">➕ 새 계정 추가</div>
+          <input type="hidden" id="acctEditId">
+          <form id="acctForm" onsubmit="submitAcctForm(event)">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">이름 <span style="color:red">*</span></label>
+                <input type="text" class="form-input" id="acctName" required placeholder="예) 김민준">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">아이디 <span style="color:red">*</span></label>
+                <input type="text" class="form-input" id="acctLoginId" required placeholder="예) parent_kim" autocomplete="off">
+              </div>
+              <div id="acctPwRow" class="form-group" style="margin:0;">
+                <label class="form-label">비밀번호 <span style="color:red">*</span></label>
+                <input type="text" class="form-input" id="acctPassword" placeholder="비밀번호 입력 (수정 시 빈칸=유지)" autocomplete="off">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">역할 <span style="color:red">*</span></label>
+                <select class="form-input form-select" id="acctRole" required onchange="updateAcctRoleFields()">
+                  <option value="PARENT">👨‍👩‍👧 학부모</option>
+                  <option value="STUDENT">🎓 학생</option>
+                  <option value="TEACHER">👩‍🏫 선생님</option>
+                  <option value="ADMIN">🏫 관리자</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">연락처</label>
+                <input type="tel" class="form-input" id="acctPhone" placeholder="010-0000-0000">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">메모</label>
+                <input type="text" class="form-input" id="acctMemo" placeholder="비고">
+              </div>
+            </div>
+
+            <!-- 역할별 추가 필드 -->
+            <div id="acctChildRow" style="display:none;" class="form-group">
+              <label class="form-label">👦 자녀 선택 (학생 목록에서 선택)</label>
+              <select class="form-input form-select" id="acctChildSelect" multiple
+                style="height:100px;resize:vertical;"
+                onchange="onChildSelectChange()">
+              </select>
+              <input type="hidden" id="acctChildIds">
+              <div style="font-size:11px;color:var(--gray-mid);margin-top:4px;">Ctrl(Mac: ⌘) 누르고 클릭하면 여러 명 선택 가능합니다</div>
+            </div>
+            <!-- STUDENT 전용 필드 묶음 -->
+            <div id="acctStudentRow" style="display:none;">
+              <div style="background:#F0F4FF;border:1px solid #C5D3F5;border-radius:8px;padding:14px 16px;margin-bottom:8px;">
+                <div style="font-size:12px;font-weight:700;color:var(--navy,#1E3278);margin-bottom:10px;">🎓 학생 정보 <span style="font-weight:400;color:var(--gray-mid,#888);">(학생 관리에 자동 연동됩니다)</span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label">학년</label>
+                    <input type="text" class="form-input" id="acctGrade" placeholder="예) 중2, 초5">
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label">학교명</label>
+                    <input type="text" class="form-input" id="acctSchoolName" placeholder="예) 대치중학교">
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label">수강 반</label>
+                    <select class="form-input form-select" id="acctClassSelect" onchange="onAcctClassChange()">
+                      <option value="">— 반 선택 (선택) —</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label">담당 선생님</label>
+                    <input type="text" class="form-input" id="acctStudentTeacher" placeholder="자동 입력" readonly style="background:#F5F5F5;">
+                  </div>
+                </div>
+                <div style="font-size:11px;color:var(--gray-mid,#888);margin-top:8px;">💡 저장하면 학생 관리 탭에 자동으로 등록됩니다</div>
+              </div>
+              <input type="hidden" id="acctStudentId">
+              <input type="hidden" id="acctLinkedStudentId">
+            </div>
+            <div id="acctTeacherRow" style="display:none;" class="form-group">
+              <label class="form-label">📌 담당 반 (콤마 구분)</label>
+              <input type="text" class="form-input" id="acctTeacherClasses" placeholder="예) 중2 영어 A반,초등 리딩 B반">
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button type="submit" class="btn btn-primary">저장</button>
+              <button type="button" class="btn btn-ghost" onclick="document.getElementById('acctPanel').classList.add('hidden')">취소</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 안내 박스 -->
+        <div style="margin-top:20px;background:#E3F2FD;border:1px solid #90CAF9;border-radius:var(--radius-md);padding:14px 16px;font-size:12px;color:#1565C0;line-height:1.8;">
+          <strong>💡 계정 추가 안내</strong><br>
+          🎓 <strong>학생 계정</strong> 추가 시 → 학년·학교·반 입력 → <span style="color:#1565C0;font-weight:600;">학생 관리에 자동 연동!</span><br>
+          👨‍👩‍👧 <strong>학부모</strong> 추가 시 → 자녀 드롭다운에서 선택 → <span style="color:#1565C0;font-weight:600;">출결·숙제 자동 연동!</span><br>
+          👩‍🏫 <strong>선생님</strong> 추가 시 → 담당 반 이름 입력 (반 관리에서 확인)<br>
+          ✅ 학생 계정 저장 시 <strong>학생 관리</strong> 탭에 프로필이 즉시 반영됩니다
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- 반 관리 (실데이터) Section                             -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section class="admin-section hidden" id="section-classes-mgmt">
+        <div class="admin-table-header">
+          <span style="font-size:16px;font-weight:700;">반 관리</span>
+          <button class="btn btn-primary btn-sm" onclick="showAddClassPanel()">➕ 반 추가</button>
+        </div>
+
+        <!-- 반 테이블 -->
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead><tr>
+              <th>반 이름</th><th>과목</th><th>레벨</th><th>담당 선생님</th><th>수업 일정</th><th>월 수강료</th><th>관리</th>
+            </tr></thead>
+            <tbody id="classMgmtBody">
+              <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray-mid);">로딩 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 반 추가/수정 폼 -->
+        <div id="classMgmtPanel" class="hidden" style="margin-top:20px;background:var(--warm-white);border:1px solid var(--beige);border-radius:var(--radius-lg);padding:20px;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px;" id="classFormTitle">➕ 새 반 추가</div>
+          <input type="hidden" id="classEditId">
+          <form id="classMgmtForm" onsubmit="submitClassForm(event)">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">반 이름 <span style="color:red">*</span></label>
+                <input type="text" class="form-input" id="clsName" required placeholder="예) 중2 영어 A반">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">과목</label>
+                <input type="text" class="form-input" id="clsSubject" placeholder="예) 영어">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">담당 선생님</label>
+                <input type="hidden" id="clsTeacherId">
+                <select class="form-input form-select" id="clsTeacherSelect" onchange="onClassTeacherSelect()" style="margin-bottom:6px;">
+                  <option value="">— 선생님 선택 —</option>
+                </select>
+                <input type="text" class="form-input" id="clsTeacher" placeholder="직접 입력도 가능" style="font-size:12px;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">시작 시간</label>
+                <input type="time" class="form-input" id="clsStart">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">종료 시간</label>
+                <input type="time" class="form-input" id="clsEnd">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">월 수강료 (원)</label>
+                <input type="number" class="form-input" id="clsFee" placeholder="예) 280000" min="0">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button type="submit" class="btn btn-primary">저장</button>
+              <button type="button" class="btn btn-ghost" onclick="document.getElementById('classMgmtPanel').classList.add('hidden')">취소</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Counseling Section -->
+      <section class="admin-section hidden" id="section-counseling">
+        <div class="admin-table-header">
+          <div style="font-size:16px;font-weight:700;">상담 관리</div>
+          <div style="display:flex;gap:8px;">
+            <span id="adminCsPending" style="background:#FFF3E0;color:#E65100;border:1px solid #FFCC80;padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:700;"></span>
+          </div>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>제목</th><th>학생</th><th>유형</th><th>선생님</th><th>상태</th><th>요청일</th></tr></thead>
+            <tbody id="adminCsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
+<script src="js/app.js"></script>
+<script>
+  const user = ymsPageInit(true);
+  let currentSection = 'dashboard';
+
+  function init() {
+    if (!user) return;
+    document.getElementById('adminNameLabel').textContent = user.name || '관리자';
+
+    if (window.innerWidth < 768) {
+      document.getElementById('menuToggle').style.display = 'block';
+    }
+
+    // 대시보드만 즉시 로드 (나머지는 탭 클릭 시 lazy 로드)
+    renderDashboard();
+    // 수납·상담·공지는 데모 데이터로 초기 렌더
+    renderNoticeTable();
+    renderAttTable();
+    initPayments();   // Table API 연동 수납 초기화
+    renderCsTable();
+  }
+
+  function switchSection(name, el) {
+    // Hide all sections
+    document.querySelectorAll('.admin-section').forEach(s => s.classList.add('hidden'));
+    document.querySelectorAll('.admin-nav-item').forEach(n => n.classList.remove('active'));
+
+    // Show target
+    document.getElementById(`section-${name}`).classList.remove('hidden');
+    if (el) el.classList.add('active');
+
+    const titles = {
+      dashboard:'대시보드', students:'학생 관리', classes:'반 관리',
+      teachers:'선생님 관리', notices:'공지 관리', attendance:'출결 현황',
+      payments:'수납 관리', counseling:'상담 관리',
+      'accounts':'계정 관리', 'classes-mgmt':'반 관리 (실데이터)'
+    };
+    document.getElementById('topbarTitle').textContent = titles[name] || name;
+
+    currentSection = name;
+    if (name === 'accounts')     initAccounts();
+    if (name === 'classes-mgmt') initClassesMgmt();
+    if (name === 'students')     initStudents();
+    if (name === 'classes')      initClassView();
+    if (name === 'teachers')     initTeachers();
+    if (name === 'payments')     initPayments();
+    if (name === 'notices')      loadAdminNotices();
+    if (window.innerWidth < 768) closeSidebar();
+  }
+
+  function toggleSidebar() {
+    document.getElementById('adminSidebar').classList.add('open');
+    document.getElementById('sidebarOverlay').classList.add('show');
+  }
+  function closeSidebar() {
+    document.getElementById('adminSidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // 전역 캐시 — 세 테이블 공유
+  // ══════════════════════════════════════════════════════════
+  let _allStudents = [];
+  let _allUsers    = [];
+  let _allClasses  = [];
+
+  async function loadAllData() {
+    try {
+      const [rU, rC, rS] = await Promise.all([
+        _tFetch('tables/users?limit=500'),
+        _tFetch('tables/classes?limit=200'),
+        _tFetch('tables/students?limit=500'),
+      ]);
+      _allUsers    = rU.ok ? (await rU.json()).data || [] : [];
+      _allClasses  = rC.ok ? (await rC.json()).data || [] : [];
+      _allStudents = rS.ok ? (await rS.json()).data || [] : [];
+      console.log('[YMS] loadAllData — 사용자:', _allUsers.length,
+        '/ 반:', _allClasses.length, '/ 학생:', _allStudents.length);
+    } catch(e) { console.error('[YMS] loadAllData 실패', e); }
+  }
+
+  // ── Dashboard ──────────────────────────────────
+  async function renderDashboard() {
+    ['dashStudents','dashTeachers','dashClasses','dashToday']
+      .forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '…'; });
+
+    await loadAllData();
+
+    const teachers = _allUsers.filter(u => u.role === 'TEACHER');
+    const stuList  = _allStudents.length ? _allStudents : _allUsers.filter(u => u.role === 'STUDENT');
+
+    // 오늘 출석
+    let todayAtt = 0;
+    try {
+      const today = new Date().toISOString().slice(0,10);
+      const rA = await _tFetch(`tables/attendance?limit=300`);
+      const jA = rA.ok ? await rA.json() : { data:[] };
+      todayAtt = (jA.data||[]).filter(a => a.date === today && a.status === 'PRESENT').length;
+    } catch {}
+
+    document.getElementById('dashStudents').textContent = stuList.length;
+    document.getElementById('dashTeachers').textContent = teachers.length;
+    document.getElementById('dashClasses').textContent  = _allClasses.length;
+    document.getElementById('dashToday').textContent    = todayAtt || 0;
+
+    // 최근 등록 계정 활동 피드
+    const actEl = document.getElementById('activityList');
+    if (actEl) {
+      const recent = [..._allUsers]
+        .sort((a,b) => (b.created_at||0)-(a.created_at||0)).slice(0,5);
+      const roleIcon  = { ADMIN:'🏫', TEACHER:'👩‍🏫', PARENT:'👨‍👩‍👧', STUDENT:'🎓' };
+      const roleLabel = { ADMIN:'관리자', TEACHER:'선생님', PARENT:'학부모', STUDENT:'학생' };
+      actEl.innerHTML = recent.length
+        ? recent.map(u => `
+            <div class="activity-item">
+              <div class="activity-icon">${roleIcon[u.role]||'👤'}</div>
+              <div>
+                <div class="activity-text"><strong>${u.name}</strong> 계정 (${roleLabel[u.role]||u.role})</div>
+                <div class="activity-time">아이디: ${u.loginId} · ${u.phone||'연락처 없음'}</div>
+              </div>
+            </div>`).join('')
+        : `<div style="color:var(--gray-mid);font-size:13px;padding:16px 0;">등록된 계정이 없습니다.<br>
+            <a href="#" onclick="switchSection('accounts',document.getElementById('nav-accounts'));return false;"
+              style="color:var(--orange);">👤 계정 추가하기 →</a></div>`;
+    }
+
+    // 반별 숙제 현황
+    let hwStats = [];
+    try {
+      const rH = await _tFetch('tables/homework?limit=200');
+      const jH = rH.ok ? await rH.json() : { data:[] };
+      const byClass = {};
+      (jH.data||[]).forEach(h => { byClass[h.className] = (byClass[h.className]||0)+1; });
+      hwStats = Object.entries(byClass).map(([label,count]) => ({label,count}));
+    } catch {}
+
+    const hwEl = document.getElementById('hwStatsList');
+    if (hwEl) {
+      hwEl.innerHTML = hwStats.length
+        ? hwStats.map(s => `
+            <div style="margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span style="font-size:13px;font-weight:600;">${s.label}</span>
+                <span style="font-size:12px;color:var(--orange);font-weight:700;">${s.count}개</span>
+              </div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar" style="width:${Math.min(s.count*20,100)}%;"></div>
+              </div>
+            </div>`).join('')
+        : `<div style="color:var(--gray-mid);font-size:13px;">등록된 숙제가 없습니다</div>`;
+    }
+  }
+
+  // ── Students (Table API) ────────────────────────
+  async function initStudents() {
+    await loadAllData();
+    renderStudentTable();
+    checkAutoGradeUpNotice();
+    // 반 드롭다운 채우기
+    const sel = document.getElementById('stuClass');
+    if (sel) {
+      sel.innerHTML = '<option value="">— 반 선택 —</option>' +
+        _allClasses.map(c =>
+          `<option value="${c.id}"
+            data-name="${c.className}"
+            data-teacher="${c.teacherName||''}"
+            data-level="${c.levelCode||''}"
+          >${c.className}${c.teacherName ? ' ('+c.teacherName+')' : ''}</option>`
+        ).join('');
+    }
+  }
+
+  function renderStudentTable(filter = '') {
+    const tbody = document.getElementById('studentTableBody');
+    if (!tbody) return;
+    const list = _allStudents.length ? _allStudents : _allUsers.filter(u => u.role === 'STUDENT');
+    const filtered = (filter ? list.filter(s => (s.name||'').includes(filter)) : list)
+      .slice()
+      .sort((a, b) => {
+        const cls = (a.className||'').localeCompare(b.className||'', 'ko');
+        if (cls !== 0) return cls;
+        const tch = (a.teacherName||'').localeCompare(b.teacherName||'', 'ko');
+        if (tch !== 0) return tch;
+        return (a.name||'').localeCompare(b.name||'', 'ko');
+      });
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--gray-mid);">
+        등록된 학생이 없습니다 — 위 [+ 학생 등록] 버튼을 눌러주세요</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = filtered.map(s => `
+      <tr>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.grade||'-'}</td>
+        <td>${s.schoolName||'-'}</td>
+        <td>${s.className||'-'}</td>
+        <td>${s.teacherName||'-'}</td>
+        <td><span class="chip chip-green" style="font-size:11px;">활성</span></td>
+        <td>
+          <button class="btn btn-ghost btn-sm" style="padding:3px 8px;font-size:11px;"
+            onclick="openEditStudent('${s.id}')">✏️</button>
+          <button class="btn btn-sm" style="padding:3px 8px;font-size:11px;background:#FFEBEE;color:#C62828;border:none;margin-left:4px;"
+            onclick="deleteStudent('${s.id}','${s.name}')">🗑️</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function filterStudents() {
+    renderStudentTable(document.getElementById('studentSearch').value);
+  }
+
+  function showAddStudentPanel() {
+    const panel = document.getElementById('studentAddPanel');
+    if (!panel.classList.contains('hidden')) { panel.classList.add('hidden'); return; }
+    document.getElementById('studentFormTitle').textContent = '➕ 학생 등록';
+    document.getElementById('studentEditId').value = '';
+    document.getElementById('studentAddForm').reset();
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function onStudentClassChange() {
+    const sel = document.getElementById('stuClass');
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('stuTeacher').value = opt?.dataset.teacher || '';
+    document.getElementById('stuLevel').value   = opt?.dataset.level   || '';
+  }
+
+  async function submitStudentForm(e) {
+    e.preventDefault();
+    const editId = document.getElementById('studentEditId').value;
+    const isEdit = !!editId;
+    const sel    = document.getElementById('stuClass');
+    const opt    = sel.options[sel.selectedIndex];
+    const payload = {
+      name:        document.getElementById('stuName').value.trim(),
+      grade:       document.getElementById('stuGrade').value.trim(),
+      schoolName:  document.getElementById('stuSchool').value.trim(),
+      className:   opt?.dataset.name    || '',
+      teacherName: opt?.dataset.teacher || '',
+      levelCode:   opt?.dataset.level   || '',
+      classId:     sel.value            || '',
+      isActive:    true,
+    };
+    if (!payload.name) { YMS_UI.toast('❌ 이름을 입력해주세요'); return; }
+    const btn = document.querySelector('#studentAddForm button[type="submit"]');
+    if (btn) { btn.disabled=true; btn.textContent='저장 중...'; }
+    try {
+      const url    = isEdit ? `tables/students/${editId}` : 'tables/students';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await _tFetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      YMS_UI.toast(isEdit ? `✅ ${payload.name} 수정 완료` : `✅ ${payload.name} 등록 완료!`);
+      document.getElementById('studentAddPanel').classList.add('hidden');
+      const rS = await _tFetch('tables/students?limit=500');
+      _allStudents = rS.ok ? (await rS.json()).data||[] : [];
+      renderStudentTable();
+    } catch(err) {
+      console.error('[YMS] 학생 저장 실패', err);
+      YMS_UI.toast('❌ 저장 실패: '+err.message);
+    }
+    if (btn) { btn.disabled=false; btn.textContent='저장'; }
+  }
+
+  function openEditStudent(id) {
+    const s = _allStudents.find(s=>s.id===id);
+    if (!s) return;
+    document.getElementById('studentFormTitle').textContent = '✏️ 학생 수정';
+    document.getElementById('studentEditId').value = s.id;
+    document.getElementById('stuName').value        = s.name       || '';
+    document.getElementById('stuGrade').value       = s.grade      || '';
+    document.getElementById('stuSchool').value      = s.schoolName || '';
+    const sel = document.getElementById('stuClass');
+    if (sel) {
+      const opt = Array.from(sel.options).find(o => o.value === s.classId || o.dataset.name === s.className);
+      if (opt) sel.value = opt.value;
+      onStudentClassChange();
+    }
+    document.getElementById('studentAddPanel').classList.remove('hidden');
+    document.getElementById('studentAddPanel').scrollIntoView({ behavior:'smooth' });
+  }
+
+  async function deleteStudent(id, name) {
+    if (!confirm(`"${name}" 학생을 삭제할까요?`)) return;
+    try {
+      await _tFetch(`tables/students/${id}`, { method:'DELETE' });
+      YMS_UI.toast(`🗑️ ${name} 삭제`);
+      _allStudents = _allStudents.filter(s=>s.id!==id);
+      renderStudentTable();
+    } catch { YMS_UI.toast('❌ 삭제 실패'); }
+  }
+
+  // ── 학년 자동 승급 ──────────────────────────────
+  // 학년 표기: 초1~초6, 중1~중3, 고1~고3
+  // 3월 1일 기준으로 학년 +1 처리 (고3 → 졸업 처리)
+  function _nextGrade(grade) {
+    if (!grade) return grade;
+    const map = {
+      '초1':'초2','초2':'초3','초3':'초4','초4':'초5','초5':'초6','초6':'중1',
+      '중1':'중2','중2':'중3','중3':'고1',
+      '고1':'고2','고2':'고3','고3':'졸업',
+      // 숫자 표기 폴백 (예: "1학년" → "2학년")
+    };
+    if (map[grade]) return map[grade];
+    // "n학년" 형태 처리
+    const m = grade.match(/^(\d+)학년$/);
+    if (m) return `${parseInt(m[1])+1}학년`;
+    return grade; // 인식 불가 → 그대로
+  }
+
+  function _shouldAutoUpgrade() {
+    // 매년 3월 1일~8월 31일 사이에 접속 시 → 당해 승급 안내
+    const now   = new Date();
+    const year  = now.getFullYear();
+    const lastKey = `yms_gradeUp_${year}`;
+    return !localStorage.getItem(lastKey);
+  }
+
+  async function confirmGradeUp() {
+    const students = _allStudents.filter(s => s.grade && s.grade !== '졸업');
+    if (!students.length) { YMS_UI.toast('승급할 학생이 없습니다'); return; }
+
+    // 미리보기 목록
+    const preview = students.slice(0, 5).map(s =>
+      `• ${s.name}: ${s.grade} → ${_nextGrade(s.grade)}`
+    ).join('\n');
+    const more = students.length > 5 ? `\n외 ${students.length-5}명` : '';
+
+    if (!confirm(
+      `📅 학년 일괄 승급\n\n${preview}${more}\n\n총 ${students.length}명의 학년을 1단계 올립니다.\n(고3 → 졸업 처리)\n\n진행하시겠습니까?`
+    )) return;
+
+    const btn = document.getElementById('gradeUpBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '승급 중...'; }
+
+    let ok = 0, fail = 0;
+    for (const s of students) {
+      const next = _nextGrade(s.grade);
+      if (next === s.grade) continue;
+      try {
+        const res = await _tFetch(`tables/students/${s.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ grade: next }),
+        });
+        if (res.ok) { s.grade = next; ok++; }
+        else fail++;
+      } catch { fail++; }
+    }
+
+    // 올해 승급 완료 기록
+    localStorage.setItem(`yms_gradeUp_${new Date().getFullYear()}`, '1');
+
+    renderStudentTable();
+    YMS_UI.toast(`✅ ${ok}명 승급 완료${fail ? ` (${fail}명 실패)` : ''}`);
+    if (btn) { btn.disabled = false; btn.textContent = '🎓 학년 승급'; }
+  }
+
+  // 페이지 로드 시 3월~8월 사이면 승급 안내 배너 표시
+  function checkAutoGradeUpNotice() {
+    const now = new Date();
+    const m   = now.getMonth() + 1; // 1~12
+    if (m >= 3 && m <= 8 && _shouldAutoUpgrade() && _allStudents.some(s => s.grade && s.grade !== '졸업')) {
+      const btn = document.getElementById('gradeUpBtn');
+      if (btn) {
+        btn.style.background    = '#FFF9C4';
+        btn.style.color         = '#F57F17';
+        btn.style.border        = '1px solid #FFD54F';
+        btn.style.animation     = 'none';
+        btn.title               = `${now.getFullYear()}년도 학년 승급이 아직 처리되지 않았습니다`;
+        btn.textContent         = `🎓 학년 승급 (${now.getFullYear()})`;
+      }
+    }
+  }
+
+  // ── Classes (Table API) ─────────────────────────
+  async function initClassView() {
+    await loadAllData();
+    renderClassGrid();
+  }
+
+  function renderClassGrid() {
+    const grid = document.getElementById('classGrid');
+    if (!grid) return;
+    if (!_allClasses.length) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray-mid);">
+        등록된 반이 없습니다 — <a href="#"
+          onclick="switchSection('classes-mgmt',document.getElementById('nav-classes-mgmt'));return false;"
+          style="color:var(--orange);">반 관리에서 추가</a></div>`;
+      return;
+    }
+    grid.innerHTML = _koSort(_allClasses, 'className').map(cls => {
+      const stuCount = _allStudents.filter(s => s.className === cls.className || s.classId === cls.id).length;
+      return `
+        <div class="class-admin-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <div class="class-admin-card-title">${cls.className}</div>
+              <div class="class-admin-meta">${cls.subject||''} ${cls.startTime||cls.endTime ? '· '+( cls.startTime||'')+'-'+(cls.endTime||'') : ''}</div>
+            </div>
+            <span class="chip chip-green" style="font-size:11px;">운영 중</span>
+          </div>
+          <div style="font-size:12px;color:var(--gray-mid);margin-top:8px;">👩‍🏫 ${cls.teacherName||'담당 없음'}</div>
+          <div class="class-admin-stats">
+            <div class="class-stat"><div class="class-stat-num">${stuCount}</div><div class="class-stat-lbl">학생</div></div>
+            <div class="class-stat"><div class="class-stat-num">${cls.tuitionFee?'₩'+Number(cls.tuitionFee).toLocaleString():'-'}</div><div class="class-stat-lbl">월 수강료</div></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-outline btn-sm" style="flex:1;"
+              onclick="switchSection('classes-mgmt',document.getElementById('nav-classes-mgmt'));setTimeout(()=>openEditClass('${cls.id}'),100)">✏️ 수정</button>
+            <button class="btn btn-ghost btn-sm" style="flex:1;"
+              onclick="switchSection('students',document.getElementById('nav-students'))">🎓 학생</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Teachers (Table API) ────────────────────────
+  async function initTeachers() {
+    await loadAllData();
+    renderTeacherTable();
+  }
+
+  function renderTeacherTable() {
+    const tbody = document.getElementById('teacherTableBody');
+    if (!tbody) return;
+    const teachers = _allUsers.filter(u => u.role === 'TEACHER');
+    if (!teachers.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray-mid);">
+        등록된 선생님이 없습니다 —
+        <a href="#" onclick="switchSection('accounts',document.getElementById('nav-accounts'));return false;"
+          style="color:var(--orange);">계정 추가하기</a></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = teachers.map(t => {
+      const myClasses = _allClasses.filter(c => c.teacherName === t.name || c.teacherId === t.id);
+      const clsLabel  = myClasses.length ? myClasses.map(c=>c.className).join(', ') : (t.teacherClasses||'-');
+      return `<tr>
+        <td><strong>${t.name}</strong></td>
+        <td><code style="font-size:11px;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${t.loginId}</code></td>
+        <td style="font-size:12px;">${t.phone||'-'}</td>
+        <td style="font-size:12px;">${clsLabel}</td>
+        <td><span class="chip chip-green" style="font-size:11px;">활성</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Notices ────────────────────────────────────
+  let _adminNotices = [];
+
+  async function loadAdminNotices() {
+    try {
+      const r = await _tFetch('tables/notices?limit=100');
+      if (!r.ok) throw new Error();
+      const json = await r.json();
+      _adminNotices = (json.data || [])
+        .filter(n => n.isActive !== false)
+        .sort((a, b) => (b.publishedAt || b.created_at || 0) > (a.publishedAt || a.created_at || 0) ? 1 : -1);
+    } catch(e) {
+      _adminNotices = [];
+    }
+    renderNoticeTable();
+
+    // 반 목록을 대상 드롭다운에 채우기
+    const sel = document.getElementById('adminNoticeTarget');
+    sel.innerHTML = '<option value="ALL">전체</option>';
+    (_allClasses || []).filter(c => c.isActive !== false).forEach(c => {
+      sel.innerHTML += `<option value="${c.className}">${c.className}</option>`;
+    });
+  }
+
+  function renderNoticeTable() {
+    const tbody = document.getElementById('adminNoticeTableBody');
+    if (!tbody) return;
+    if (!_adminNotices.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-mid);padding:20px;">등록된 공지가 없습니다</td></tr>';
+      return;
+    }
+    tbody.innerHTML = _adminNotices.map(n => {
+      const targetLabel = n.targetType === 'ALL' || !n.targetType ? '전체' : (n.targetClassName || '특정 반');
+      const typeLabel   = n.noticeType === 'IMPORTANT'
+        ? '<span class="chip chip-orange" style="font-size:11px;">🔴 중요</span>'
+        : '<span class="chip chip-gray"  style="font-size:11px;">📢 일반</span>';
+      const dateStr = n.publishedAt ? new Date(n.publishedAt).toLocaleDateString('ko-KR') : '-';
+      return `<tr>
+        <td><strong>${n.title || ''}</strong></td>
+        <td>${typeLabel}</td>
+        <td>${targetLabel}</td>
+        <td>${n.authorName || '-'}</td>
+        <td>${dateStr}
+          <button onclick="deleteAdminNotice('${n.id}')" style="margin-left:8px;padding:2px 8px;border:1px solid #FFCDD2;background:#FFEBEE;color:#C62828;border-radius:9999px;font-size:11px;cursor:pointer;">삭제</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function showNoticeWritePanel() {
+    document.getElementById('noticeWritePanel').classList.toggle('hidden');
+  }
+
+  async function submitAdminNotice(e) {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('[type="submit"]');
+    submitBtn.disabled = true; submitBtn.textContent = '등록 중...';
+
+    const titleVal   = document.getElementById('adminNoticeTitle').value.trim();
+    const typeVal    = document.getElementById('adminNoticeType').value;
+    const targetVal  = document.getElementById('adminNoticeTarget').value;
+    const contentVal = document.getElementById('adminNoticeContent').value.trim();
+    const isClass    = targetVal !== 'ALL';
+
+    const newNotice = {
+      title:      titleVal,
+      content:    contentVal,
+      noticeType: typeVal,
+      targetType: isClass ? 'CLASS' : 'ALL',
+      authorId:   user?.id   || '',
+      authorName: user?.name || '',
+      authorRole: 'ADMIN',
+      publishedAt: new Date().toISOString(),
+      isActive:   true,
+    };
+    // targetClassName: 배포 DB 스키마에 컬럼 있을 때만 추가
+    if (isClass) newNotice.targetClassName = targetVal;
+
+    try {
+      const res = await _tFetch('tables/notices', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(newNotice),
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.status);
+        throw new Error(`HTTP ${res.status}: ${errText}`);
+      }
+      YMS_UI.toast('공지가 등록되었습니다! 📢');
+      document.getElementById('noticeWritePanel').classList.add('hidden');
+      e.target.reset();
+      await loadAdminNotices(); // 목록 새로고침
+    } catch(err) {
+      console.error('[YMS] 공지 등록 실패', err);
+      alert('공지 등록 실패: ' + err.message);
+    }
+    submitBtn.disabled = false; submitBtn.textContent = '등록하기';
+  }
+
+  async function deleteAdminNotice(id) {
+    if (!confirm('이 공지를 삭제하시겠습니까?')) return;
+    try {
+      await _tFetch(`tables/notices/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ isActive: false }),
+      });
+      YMS_UI.toast('공지가 삭제되었습니다.');
+      await loadAdminNotices();
+    } catch(e) {
+      YMS_UI.toast('삭제 중 오류가 발생했습니다.');
+    }
+  }
+
+  // ── Attendance ─────────────────────────────────
+  function renderAttTable() {
+    const tbody = document.getElementById('attTableBody');
+    tbody.innerHTML = '';
+    const allAtt = YMS_DEMO.attendance['s001'] || [];
+    const today = allAtt[0];
+    YMS_DEMO.students.forEach((s, i) => {
+      const status = i < 4 ? 'PRESENT' : 'LATE';
+      tbody.innerHTML += `<tr>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.grade}</td>
+        <td>${(s.classes[0]?.className || '-')}</td>
+        <td>${YMS_UI.attBadge(status)}</td>
+      </tr>`;
+    });
+  }
+
+  // ── Payments (Table API 연동) ────────────────────────────────
+  let adminPayFilter  = 'ALL';
+  let _adminPayList   = null;   // 캐시
+
+  const fmtKRW = n => '₩' + Number(n||0).toLocaleString('ko-KR');
+  const PAY_TYPE_META = {
+    TUITION:{ label:'수강료', icon:'💜', chipStyle:'background:#EDE7F6;color:#4527A0;border:1px solid #CE93D8;' },
+    BOOK:   { label:'교재비', icon:'📘', chipStyle:'background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9;' },
+    ETC:    { label:'기타',   icon:'📌', chipStyle:'background:var(--gray-bg);color:var(--gray-mid);' },
+  };
+  const PM_LABEL_A = { CASH:'💵 현금', TRANSFER:'🏦 이체', CARD:'💳 카드', '':'—' };
+
+  // 수납 섹션 진입 시 초기화
+  async function initPayments() {
+    // 기본 월 세팅
+    const mEl = document.getElementById('adminPayMonth');
+    if (mEl && !mEl.value) mEl.value = new Date().toISOString().slice(0,7);
+    // 모달 학생 드롭다운 채우기
+    await loadAllData();
+    populateAdminTuitionDropdown();
+    await fetchAdminPayments();
+  }
+
+  async function fetchAdminPayments() {
+    try {
+      const res = await _tFetch('tables/payments?limit=1000');
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      _adminPayList = json.data || [];
+    } catch {
+      _adminPayList = [...YMS_DEMO.payments];
+    }
+    renderPayTable();
+  }
+
+  function setAdminPayFilter(type, btn) {
+    adminPayFilter = type;
+    document.querySelectorAll('[id^="padm-"]').forEach(b => {
+      b.style.background=''; b.style.color=''; b.className='btn btn-sm btn-ghost';
+    });
+    btn.style.background='var(--navy)'; btn.style.color='#fff'; btn.className='btn btn-sm';
+    renderPayTable();
+  }
+
+  function renderPayTable() {
+    if (!_adminPayList) { fetchAdminPayments(); return; }
+    const thisMonth = new Date().toISOString().slice(0,7);
+    const selMonth  = document.getElementById('adminPayMonth')?.value || thisMonth;
+    const allPays   = _adminPayList;
+
+    // 필터 적용
+    let pays = allPays.filter(p => p.month === selMonth);
+    if (adminPayFilter === 'TUITION') pays = pays.filter(p=>(p.type||'TUITION')==='TUITION');
+    else if (adminPayFilter === 'BOOK') pays = pays.filter(p=>p.type==='BOOK');
+    else if (adminPayFilter === 'UNPAID') pays = pays.filter(p=>p.status==='UNPAID');
+    else if (adminPayFilter === 'OVERDUE') pays = pays.filter(p=>p.status==='OVERDUE');
+
+    // 이번 달 전체 기준 통계
+    const monthAll = allPays.filter(p=>p.month===selMonth);
+    const overdue  = allPays.filter(p=>p.status==='OVERDUE');
+    const unpaid   = monthAll.filter(p=>p.status==='UNPAID');
+    const paid     = monthAll.filter(p=>p.status==='PAID');
+
+    const badge = document.getElementById('overduePayCount');
+    if (badge) badge.textContent = overdue.length>0 ? `⚠️ 연체 ${overdue.length}건` : '';
+
+    const totalPaid   = paid.reduce((s,p)=>s+Number(p.paidAmount||0),0);
+    const pEl=document.getElementById('payTotalAmount');
+    const uEl=document.getElementById('payUnpaidAmount');
+    const oEl=document.getElementById('payOverdueAmount');
+    if(pEl) pEl.textContent=fmtKRW(totalPaid);
+    if(uEl) uEl.textContent=fmtKRW(unpaid.reduce((s,p)=>s+Number(p.amount||0),0));
+    if(oEl) oEl.textContent=fmtKRW(overdue.reduce((s,p)=>s+Number(p.amount||0),0));
+    const cEl=document.getElementById('payPaidCount');
+    if(cEl) cEl.textContent=`${paid.length}건 납부`;
+
+    const tbody=document.getElementById('payTableBody');
+    if(!tbody) return;
+    tbody.innerHTML='';
+    const statusLabel={PAID:'✅ 완납',UNPAID:'⏳ 미납',OVERDUE:'⚠️ 연체'};
+    const statusCls  ={PAID:'chip-green',UNPAID:'chip-mustard',OVERDUE:'chip-red'};
+    const sorted=[...pays].sort((a,b)=>(a.studentName||'').localeCompare(b.studentName||''));
+
+    if(!sorted.length){
+      tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-mid);">해당 월 수납 내역이 없습니다</td></tr>`;
+      return;
+    }
+
+    sorted.forEach(p=>{
+      const pmLabel=PM_LABEL_A[p.payMethod||'']||'—';
+      const actionBtn = p.status!=='PAID'
+        ? `<button onclick="adminMarkPaid('${p.id}','TUITION')" style="padding:4px 10px;background:var(--present);color:#fff;border:none;border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer;">✅ 납부</button>`
+        : `<button onclick="adminMarkUnpaid('${p.id}')" style="padding:4px 10px;background:var(--beige);color:var(--gray-dark);border:1px solid var(--beige-dark);border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer;">↩ 취소</button>`;
+      tbody.innerHTML+=`<tr>
+        <td><strong>${p.studentName||''}</strong><div style="font-size:11px;color:var(--gray-mid);">${p.className||''}</div></td>
+        <td>${(p.month||'').replace('-','년 ')}월</td>
+        <td><span class="chip" style="font-size:10px;background:#EDE7F6;color:#4527A0;border:1px solid #CE93D8;">💜 원비</span></td>
+        <td>${p.className||''}</td>
+        <td style="font-weight:700;">${fmtKRW(p.amount)}</td>
+        <td style="font-size:11px;">${pmLabel}</td>
+        <td><span class="chip ${statusCls[p.status]||''}" style="font-size:11px;">${statusLabel[p.status]||p.status}</span></td>
+        <td style="font-size:12px;">${p.paidAt?p.paidAt.slice(0,10):'-'}</td>
+        <td>${actionBtn}</td>
+      </tr>`;
+    });
+  }
+
+  // 빠른 납부 처리 (테이블에서 직접) — 미니 모달 방식
+  let _qpPayId = null;
+  let _qpType  = null;
+
+  function adminMarkPaid(payId, type) {
+    _qpPayId = payId;
+    _qpType  = type;
+    const item = _adminPayList?.find(p=>p.id===payId);
+    // 학생 정보 표시
+    const infoEl = document.getElementById('qpStudentInfo');
+    if (infoEl && item) {
+      const typeLabel = type==='BOOK'?'📘 교재비':'💜 수강료';
+      infoEl.innerHTML = `<strong>${item.studentName||''}</strong> · ${(item.month||'').replace('-','년 ')}월 · ${typeLabel} <strong>${fmtKRW(item.amount)}</strong>`;
+    }
+    // 결제수단 버튼 생성
+    const methods = [['CASH','cash','💵 현금'],['TRANSFER','transfer','🏦 계좌이체'],['CARD','card','💳 카드']];
+    const btnsEl = document.getElementById('qpMethodBtns');
+    if (btnsEl) {
+      btnsEl.innerHTML = methods.map(([v,cls,lbl])=>
+        `<button type="button" class="pm-btn ${cls}" data-method="${v}" onclick="selectQpMethod(this)">${lbl}</button>`
+      ).join('');
+    }
+    document.getElementById('qpMethod').value = '';
+    // 납부일 기본값 = 오늘
+    const dateEl = document.getElementById('qpPaidAt');
+    if (dateEl) dateEl.value = new Date().toISOString().slice(0,10);
+    document.getElementById('adminQuickPayModal').style.display = 'flex';
+  }
+
+  function selectQpMethod(btn) {
+    btn.closest('#qpMethodBtns').querySelectorAll('.pm-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('qpMethod').value = btn.dataset.method;
+  }
+
+  function closeQuickPayModal() {
+    document.getElementById('adminQuickPayModal').style.display = 'none';
+    _qpPayId = null; _qpType = null;
+  }
+
+  async function confirmQuickPay() {
+    const method = document.getElementById('qpMethod').value;
+    if (!method) { YMS_UI.toast('결제 수단을 선택해주세요'); return; }
+    const paidAt = document.getElementById('qpPaidAt').value || new Date().toISOString().slice(0,10);
+    const item = _adminPayList?.find(p=>p.id===_qpPayId);
+    const patch = {
+      status:'PAID',
+      paidAmount: item?.amount || 0,
+      paidAt: paidAt + 'T00:00:00.000Z',
+      payMethod: method,
+    };
+    try {
+      const res = await _tFetch(`tables/payments/${_qpPayId}`,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(patch)
+      });
+      if (!res.ok) throw new Error();
+      if (item) Object.assign(item, patch);
+    } catch(e) {
+      if (item) Object.assign(item, patch);
+    }
+    closeQuickPayModal();
+    YMS_UI.toast('✅ 납부 처리 완료!');
+    renderPayTable();
+  }
+
+  async function adminMarkUnpaid(payId) {
+    if(!confirm('미납으로 되돌리겠습니까?')) return;
+    const patch={status:'UNPAID',paidAmount:0,paidAt:null,payMethod:''};
+    const item=_adminPayList?.find(p=>p.id===payId);
+    try{
+      const res=await _tFetch(`tables/payments/${payId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+      if(!res.ok) throw new Error();
+      if(item) Object.assign(item,patch);
+    }catch(e){ if(item) Object.assign(item,patch); }
+    YMS_UI.toast('↩ 미납으로 되돌렸습니다');
+    renderPayTable();
+  }
+
+  // ── 수강료 등록 모달 ──────────────────────────────────────
+  function showAdminAddTuition() {
+    loadAllData().then(()=>{
+      populateAdminTuitionDropdown();
+      const mEl=document.getElementById('at_month');
+      if(mEl) mEl.value=new Date().toISOString().slice(0,7);
+      const dEl=document.getElementById('at_due');
+      if(dEl) dEl.value=new Date().toISOString().slice(0,7)+'-10';
+      document.getElementById('adminAddTuitionModal').style.display='flex';
+    });
+  }
+
+  function populateAdminTuitionDropdown() {
+    const students=_allStudents.filter(s=>s.isActive!==false);
+    const sel=document.getElementById('at_student');
+    const bulkSel=document.getElementById('at_bulkClass');
+    if(sel){
+      sel.innerHTML='<option value="">— 학생 선택 —</option>';
+      students.forEach(s=>{
+        sel.innerHTML+=`<option value="${s.id}" data-class="${s.className||''}" data-name="${s.name}" data-fee="${s.tuitionFee||''}">${s.name} · ${s.className||'반 미지정'}</option>`;
+      });
+    }
+    if(bulkSel){
+      const classes=[..._allClasses].filter(c=>c.isActive!==false);
+      bulkSel.innerHTML='<option value="">— 반 선택 —</option>';
+      classes.forEach(c=>{
+        bulkSel.innerHTML+=`<option value="${c.className}" data-fee="${c.tuitionFee||0}">${c.className} (수강료 ${fmtKRW(c.tuitionFee||0)})</option>`;
+      });
+    }
+  }
+
+  function onAdminTuitionStudentChange(){
+    const sel=document.getElementById('at_student');
+    const opt=sel.options[sel.selectedIndex];
+    document.getElementById('at_class').value=opt?.dataset.class||'';
+    const fee=opt?.dataset.fee;
+    if(fee) document.getElementById('at_amount').value=fee;
+  }
+
+  function onAdminTuitionStatusChange(){
+    const status=document.getElementById('at_status').value;
+    document.getElementById('at_methodWrap').classList.toggle('hidden',status!=='PAID');
+  }
+
+  function selectAdminMethod(btn){
+    btn.closest('div').querySelectorAll('.pm-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('at_method').value=btn.dataset.method;
+  }
+
+  async function submitAdminTuition(e){
+    e.preventDefault();
+    const btn=document.getElementById('at_submitBtn');
+    btn.disabled=true; btn.textContent='등록 중...';
+    const sel=document.getElementById('at_student');
+    const opt=sel.options[sel.selectedIndex];
+    const studentId=sel.value; if(!studentId){YMS_UI.toast('학생을 선택해주세요');btn.disabled=false;btn.textContent='등록하기';return;}
+    const status=document.getElementById('at_status').value;
+    const method=status==='PAID'?document.getElementById('at_method').value:'';
+    if(status==='PAID'&&!method){YMS_UI.toast('결제 수단을 선택해주세요');btn.disabled=false;btn.textContent='등록하기';return;}
+    const amount=Number(document.getElementById('at_amount').value);
+    const newPay={
+      studentId,studentName:opt?.dataset.name||'',
+      className:document.getElementById('at_class').value,
+      month:document.getElementById('at_month').value,
+      type:'TUITION',amount,paidAmount:status==='PAID'?amount:0,
+      status,payMethod:method,
+      paidAt:status==='PAID'?new Date().toISOString():null,
+      dueDate:document.getElementById('at_due').value,
+      memo:document.getElementById('at_memo').value,addedBy:'ADMIN',
+    };
+    try{
+      const res=await _tFetch('tables/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newPay)});
+      if(!res.ok) throw new Error();
+    }catch(er){console.warn(er);}
+    document.getElementById('adminAddTuitionModal').style.display='none';
+    document.getElementById('adminTuitionForm').reset();
+    document.getElementById('at_methodWrap').classList.add('hidden');
+    YMS_UI.toast('수강료가 등록되었습니다! 💜');
+    _adminPayList=null; renderPayTable(); fetchAdminPayments();
+    btn.disabled=false; btn.textContent='등록하기';
+  }
+
+  // 반별 일괄 등록
+  async function submitBulkTuition(){
+    const classSel=document.getElementById('at_bulkClass');
+    const className=classSel.value;
+    if(!className){YMS_UI.toast('반을 선택해주세요');return;}
+    const month=document.getElementById('at_month').value;
+    const status=document.getElementById('at_status').value;
+    const classInfo=_allClasses.find(c=>c.className===className);
+    const amount=classInfo?.tuitionFee||Number(document.getElementById('at_amount').value)||0;
+    if(!amount){YMS_UI.toast('수강료 금액을 먼저 입력해주세요');return;}
+    const students=_allStudents.filter(s=>s.className===className&&s.isActive!==false);
+    if(!students.length){YMS_UI.toast('해당 반에 학생이 없습니다');return;}
+    if(!confirm(`${className} 학생 ${students.length}명에게\n${month.replace('-','년 ')}월 수강료 ${fmtKRW(amount)}을\n일괄 등록합니다. 계속하시겠습니까?`))return;
+    const method=status==='PAID'?document.getElementById('at_method').value:'';
+    if(status==='PAID'&&!method){YMS_UI.toast('결제 수단을 선택해주세요');return;}
+    let ok=0;
+    for(const s of students){
+      const pay={
+        studentId:s.id,studentName:s.name,className,month,type:'TUITION',
+        amount,paidAmount:status==='PAID'?amount:0,status,payMethod:method,
+        paidAt:status==='PAID'?new Date().toISOString():null,
+        dueDate:month+'-10',memo:`${month.replace('-','년 ')}월 수강료`,addedBy:'ADMIN',
+      };
+      try{
+        const res=await _tFetch('tables/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pay)});
+        if(res.ok) ok++;
+      }catch{}
+    }
+    YMS_UI.toast(`✅ ${ok}명 수강료 일괄 등록 완료!`);
+    document.getElementById('adminAddTuitionModal').style.display='none';
+    _adminPayList=null; fetchAdminPayments();
+  }
+
+  // ══════════════════════════════════════════════
+  // ── 계정 관리 (Table API 기반) ─────────────────
+  // ══════════════════════════════════════════════
+  let _acctList = [];    // 전체 캐시
+  let _acctRole = 'ALL'; // 현재 필터
+
+  async function initAccounts() {
+    renderAcctTabBar('ADMIN');
+    await loadAccounts();
+  }
+
+  function renderAcctTabBar(role) {
+    _acctRole = role;
+    ['ADMIN','TEACHER','PARENT','STUDENT'].forEach(r => {
+      const btn = document.getElementById('acctTab_' + r);
+      if (!btn) return;
+      btn.style.background = (r === role) ? 'var(--orange)' : '';
+      btn.style.color      = (r === role) ? '#fff' : '';
+    });
+    renderAcctTable();
+  }
+
+  async function loadAccounts() {
+    const tbody = document.getElementById('acctTableBody');
+    if (tbody) tbody.innerHTML =
+      `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-mid);">불러오는 중...</td></tr>`;
+    try {
+      const res  = await _tFetch('tables/users?limit=200&sort=created_at');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      _acctList  = json.data || [];
+      console.log('[YMS] 계정 로드:', _acctList.length + '개');
+    } catch (err) {
+      console.error('[YMS] 계정 로드 실패:', err);
+      _acctList = [];
+    }
+    renderAcctTable();
+    const countEl = document.getElementById('acctCount');
+    if (countEl) countEl.textContent = _acctList.length + '명';
+  }
+
+  function renderAcctTable() {
+    const tbody = document.getElementById('acctTableBody');
+    if (!tbody) return;
+    const roleLabel = { ADMIN:'🏫 관리자', TEACHER:'👩‍🏫 선생님', PARENT:'👨‍👩‍👧 학부모', STUDENT:'🎓 학생' };
+    const roleCls   = { ADMIN:'chip-orange', TEACHER:'chip-mustard', PARENT:'chip-green', STUDENT:'chip-gray' };
+    const filtered = _acctRole === 'ALL' ? _acctList : _acctList.filter(u => u.role === _acctRole);
+    const list = [...filtered].sort((a, b) => (a.name||'').localeCompare(b.name||'', 'ko'));
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-mid);">등록된 계정이 없습니다</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(u => `
+      <tr>
+        <td><strong>${u.name}</strong></td>
+        <td><code style="font-size:11px;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${u.loginId}</code></td>
+        <td><span class="chip ${roleCls[u.role]||''}">  ${roleLabel[u.role]||u.role}</span></td>
+        <td style="font-size:12px;">${u.phone || '-'}</td>
+        <td style="font-size:11px;color:var(--gray-mid);">${
+          u.role==='PARENT'  ? (u.childIds ? '자녀: '+u.childIds : '-') :
+          u.role==='TEACHER' ? (u.teacherClasses || '-') :
+          u.role==='STUDENT' ? (u.studentId || '-') : '-'
+        }</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px;" onclick="openEditAcct('${u.id}')">✏️ 수정</button>
+          <button class="btn btn-sm" style="font-size:11px;padding:3px 8px;background:#FFEBEE;color:#C62828;border:none;margin-left:4px;" onclick="deleteAcct('${u.id}','${u.name}')">🗑️</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function showAddAcctPanel() {
+    const panel = document.getElementById('acctPanel');
+    // 이미 열려있으면 닫기, 아니면 열기
+    if (!panel.classList.contains('hidden')) {
+      panel.classList.add('hidden');
+      return;
+    }
+    document.getElementById('acctFormTitle').textContent = '➕ 새 계정 추가';
+    document.getElementById('acctEditId').value = '';
+    document.getElementById('acctForm').reset();
+    document.getElementById('acctPwRow').style.display = '';
+    panel.classList.remove('hidden');
+    updateAcctRoleFields();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function updateAcctRoleFields() {
+    const role = document.getElementById('acctRole').value;
+    document.getElementById('acctChildRow').style.display    = role === 'PARENT'  ? '' : 'none';
+    document.getElementById('acctStudentRow').style.display  = role === 'STUDENT' ? '' : 'none';
+    document.getElementById('acctTeacherRow').style.display  = role === 'TEACHER' ? '' : 'none';
+    if (role === 'STUDENT') _populateAcctClassDropdown();
+    if (role === 'PARENT')  _populateChildSelectDropdown();
+  }
+
+  /* 학부모 자녀 선택 드롭다운 채우기 */
+  function _populateChildSelectDropdown() {
+    const sel = document.getElementById('acctChildSelect');
+    if (!sel) return;
+    const sorted = [..._allStudents].sort((a,b) => (a.name||'').localeCompare(b.name||'','ko'));
+    sel.innerHTML = sorted.length
+      ? sorted.map(s =>
+          `<option value="${s.id}">${s.name}${s.grade ? ' ('+s.grade+')' : ''}${s.className ? ' · '+s.className : ''}</option>`
+        ).join('')
+      : '<option value="" disabled>등록된 학생이 없습니다</option>';
+  }
+
+  /* 자녀 선택 변경 → hidden input 갱신 */
+  function onChildSelectChange() {
+    const sel = document.getElementById('acctChildSelect');
+    const ids = Array.from(sel.selectedOptions).map(o => o.value);
+    document.getElementById('acctChildIds').value = ids.join(',');
+  }
+
+  function _populateAcctClassDropdown() {
+    const sel = document.getElementById('acctClassSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— 반 선택 (선택) —</option>' +
+      _allClasses.map(c =>
+        `<option value="${c.id}" data-name="${c.className||''}" data-teacher="${c.teacherName||''}" data-level="${c.levelCode||''}">${c.className}${c.teacherName ? ' ('+c.teacherName+')' : ''}</option>`
+      ).join('');
+  }
+
+  function onAcctClassChange() {
+    const sel = document.getElementById('acctClassSelect');
+    const opt = sel.options[sel.selectedIndex];
+    const teacherEl = document.getElementById('acctStudentTeacher');
+    if (teacherEl) teacherEl.value = opt?.dataset.teacher || '';
+  }
+
+  async function submitAcctForm(e) {
+    e.preventDefault();
+
+    const editId  = document.getElementById('acctEditId').value;
+    const isEdit  = !!editId;
+    const role    = document.getElementById('acctRole').value;
+    const loginId = document.getElementById('acctLoginId').value.trim();
+    const name    = document.getElementById('acctName').value.trim();
+    const pw      = document.getElementById('acctPassword').value.trim();
+
+    // ── 필수값 검사 ──
+    if (!loginId) { YMS_UI.toast('❌ 아이디를 입력해주세요'); return; }
+    if (!name)    { YMS_UI.toast('❌ 이름을 입력해주세요');   return; }
+    if (!isEdit && !pw) { YMS_UI.toast('❌ 비밀번호를 입력해주세요'); return; }
+
+    // ── 신규: 아이디 중복 체크 ──
+    if (!isEdit) {
+      const dup = _acctList.find(u => u.loginId === loginId);
+      if (dup) { YMS_UI.toast('❌ 이미 사용 중인 아이디입니다'); return; }
+    }
+
+    // ── STUDENT 전용 필드 수집 ──
+    const acctGrade      = document.getElementById('acctGrade')?.value.trim()      || '';
+    const acctSchoolName = document.getElementById('acctSchoolName')?.value.trim() || '';
+    const acctClassSel   = document.getElementById('acctClassSelect');
+    const acctClassOpt   = acctClassSel?.options[acctClassSel.selectedIndex];
+    const acctClassName  = acctClassOpt?.dataset.name    || '';
+    const acctTeacher    = acctClassOpt?.dataset.teacher || '';
+    const acctLevelCode  = acctClassOpt?.dataset.level   || '';
+    const acctClassId    = acctClassSel?.value            || '';
+    // 수정 시 이미 연결된 students 레코드 id
+    const linkedStudentId = document.getElementById('acctLinkedStudentId')?.value || '';
+
+    const payload = {
+      loginId,
+      name,
+      role,
+      phone:          document.getElementById('acctPhone').value.trim(),
+      academyId:      'ac-001',
+      isActive:       true,
+      childIds:       document.getElementById('acctChildIds').value.trim(),
+      studentId:      document.getElementById('acctStudentId').value.trim(),
+      teacherClasses: document.getElementById('acctTeacherClasses').value.trim(),
+      memo:           document.getElementById('acctMemo').value.trim(),
+    };
+    // 비밀번호: 신규는 항상, 수정은 입력 시에만 포함
+    if (!isEdit || pw) payload.password = pw || '';
+
+    // ── 저장 버튼 비활성화 (e.submitter 대신 querySelector 사용) ──
+    const btn = document.querySelector('#acctForm button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+
+    try {
+      const url    = isEdit ? `tables/users/${editId}` : 'tables/users';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || errJson.message || res.status);
+      }
+      const savedUser = await res.json();
+
+      // ══ STUDENT 연동: tables/students 자동 생성/수정 ══
+      if (role === 'STUDENT') {
+        const stuPayload = {
+          name,
+          grade:       acctGrade,
+          schoolName:  acctSchoolName,
+          className:   acctClassName,
+          teacherName: acctTeacher,
+          levelCode:   acctLevelCode,
+          classId:     acctClassId,
+          isActive:    true,
+          userId:      savedUser.id || editId || '',   // users 레코드 참조
+        };
+        try {
+          let stuRes;
+          if (isEdit && linkedStudentId) {
+            // 수정: 기존 students 레코드 PATCH
+            stuRes = await _tFetch(`tables/students/${linkedStudentId}`, {
+              method:  'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify(stuPayload),
+            });
+          } else {
+            // 신규 or 아직 students 레코드 없음 → POST
+            stuRes = await _tFetch('tables/students', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify(stuPayload),
+            });
+            if (stuRes.ok) {
+              const newStu = await stuRes.json();
+              // users 레코드에 studentId 역참조 업데이트
+              await _tFetch(`tables/users/${savedUser.id || editId}`, {
+                method:  'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ studentId: newStu.id }),
+              }).catch(() => {});
+            }
+          }
+          if (!stuRes.ok) console.warn('[YMS] students 연동 실패:', stuRes.status);
+          else {
+            // 캐시 갱신
+            const rS = await _tFetch('tables/students?limit=500');
+            _allStudents = rS.ok ? (await rS.json()).data || [] : [];
+          }
+        } catch(stuErr) {
+          console.warn('[YMS] students 연동 오류 (무시됨):', stuErr);
+        }
+      }
+
+      // ══ PARENT 연동: 선택된 자녀 students.parentId 업데이트 ══
+      if (role === 'PARENT') {
+        const newChildIds = payload.childIds
+          ? payload.childIds.split(',').map(s => s.trim()).filter(Boolean)
+          : [];
+        const parentUserId = savedUser.id || editId || '';
+        if (newChildIds.length && parentUserId) {
+          // 선택된 자녀 students 레코드에 parentId 기록
+          await Promise.allSettled(newChildIds.map(sid =>
+            _tFetch(`tables/students/${sid}`, {
+              method:  'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ parentId: parentUserId }),
+            }).catch(() => {})
+          ));
+          // 캐시 갱신
+          try {
+            const rS = await _tFetch('tables/students?limit=500');
+            _allStudents = rS.ok ? (await rS.json()).data || [] : [];
+          } catch(e) { /* 무시 */ }
+        }
+      }
+      // ══════════════════════════════════════════
+
+      YMS_UI.toast(isEdit ? '✅ 계정이 수정되었습니다' : `✅ ${name} 계정 추가 + 학생 관리에 자동 등록!`);
+      document.getElementById('acctPanel').classList.add('hidden');
+      document.getElementById('acctForm').reset();
+      await loadAccounts();
+    } catch (err) {
+      console.error('[YMS] 계정 저장 실패:', err);
+      YMS_UI.toast('❌ 저장 실패: ' + err.message);
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+  }
+
+  function openEditAcct(id) {
+    const u = _acctList.find(u => u.id === id);
+    if (!u) return;
+    document.getElementById('acctFormTitle').textContent = '✏️ 계정 수정';
+    document.getElementById('acctEditId').value          = u.id;
+    document.getElementById('acctLoginId').value         = u.loginId  || '';
+    document.getElementById('acctName').value            = u.name     || '';
+    document.getElementById('acctRole').value            = u.role     || 'PARENT';
+    document.getElementById('acctPhone').value           = u.phone    || '';
+    document.getElementById('acctChildIds').value        = u.childIds || '';
+    document.getElementById('acctStudentId').value       = u.studentId|| '';
+    document.getElementById('acctTeacherClasses').value  = u.teacherClasses || '';
+    document.getElementById('acctMemo').value            = u.memo     || '';
+    document.getElementById('acctPassword').value        = '';
+    document.getElementById('acctPwRow').style.display   = ''; // 수정 시도 허용
+    document.getElementById('acctPanel').classList.remove('hidden');
+    updateAcctRoleFields();
+    // ── PARENT 전용: 기존 자녀 선택 복원 ──
+    if (u.role === 'PARENT') {
+      _populateChildSelectDropdown();
+      const sel = document.getElementById('acctChildSelect');
+      const existingIds = (u.childIds || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (sel && existingIds.length) {
+        Array.from(sel.options).forEach(opt => {
+          opt.selected = existingIds.includes(opt.value);
+        });
+        document.getElementById('acctChildIds').value = existingIds.join(',');
+      }
+    }
+    // ── STUDENT 전용 필드 채우기 ──
+    if (u.role === 'STUDENT') {
+      _populateAcctClassDropdown();
+      // users.studentId → students 레코드 찾아서 상세 채우기
+      const stu = _allStudents.find(s => s.id === u.studentId || s.userId === u.id);
+      if (stu) {
+        document.getElementById('acctGrade').value          = stu.grade      || '';
+        document.getElementById('acctSchoolName').value     = stu.schoolName || '';
+        document.getElementById('acctStudentTeacher').value = stu.teacherName|| '';
+        document.getElementById('acctLinkedStudentId').value= stu.id;
+        const sel = document.getElementById('acctClassSelect');
+        if (sel) {
+          const opt = Array.from(sel.options).find(o => o.value === stu.classId || o.dataset.name === stu.className);
+          if (opt) { sel.value = opt.value; onAcctClassChange(); }
+        }
+      } else {
+        document.getElementById('acctGrade').value          = '';
+        document.getElementById('acctSchoolName').value     = '';
+        document.getElementById('acctStudentTeacher').value = '';
+        document.getElementById('acctLinkedStudentId').value= '';
+      }
+    }
+    document.getElementById('acctPanel').scrollIntoView({ behavior:'smooth' });
+  }
+
+  async function deleteAcct(id, name) {
+    if (!confirm(`"${name}" 계정을 삭제할까요?\n로그인이 불가능해지며 복구할 수 없습니다.`)) return;
+    try {
+      const res = await _tFetch(`tables/users/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      YMS_UI.toast(`🗑️ ${name} 계정이 삭제되었습니다`);
+      await loadAccounts();
+    } catch {
+      YMS_UI.toast('❌ 삭제 실패');
+    }
+  }
+
+  // ══════════════════════════════════════════════
+  // ── 반 관리 (Table API 기반) ───────────────────
+  // ══════════════════════════════════════════════
+  let _classList = [];
+
+  async function initClassesMgmt() {
+    await loadAllData();   // 선생님 목록 최신화
+    await loadClassesMgmt();
+    populateTeacherDropdown();
+  }
+
+  // 반 폼의 선생님 드롭다운 채우기
+  function populateTeacherDropdown() {
+    const sel = document.getElementById('clsTeacherSelect');
+    if (!sel) return;
+    const teachers = _allUsers.filter(u => u.role === 'TEACHER');
+    sel.innerHTML = '<option value="">— 선생님 선택 —</option>' +
+      teachers.map(t =>
+        `<option value="${t.name}" data-id="${t.id}">${t.name}${t.phone?' ('+t.phone+')':''}</option>`
+      ).join('');
+  }
+
+  function onClassTeacherSelect() {
+    const sel = document.getElementById('clsTeacherSelect');
+    const opt = sel.options[sel.selectedIndex];
+    // 텍스트 입력 필드도 동기화 (직접 입력도 허용)
+    document.getElementById('clsTeacher').value   = opt?.value || '';
+    document.getElementById('clsTeacherId').value = opt?.dataset.id || '';
+  }
+
+  async function loadClassesMgmt() {
+    document.getElementById('classMgmtBody').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;padding:20px;"><div class="skeleton" style="height:20px;"></div></td></tr>`;
+    try {
+      const res  = await _tFetch('tables/classes?limit=100&sort=created_at');
+      const json = res.ok ? await res.json() : { data: [] };
+      _classList = json.data || [];
+    } catch { _classList = []; }
+    renderClassesMgmt();
+  }
+
+  function renderClassesMgmt() {
+    const tbody = document.getElementById('classMgmtBody');
+    if (!tbody) return;
+    if (!_classList.length) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--gray-mid);">등록된 반이 없습니다</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = _classList.map(c => `
+      <tr>
+        <td><strong>${c.className}</strong></td>
+        <td>${c.subject || '-'}</td>
+        <td><span class="chip chip-mustard" style="font-size:11px;">${c.levelCode || '-'}</span></td>
+        <td>${c.teacherName || '-'}</td>
+        <td>${c.days || '-'} ${c.startTime||''}-${c.endTime||''}</td>
+        <td style="font-weight:700;">₩${Number(c.tuitionFee||0).toLocaleString()}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px;" onclick="openEditClass('${c.id}')">✏️ 수정</button>
+          <button class="btn btn-sm" style="font-size:11px;padding:3px 8px;background:#FFEBEE;color:#C62828;border:none;margin-left:4px;" onclick="deleteClass('${c.id}','${c.className}')">🗑️</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function showAddClassPanel() {
+    const panel = document.getElementById('classMgmtPanel');
+    if (!panel.classList.contains('hidden')) {
+      panel.classList.add('hidden');
+      return;
+    }
+    document.getElementById('classFormTitle').textContent = '➕ 새 반 추가';
+    document.getElementById('classEditId').value = '';
+    document.getElementById('classMgmtForm').reset();
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function submitClassForm(e) {
+    e.preventDefault();
+    const editId    = document.getElementById('classEditId').value;
+    const isEdit    = !!editId;
+    const className = document.getElementById('clsName').value.trim();
+    if (!className) { YMS_UI.toast('❌ 반 이름을 입력해주세요'); return; }
+    const payload = {
+      className,
+      subject:     document.getElementById('clsSubject').value.trim(),
+      teacherName: document.getElementById('clsTeacher').value.trim(),
+      teacherId:   document.getElementById('clsTeacherId').value.trim(),
+      startTime:   document.getElementById('clsStart').value,
+      endTime:     document.getElementById('clsEnd').value,
+      tuitionFee:  Number(document.getElementById('clsFee').value) || 0,
+      isActive:    true,
+    };
+    const btn = document.querySelector('#classMgmtForm button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+    try {
+      const url    = isEdit ? `tables/classes/${editId}` : 'tables/classes';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res    = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error();
+      YMS_UI.toast(isEdit ? '✅ 반 정보가 수정되었습니다' : '✅ 반이 추가되었습니다');
+      document.getElementById('classMgmtPanel').classList.add('hidden');
+      document.getElementById('classMgmtForm').reset();
+      await loadClassesMgmt();
+    } catch (err) {
+      console.error('[YMS] 반 저장 실패:', err);
+      YMS_UI.toast('❌ 저장 실패: ' + err.message);
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+  }
+
+  function openEditClass(id) {
+    const c = _classList.find(c => c.id === id);
+    if (!c) return;
+    document.getElementById('classFormTitle').textContent = '✏️ 반 수정';
+    document.getElementById('classEditId').value       = c.id;
+    document.getElementById('clsName').value           = c.className   || '';
+    document.getElementById('clsSubject').value        = c.subject     || '';
+    document.getElementById('clsTeacher').value        = c.teacherName || '';
+    document.getElementById('clsTeacherId').value      = c.teacherId   || '';
+    document.getElementById('clsStart').value          = c.startTime   || '';
+    document.getElementById('clsEnd').value            = c.endTime     || '';
+    document.getElementById('clsFee').value            = c.tuitionFee  || '';
+    // 드롭다운 선택값 복원
+    const sel = document.getElementById('clsTeacherSelect');
+    if (sel) {
+      const opt = Array.from(sel.options).find(o => o.value === c.teacherName || o.dataset.id === c.teacherId);
+      if (opt) sel.value = opt.value;
+    }
+    document.getElementById('classMgmtPanel').classList.remove('hidden');
+    document.getElementById('classMgmtPanel').scrollIntoView({ behavior:'smooth' });
+  }
+
+  async function deleteClass(id, name) {
+    if (!confirm(`"${name}" 반을 삭제할까요?`)) return;
+    try {
+      const res = await _tFetch(`tables/classes/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      YMS_UI.toast(`🗑️ ${name} 반이 삭제되었습니다`);
+      await loadClassesMgmt();
+    } catch {
+      YMS_UI.toast('❌ 삭제 실패');
+    }
+  }
+
+  // ── Counseling ─────────────────────────────────
+  function renderCsTable() {
+    const pending = (YMS_DEMO.counseling||[]).filter(c=>c.status==='PENDING');
+    const el = document.getElementById('adminCsPending');
+    if (el) el.textContent = `⏳ 미답변 ${pending.length}건`;
+
+    const tbody = document.getElementById('adminCsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const statusLabel = { PENDING:'⏳ 대기', REPLIED:'✅ 완료' };
+    const statusCls   = { PENDING:'chip-mustard', REPLIED:'chip-green' };
+    (YMS_DEMO.counseling||[]).forEach(cs => {
+      tbody.innerHTML += `<tr>
+        <td><strong>${cs.title}</strong></td>
+        <td>${cs.studentName}</td>
+        <td>${cs.category}</td>
+        <td>${cs.teacherName}</td>
+        <td><span class="chip ${statusCls[cs.status]}" style="font-size:11px;">${statusLabel[cs.status]}</span></td>
+        <td>${YMS_Date.fromNow(cs.createdAt)}</td>
+      </tr>`;
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>

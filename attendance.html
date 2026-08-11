@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>출결 · YMS Master Track</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1E3278">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--mustard:var(--periwinkle);--mustard-lt:var(--periwinkle-lt);--mustard-bg:var(--periwinkle-bg);--orange:var(--navy);--orange-lt:var(--navy-lt);--orange-dark:var(--navy-dark);--cream:var(--sky-bg);--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--shadow-lg:0 8px 32px rgba(30,50,120,.16);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;--font-en:'Nunito',sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    .app-wrapper{max-width:430px;min-height:100vh;margin:0 auto;background:var(--sky-bg);position:relative;overflow-x:hidden;}
+
+    /* ── 월 네비게이션 ── */
+    .month-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 8px;}
+    .month-label{font-size:18px;font-weight:800;color:var(--charcoal);}
+    .month-nav-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--beige-dark);background:var(--warm-white);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--charcoal);}
+    .month-nav-btn:hover{background:var(--beige);}
+
+    /* ── 요약 카드 ── */
+    .att-summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 20px 16px;}
+    .att-summary-item{background:var(--warm-white);border-radius:var(--radius-md);padding:14px;text-align:center;box-shadow:var(--shadow-sm);}
+    .att-summary-count{font-size:24px;font-weight:800;}
+    .att-summary-label{font-size:11px;color:var(--gray-mid);margin-top:2px;}
+
+    /* ── 출결 기록 아이템 ── */
+    .att-record-item{display:flex;align-items:center;padding:12px 0;gap:12px;border-bottom:1px solid var(--beige);}
+    .att-record-item:last-child{border-bottom:none;}
+    .att-date-badge{width:44px;text-align:center;flex-shrink:0;}
+    .att-date-day{font-size:18px;font-weight:800;color:var(--charcoal);}
+    .att-date-dow{font-size:11px;color:var(--gray-mid);}
+    .att-class-info{flex:1;min-width:0;}
+    .att-class-name{font-size:14px;font-weight:600;color:var(--charcoal);}
+    .att-class-time{font-size:12px;color:var(--gray-mid);}
+
+    /* ── 선생님 뷰: 반 탭 ── */
+    .class-tab-row{display:flex;gap:8px;padding:0 20px 12px;overflow-x:auto;scrollbar-width:none;}
+    .class-tab-row::-webkit-scrollbar{display:none;}
+    .class-tab{padding:8px 16px;border-radius:var(--radius-full);border:1.5px solid var(--beige-dark);font-size:13px;font-weight:600;cursor:pointer;background:var(--warm-white);color:var(--gray-mid);white-space:nowrap;transition:all .15s;flex-shrink:0;}
+    .class-tab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+    /* ── 선생님 뷰: 학생 행 ── */
+    .att-student-row{display:flex;align-items:center;padding:12px 0;gap:12px;border-bottom:1px solid var(--beige);}
+    .att-student-row:last-child{border-bottom:none;}
+    .att-avatar{width:38px;height:38px;border-radius:50%;background:var(--mustard-bg);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--navy);flex-shrink:0;}
+    .att-student-name{flex:1;min-width:0;}
+    .att-student-name strong{display:block;font-size:14px;font-weight:700;color:var(--charcoal);}
+    .att-student-name small{font-size:11px;color:var(--gray-mid);}
+
+    /* ── 출결 토글 버튼 ── */
+    .att-toggle-group{display:flex;gap:4px;flex-shrink:0;}
+    .att-toggle{padding:6px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--beige-dark);font-size:12px;font-weight:600;cursor:pointer;background:var(--warm-white);color:var(--gray-mid);transition:all .15s;}
+    .att-toggle.present.active{background:#E8F5EF;border-color:var(--present);color:var(--present);}
+    .att-toggle.late.active{background:#FFF4E0;border-color:var(--late);color:var(--late);}
+    .att-toggle.absent.active{background:#FFEBEB;border-color:var(--absent);color:var(--absent);}
+
+    /* ── 날짜 선택 바 ── */
+    .date-select-bar{display:flex;align-items:center;gap:10px;padding:0 20px 12px;}
+    .date-select-bar input[type=date]{flex:1;padding:8px 12px;border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);font-size:14px;font-family:var(--font-kr);color:var(--charcoal);background:var(--warm-white);}
+    .date-select-bar label{font-size:13px;font-weight:600;color:var(--gray-dark);white-space:nowrap;}
+
+    /* ── 저장 완료 뱃지 ── */
+    .saved-badge{display:inline-flex;align-items:center;gap:4px;background:#E8F5EF;border:1px solid var(--present);border-radius:var(--radius-full);padding:3px 10px;font-size:11px;font-weight:700;color:var(--present);margin-left:8px;}
+
+    /* ── 로딩 상태 ── */
+    .loading-row{padding:20px;text-align:center;color:var(--gray-mid);font-size:13px;}
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- App Bar -->
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <span style="font-size:17px;font-weight:700;color:var(--charcoal);">출결</span>
+    </div>
+    <div class="app-bar-right">
+      <span id="roleChip" class="chip chip-mustard" style="font-size:11px;"></span>
+    </div>
+  </header>
+
+  <!-- ════════════════ 학부모 / 학생 뷰 ════════════════ -->
+  <div id="parentView">
+    <div class="month-nav">
+      <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+      <span class="month-label" id="monthLabel">-</span>
+      <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+
+    <!-- 요약 -->
+    <div class="att-summary-row">
+      <div class="att-summary-item">
+        <div class="att-summary-count" style="color:var(--present);" id="presentCnt">-</div>
+        <div class="att-summary-label">출석</div>
+      </div>
+      <div class="att-summary-item">
+        <div class="att-summary-count" style="color:var(--late);" id="lateCnt">-</div>
+        <div class="att-summary-label">지각</div>
+      </div>
+      <div class="att-summary-item">
+        <div class="att-summary-count" style="color:var(--absent);" id="absentCnt">-</div>
+        <div class="att-summary-label">결석</div>
+      </div>
+    </div>
+
+    <!-- 자녀 선택 칩 (학부모만) -->
+    <div id="attStudentSelector" style="padding:0 20px 12px;display:flex;gap:8px;flex-wrap:wrap;"></div>
+
+    <!-- 출결 기록 -->
+    <div class="page-content" style="padding-top:4px;">
+      <div class="section-header">
+        <div class="section-title">📋 출결 기록</div>
+        <span id="currentStudentName" style="font-size:12px;color:var(--gray-mid);"></span>
+      </div>
+      <div class="card" style="padding:8px 16px;">
+        <div id="attRecordList">
+          <div class="loading-row">불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ 선생님 / 관리자 뷰 ════════════════ -->
+  <div id="teacherView" class="hidden">
+
+    <!-- 날짜 선택 -->
+    <div class="date-select-bar" style="padding-top:14px;">
+      <label>📅 날짜</label>
+      <input type="date" id="attDateInput" onchange="onDateChange()">
+    </div>
+
+    <!-- 반 탭 -->
+    <div class="class-tab-row" id="classTabRow">
+      <div class="loading-row">반 목록 불러오는 중...</div>
+    </div>
+
+    <!-- 학생 목록 + 저장 -->
+    <div class="page-content" style="padding-top:0;">
+      <div class="section-header">
+        <div class="section-title" id="teacherAttTitle">출결 입력</div>
+        <span id="savedBadge" class="saved-badge hidden">✅ 저장됨</span>
+      </div>
+      <div class="card" style="padding:8px 16px;min-height:80px;">
+        <div id="teacherStudentList">
+          <div class="loading-row">반을 선택하세요</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full mt-12" id="saveAttBtn" onclick="submitTeacherAtt()" style="display:none;">
+        ✅ 출결 저장하기
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <nav class="tab-bar" id="tabBar"></nav>
+</div>
+
+<script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
+<script src="js/app.js"></script>
+<script>
+  const user = ymsPageInit(true);
+  const DOWS = ['일','월','화','수','목','금','토'];
+
+  /* ── 공통 상태 ── */
+  let currentYear   = new Date().getFullYear();
+  let currentMonth  = new Date().getMonth(); // 0-based
+  let selectedStudentId = null;             // 학부모/학생 뷰
+  let myChildren    = [];                   // 학부모 자녀 목록
+
+  /* ── 선생님 상태 ── */
+  let _allClasses   = [];   // DB 반 목록
+  let _allStudents  = [];   // DB 전체 학생 목록
+  let currentClassId = null;
+  let teacherAttStatus = {}; // studentId → status
+  let selectedDate  = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  /* ════════════════════════════════════════════════
+     초기화
+  ════════════════════════════════════════════════ */
+  async function init() {
+    if (!user) return;
+
+    const roleMap = { PARENT:'👨‍👩‍👧 학부모', TEACHER:'👩‍🏫 선생님', ADMIN:'🏫 관리자', STUDENT:'🎓 학생' };
+    document.getElementById('roleChip').textContent = roleMap[user.role] || '';
+
+    const isTeacher = user.role === 'TEACHER' || user.role === 'ADMIN';
+    document.getElementById('parentView').classList.toggle('hidden', isTeacher);
+    document.getElementById('teacherView').classList.toggle('hidden', !isTeacher);
+    ymsRenderTabBar('attendance.html');
+
+    if (isTeacher) {
+      await initTeacherView();
+    } else {
+      await initParentView();
+    }
+  }
+
+  /* renderTabBar → ymsRenderTabBar 로 통합 (js/app.js) */
+
+  /* ════════════════════════════════════════════════
+     학부모 / 학생 뷰
+  ════════════════════════════════════════════════ */
+  async function initParentView() {
+    // 학생 역할: 본인 studentId로 바로 조회
+    if (user.role === 'STUDENT') {
+      const sid = user.studentId || user._tableId || user.id;
+      selectedStudentId = sid;
+      document.getElementById('attStudentSelector').style.display = 'none';
+      renderMonth();
+      await loadParentAttendance();
+      return;
+    }
+
+    // 학부모 역할: childIds → students 조회
+    const childIds = Array.isArray(user.childIds)
+      ? user.childIds
+      : (user.childIds || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    if (childIds.length) {
+      const results = await Promise.all(
+        childIds.map(id =>
+          _tFetch(`tables/students/${id}`, { cache: 'no-store' })
+            .then(r => r.ok ? r.json() : null).catch(() => null)
+        )
+      );
+      myChildren = results.filter(Boolean);
+    }
+
+    // childIds 미연결 시 parentId로 폴백 검색
+    if (!myChildren.length) {
+      try {
+        const r = await _tFetch(`tables/students?limit=200`, { cache: 'no-store' });
+        if (r.ok) {
+          const j = await r.json();
+          myChildren = (j.data || []).filter(s => s.parentId === user.id || s.userId === user.id);
+        }
+      } catch(e) { /* 무시 */ }
+    }
+
+    if (!myChildren.length) {
+      document.getElementById('attStudentSelector').innerHTML =
+        `<div style="font-size:13px;color:var(--gray-mid);padding:4px 0;">연결된 자녀 계정이 없습니다.<br>관리자에게 문의해 주세요.</div>`;
+      document.getElementById('attRecordList').innerHTML = YMS_UI.renderEmpty('자녀 계정이 없습니다');
+      return;
+    }
+
+    // 자녀 칩 렌더링
+    const wrap = document.getElementById('attStudentSelector');
+    wrap.innerHTML = '';
+    myChildren.forEach((s, i) => {
+      const chip = document.createElement('div');
+      chip.className = `student-chip${i === 0 ? ' active' : ''}`;
+      chip.innerHTML = `<div class="chip-avatar">${(s.name||'?')[0]}</div>${s.name}`;
+      chip.addEventListener('click', () => {
+        wrap.querySelectorAll('.student-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedStudentId = s.id;
+        document.getElementById('currentStudentName').textContent = s.name;
+        loadParentAttendance();
+      });
+      wrap.appendChild(chip);
+    });
+
+    selectedStudentId = myChildren[0].id;
+    document.getElementById('currentStudentName').textContent = myChildren[0].name;
+    renderMonth();
+    await loadParentAttendance();
+  }
+
+  function renderMonth() {
+    const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+    document.getElementById('monthLabel').textContent = `${currentYear}년 ${months[currentMonth]}`;
+  }
+
+  function changeMonth(dir) {
+    currentMonth += dir;
+    if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
+    if (currentMonth > 11) { currentMonth = 0;  currentYear++; }
+    renderMonth();
+    loadParentAttendance();
+  }
+
+  /* ── 학부모/학생: DB에서 출결 기록 조회 ── */
+  async function loadParentAttendance() {
+    if (!selectedStudentId) return;
+    document.getElementById('attRecordList').innerHTML = '<div class="loading-row">불러오는 중...</div>';
+
+    const yyyyMM = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    let records = [];
+
+    try {
+      // limit=500으로 전체 조회 후 클라이언트 필터 (search는 부분일치 문제)
+      const res = await _tFetch(`tables/attendance?limit=500`, { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        records = (json.data || []).filter(r =>
+          r.studentId === selectedStudentId &&
+          r.date && r.date.startsWith(yyyyMM)
+        );
+      }
+    } catch(e) {
+      console.warn('[YMS] 출결 조회 실패:', e);
+    }
+
+    renderParentRecords(records);
+  }
+
+  function renderParentRecords(records) {
+    document.getElementById('presentCnt').textContent = records.filter(r => r.status === 'PRESENT').length;
+    document.getElementById('lateCnt').textContent    = records.filter(r => r.status === 'LATE').length;
+    document.getElementById('absentCnt').textContent  = records.filter(r => r.status === 'ABSENT').length;
+
+    const listEl = document.getElementById('attRecordList');
+    listEl.innerHTML = '';
+    if (!records.length) {
+      listEl.innerHTML = YMS_UI.renderEmpty('이 달 출결 기록이 없습니다');
+      return;
+    }
+    const sorted = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    sorted.forEach(r => {
+      const d = new Date(r.date + 'T00:00:00');
+      const item = document.createElement('div');
+      item.className = 'att-record-item';
+      item.innerHTML = `
+        <div class="att-date-badge">
+          <div class="att-date-day">${d.getDate()}</div>
+          <div class="att-date-dow">${DOWS[d.getDay()]}</div>
+        </div>
+        <div class="att-class-info">
+          <div class="att-class-name">${r.className || '수업'}</div>
+          <div class="att-class-time">${r.date}${r.memo ? ' · ' + r.memo : ''}</div>
+        </div>
+        ${YMS_UI.attBadge(r.status)}
+      `;
+      listEl.appendChild(item);
+    });
+  }
+
+  /* ════════════════════════════════════════════════
+     선생님 / 관리자 뷰
+  ════════════════════════════════════════════════ */
+  async function initTeacherView() {
+    // 날짜 input 오늘로 초기화
+    document.getElementById('attDateInput').value = selectedDate;
+
+    // DB에서 반 목록 + 전체 학생 목록 병렬 로드
+    try {
+      const [clsRes, stuRes] = await Promise.all([
+        _tFetch('tables/classes?limit=200', { cache: 'no-store' }),
+        _tFetch('tables/students?limit=500', { cache: 'no-store' }),
+      ]);
+      const clsJson = clsRes.ok ? await clsRes.json() : { data: [] };
+      const stuJson = stuRes.ok ? await stuRes.json() : { data: [] };
+
+      const allClasses  = clsJson.data || [];
+      const allStudents = stuJson.data || [];
+
+      // ADMIN: 전체 / TEACHER: 담당 반만
+      if (user.role === 'TEACHER') {
+        const myCls = Array.isArray(user.teacherClasses) ? user.teacherClasses : [];
+        _allClasses = allClasses.filter(c =>
+          c.teacherName === user.name ||
+          myCls.includes(c.className) ||
+          myCls.includes(c.id)
+        );
+        // 매칭 없으면 전체 보여주기 (선생님 이름 세팅 전 등)
+        if (_allClasses.length === 0) _allClasses = allClasses;
+      } else {
+        _allClasses = allClasses;
+      }
+
+      // 가나다 정렬
+      _allClasses.sort((a, b) => (a.className || '').localeCompare(b.className || '', 'ko'));
+      _allStudents = allStudents;
+
+    } catch(e) {
+      console.warn('[YMS] 반/학생 로드 실패:', e);
+      _allClasses  = [];
+      _allStudents = [];
+    }
+
+    renderClassTabs();
+  }
+
+  /* ── 날짜 변경 시 ── */
+  function onDateChange() {
+    selectedDate = document.getElementById('attDateInput').value;
+    // 현재 선택된 반 다시 렌더
+    if (currentClassId) renderTeacherStudentList(currentClassId);
+  }
+
+  /* ── 반 탭 렌더링 ── */
+  function renderClassTabs() {
+    const tabRow = document.getElementById('classTabRow');
+    tabRow.innerHTML = '';
+
+    if (!_allClasses.length) {
+      tabRow.innerHTML = '<div style="padding:8px 20px;font-size:13px;color:var(--gray-mid);">등록된 반이 없습니다. 관리자에서 반을 먼저 만들어주세요.</div>';
+      document.getElementById('teacherStudentList').innerHTML = YMS_UI.renderEmpty('반 없음');
+      return;
+    }
+
+    _allClasses.forEach((cls, i) => {
+      const tab = document.createElement('button');
+      tab.className = `class-tab${i === 0 ? ' active' : ''}`;
+      tab.textContent = cls.className;
+      tab.addEventListener('click', () => {
+        tabRow.querySelectorAll('.class-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentClassId = cls.id;
+        renderTeacherStudentList(cls.id);
+      });
+      tabRow.appendChild(tab);
+    });
+
+    // 첫 번째 반 자동 선택
+    currentClassId = _allClasses[0].id;
+    renderTeacherStudentList(_allClasses[0].id);
+  }
+
+  /* ── 반별 학생 목록 렌더링 + 기존 출결 불러오기 ── */
+  async function renderTeacherStudentList(classId) {
+    const cls = _allClasses.find(c => c.id === classId);
+    if (!cls) return;
+
+    document.getElementById('teacherAttTitle').textContent = `${cls.className} 출결 입력`;
+    document.getElementById('savedBadge').classList.add('hidden');
+    teacherAttStatus = {};
+
+    const listEl = document.getElementById('teacherStudentList');
+    listEl.innerHTML = '<div class="loading-row">학생 목록 불러오는 중...</div>';
+    document.getElementById('saveAttBtn').style.display = 'none';
+
+    // 이 반에 속한 학생 필터
+    const students = _allStudents.filter(s =>
+      s.classId === cls.id || s.className === cls.className
+    ).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+
+    if (!students.length) {
+      listEl.innerHTML = YMS_UI.renderEmpty(`${cls.className}에 등록된 학생이 없습니다`);
+      return;
+    }
+
+    // 오늘 이 반 기존 출결 기록 조회 (중복 저장 방지 + 기존값 표시)
+    let existingMap = {}; // studentId → {id, status}
+    try {
+      const exRes = await _tFetch(`tables/attendance?limit=500`, { cache: 'no-store' });
+      if (exRes.ok) {
+        const exJson = await exRes.json();
+        (exJson.data || []).forEach(r => {
+          if (r.date === selectedDate && r.className === cls.className) {
+            existingMap[r.studentId] = { id: r.id, status: r.status };
+          }
+        });
+      }
+    } catch(e) { /* 무시 */ }
+
+    listEl.innerHTML = '';
+    students.forEach(s => {
+      const existing = existingMap[s.id];
+      const initStatus = existing?.status || 'PRESENT';
+      teacherAttStatus[s.id] = initStatus;
+
+      const row = document.createElement('div');
+      row.className = 'att-student-row';
+      row.dataset.studentId = s.id;
+      row.innerHTML = `
+        <div class="att-avatar">${(s.name || '?')[0]}</div>
+        <div class="att-student-name">
+          <strong>${s.name}</strong>
+          <small>${s.grade || ''}${s.schoolName ? ' · ' + s.schoolName : ''}</small>
+        </div>
+        <div class="att-toggle-group">
+          <button class="att-toggle present${initStatus === 'PRESENT' ? ' active' : ''}"
+            onclick="setAttStatus(this,'${s.id}','PRESENT')">출석</button>
+          <button class="att-toggle late${initStatus === 'LATE' ? ' active' : ''}"
+            onclick="setAttStatus(this,'${s.id}','LATE')">지각</button>
+          <button class="att-toggle absent${initStatus === 'ABSENT' ? ' active' : ''}"
+            onclick="setAttStatus(this,'${s.id}','ABSENT')">결석</button>
+        </div>
+      `;
+      // 기존 기록 id 저장 (PATCH용)
+      if (existing?.id) row.dataset.existingId = existing.id;
+      listEl.appendChild(row);
+    });
+
+    document.getElementById('saveAttBtn').style.display = 'block';
+
+    // 기존 기록이 있으면 '저장됨' 뱃지 표시
+    if (Object.keys(existingMap).length > 0) {
+      document.getElementById('savedBadge').classList.remove('hidden');
+    }
+  }
+
+  /* ── 토글 버튼 클릭 ── */
+  function setAttStatus(btn, studentId, status) {
+    teacherAttStatus[studentId] = status;
+    const group = btn.closest('.att-toggle-group');
+    group.querySelectorAll('.att-toggle').forEach(b => {
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+  }
+
+  /* ── 출결 저장 (POST / PATCH) ── */
+  async function submitTeacherAtt() {
+    const saveBtn = document.getElementById('saveAttBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '저장 중...';
+
+    const cls = _allClasses.find(c => c.id === currentClassId);
+    if (!cls) {
+      YMS_UI.toast('⚠️ 반 정보를 찾을 수 없습니다.');
+      saveBtn.disabled = false; saveBtn.textContent = '✅ 출결 저장하기';
+      return;
+    }
+
+    // 현재 렌더링된 학생 행 수집
+    const rows = document.querySelectorAll('#teacherStudentList .att-student-row');
+    if (!rows.length) {
+      YMS_UI.toast('⚠️ 저장할 학생이 없습니다.');
+      saveBtn.disabled = false; saveBtn.textContent = '✅ 출결 저장하기';
+      return;
+    }
+
+    let successCount = 0;
+    const errors = [];
+
+    for (const row of rows) {
+      const studentId = row.dataset.studentId;
+      const existingId = row.dataset.existingId || null;
+      const status = teacherAttStatus[studentId] || 'PRESENT';
+
+      // 해당 학생 정보
+      const stu = _allStudents.find(s => s.id === studentId);
+
+      try {
+        if (existingId) {
+          // 기존 기록 있음 → PATCH
+          await _tFetch(`tables/attendance/${existingId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          });
+        } else {
+          // 신규 POST
+          const res = await _tFetch('tables/attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId:   studentId,
+              studentName: stu?.name || '',
+              classId:     cls.id,
+              className:   cls.className,
+              date:        selectedDate,
+              status:      status,
+              teacherId:   user.id,
+              teacherName: user.name || '',
+              memo:        '',
+            }),
+          });
+          if (res.ok) {
+            // 새로 생성된 id를 row에 저장 (다시 저장 시 PATCH 처리)
+            const created = await res.json();
+            if (created?.id) row.dataset.existingId = created.id;
+          }
+        }
+        successCount++;
+      } catch(e) {
+        errors.push(stu?.name || studentId);
+      }
+    }
+
+    saveBtn.disabled = false;
+    saveBtn.textContent = '✅ 출결 저장하기';
+
+    if (errors.length === 0) {
+      YMS_UI.toast(`✅ ${successCount}명 출결이 저장되었습니다!`);
+      document.getElementById('savedBadge').classList.remove('hidden');
+    } else {
+      YMS_UI.toast(`⚠️ 일부 저장 실패: ${errors.join(', ')}`);
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

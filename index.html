@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>YMS Master Track</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1E3278">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YMS">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── 스플래시 전용 인라인 폴백 스타일 ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:         #1E3278;
+      --navy-dark:    #14245A;
+      --navy-lt:      #2A4099;
+      --periwinkle:   #7492D5;
+      --periwinkle-lt:#A8BDE8;
+      --periwinkle-bg:#EEF3FB;
+      --sky-bg:       #F4F7FD;
+      --warm-white:   #FFFFFF;
+      --charcoal:     #1A2340;
+      --gray-mid:     #7A87A8;
+      --radius-sm:    8px;
+      --radius-md:    16px;
+      --radius-lg:    24px;
+      --radius-xl:    32px;
+      --radius-full:  9999px;
+      --shadow-sm:    0 1px 4px rgba(30,50,120,.08);
+      --shadow-md:    0 4px 16px rgba(30,50,120,.12);
+      --font-kr:      'Noto Sans KR', -apple-system, sans-serif;
+      --font-en:      'Nunito', sans-serif;
+    }
+
+    html, body {
+      font-family: var(--font-kr);
+      background: var(--navy-dark);
+      color: var(--charcoal);
+      min-height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── 앱 래퍼 ── */
+    .app-wrapper {
+      max-width: 430px;
+      min-height: 100vh;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── 스플래시 화면 ── */
+    .splash-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(160deg, var(--navy-dark) 0%, var(--navy) 55%, var(--navy-lt) 100%);
+      position: relative;
+      overflow: hidden;
+      padding: 40px 24px;
+      animation: splashFade 0.5s ease;
+    }
+    @keyframes splashFade { from { opacity:0; } to { opacity:1; } }
+
+    /* ── 배경 블롭 ── */
+    .splash-cloud {
+      position: absolute;
+      border-radius: 50%;
+      opacity: .18;
+      pointer-events: none;
+    }
+    .splash-cloud-1 {
+      width: 320px; height: 320px;
+      background: var(--periwinkle);
+      top: -80px; left: -80px;
+    }
+    .splash-cloud-2 {
+      width: 240px; height: 240px;
+      background: var(--warm-white);
+      bottom: -60px; right: -60px;
+    }
+    .splash-cloud-3 {
+      width: 180px; height: 180px;
+      background: var(--periwinkle-lt);
+      top: 40%; right: -40px;
+    }
+
+    /* ── 로고 영역 ── */
+    .splash-logo-wrap {
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .splash-logo-icon {
+      width: 88px; height: 88px;
+      background: var(--warm-white);
+      border-radius: var(--radius-xl);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 32px rgba(14,24,58,.45), 0 2px 8px rgba(14,24,58,.25);
+      overflow: hidden;
+      padding: 4px;
+    }
+    .splash-logo-icon img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 20px;
+      display: block;
+    }
+
+    /* 이미지 로드 실패 시 폴백 텍스트 */
+    .logo-fallback {
+      width: 88px; height: 88px;
+      background: linear-gradient(135deg, var(--navy), var(--periwinkle));
+      border-radius: var(--radius-xl);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-en);
+      font-size: 28px; font-weight: 900;
+      color: #fff;
+      box-shadow: 0 8px 32px rgba(14,24,58,.45);
+      letter-spacing: -1px;
+    }
+
+    .splash-title {
+      font-family: var(--font-en);
+      font-size: 30px; font-weight: 900;
+      color: var(--warm-white);
+      letter-spacing: -1px;
+      text-align: center;
+      text-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+
+    .splash-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,.75);
+      text-align: center;
+      letter-spacing: .3px;
+    }
+
+    .splash-tag {
+      margin-top: 6px;
+      display: inline-block;
+      background: rgba(255,255,255,.15);
+      color: var(--warm-white);
+      font-size: 12px; font-weight: 600;
+      padding: 5px 16px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(255,255,255,.3);
+      backdrop-filter: blur(4px);
+    }
+
+    /* ── 프로그램 리스트 ── */
+    .splash-program-list {
+      display: flex; flex-direction: column; gap: 8px;
+      margin-top: 32px; z-index: 1; width: 100%;
+    }
+
+    .program-item {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(255,255,255,.13);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 14px;
+      padding: 11px 16px;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transform: translateY(16px);
+      animation: itemIn 0.5s ease forwards;
+    }
+    .program-item:nth-child(1) { animation-delay: 0.5s; }
+    .program-item:nth-child(2) { animation-delay: 0.65s; }
+    .program-item:nth-child(3) { animation-delay: 0.8s; }
+    .program-item:nth-child(4) { animation-delay: 0.95s; }
+    @keyframes itemIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .program-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .program-name {
+      font-size: 13px; font-weight: 700;
+      color: rgba(255,255,255,.95);
+      font-family: var(--font-en);
+    }
+    .program-desc {
+      font-size: 11px;
+      color: rgba(255,255,255,.55);
+      margin-top: 1px;
+    }
+    .program-level {
+      margin-left: auto;
+      font-size: 11px; font-weight: 800;
+      color: rgba(255,255,255,.7);
+      font-family: var(--font-en);
+      background: rgba(255,255,255,.12);
+      padding: 2px 9px;
+      border-radius: 40px;
+      white-space: nowrap;
+    }
+
+    /* ── 로더 ── */
+    .splash-loader {
+      margin-top: 40px; z-index: 1;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+
+    .loader-dots { display: flex; gap: 8px; }
+
+    .loader-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.8);
+      animation: dotBounce 1.4s infinite ease-in-out both;
+    }
+    .loader-dot:nth-child(1) { animation-delay: -.32s; }
+    .loader-dot:nth-child(2) { animation-delay: -.16s; }
+    .loader-dot:nth-child(3) { animation-delay: 0s; }
+
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: scale(0); opacity: .3; }
+      40%           { transform: scale(1); opacity: 1; }
+    }
+
+    #loadingText {
+      font-size: 12px;
+      color: rgba(255,255,255,.55);
+      font-family: var(--font-kr);
+    }
+
+    /* ── 학원명 하단 ── */
+    .splash-academy {
+      position: absolute;
+      bottom: 28px; left: 0; right: 0;
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,.35);
+      letter-spacing: .3px;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <div class="splash-screen" id="splashScreen">
+
+    <!-- 배경 블롭 -->
+    <div class="splash-cloud splash-cloud-1"></div>
+    <div class="splash-cloud splash-cloud-2"></div>
+    <div class="splash-cloud splash-cloud-3"></div>
+
+    <!-- 로고 -->
+    <div class="splash-logo-wrap">
+      <div class="splash-logo-icon" id="logoBox">
+        <img src="images/yms-logo.png" alt="YMS"
+          onerror="document.getElementById('logoBox').innerHTML='<div class=\'logo-fallback\'>YMS</div>'">
+      </div>
+      <div class="splash-title">YMS Master Track</div>
+      <div class="splash-sub">학원 운영과 학습 흐름을 한 번에</div>
+      <span class="splash-tag">✨ Smart Academy Management</span>
+    </div>
+
+    <!-- 프로그램 스테이지 -->
+    <div class="splash-program-list">
+      <div class="program-item">
+        <div class="program-dot" style="background:#A8BDE8;"></div>
+        <div>
+          <div class="program-name">Stage 1 · Sound Spark</div>
+          <div class="program-desc">Foundation · Phonics</div>
+        </div>
+        <span class="program-level">F1–F4</span>
+      </div>
+      <div class="program-item">
+        <div class="program-dot" style="background:#7492D5;"></div>
+        <div>
+          <div class="program-name">Stage 2 · Language Ladder</div>
+          <div class="program-desc">Elementary Core · Basic</div>
+        </div>
+        <span class="program-level">C1–C4</span>
+      </div>
+      <div class="program-item">
+        <div class="program-dot" style="background:#2A4099;"></div>
+        <div>
+          <div class="program-name">Stage 3 · Fluent Frame</div>
+          <div class="program-desc">Intermediate</div>
+        </div>
+        <span class="program-level">I1–I4</span>
+      </div>
+      <div class="program-item">
+        <div class="program-dot" style="background:#fff;"></div>
+        <div>
+          <div class="program-name">Stage 4 · Prime Mastery</div>
+          <div class="program-desc">Advanced</div>
+        </div>
+        <span class="program-level">P1–P4</span>
+      </div>
+    </div>
+
+    <!-- 로더 -->
+    <div class="splash-loader">
+      <div class="loader-dots">
+        <div class="loader-dot"></div>
+        <div class="loader-dot"></div>
+        <div class="loader-dot"></div>
+      </div>
+      <small id="loadingText">로딩 중...</small>
+    </div>
+
+    <!-- 하단 학원명 -->
+    <div class="splash-academy">와이엠에스 부송관 영어학원 · 익산</div>
+
+  </div>
+</div>
+
+<script>
+  // ── 퍼블리시 환경 base 경로 픽스 (app.js 로드 전 선행)
+  (function(){
+    const href = window.location.href.split('?')[0].split('#')[0];
+    const base = href.substring(0, href.lastIndexOf('/') + 1);
+    if (!document.querySelector('base')) {
+      const el = document.createElement('base');
+      el.href = base;
+      document.head.insertBefore(el, document.head.firstChild);
+    }
+    window._ymsGo = function(p){ window.location.href = base + p; };
+  })();
+</script>
+<script src="js/app.js"></script>
+<script>
+  // 로딩 메시지 순환
+  const loadingMsgs = ['학습 데이터 불러오는 중...', '출결 현황 확인 중...', '준비 완료! 🎉'];
+  let msgIdx = 0;
+  const txtEl = document.getElementById('loadingText');
+
+  const msgTimer = setInterval(() => {
+    if (msgIdx < loadingMsgs.length - 1) {
+      msgIdx++;
+      if (txtEl) txtEl.textContent = loadingMsgs[msgIdx];
+    }
+  }, 700);
+
+  // 2.2초 후 로그인 상태에 따라 이동
+  setTimeout(() => {
+    clearInterval(msgTimer);
+    try {
+      const user = YMS_Auth.getUser();
+      if (user) {
+        const role = user.role;
+        if (role === 'TEACHER')      _ymsGo('teacher-home.html');
+        else if (role === 'ADMIN')   _ymsGo('admin.html');
+        else if (role === 'STUDENT') _ymsGo('student-home.html');
+        else                         _ymsGo('parent-home.html');
+      } else {
+        _ymsGo('login.html');
+      }
+    } catch(e) {
+      _ymsGo('login.html');
+    }
+  }, 2200);
+</script>
+</body>
+</html>
