@@ -22,7 +22,13 @@
   const setSession=s=>localStorage.setItem(STORAGE_KEY,JSON.stringify(s));
   const clearSession=()=>localStorage.removeItem(STORAGE_KEY);
   const norm=v=>String(v||'').trim().toLowerCase();
+  const upper=v=>String(v||'').trim().toUpperCase();
   const loginEmail=id=>`${norm(id).replace(/[^a-z0-9._-]/g,'')}@yms.local`;
+  const normalizeRoles=user=>{
+    const primary=upper(user?.role);
+    const extras=Array.isArray(user?.roles)?user.roles.map(upper):[];
+    return [...new Set([primary,...extras].filter(Boolean))];
+  };
 
   function decodeVal(v){
     if(!v||typeof v!=='object') return null;
@@ -93,15 +99,29 @@
       const id=norm(loginId),a=await authSignIn(id,password),p=await profile(a.localId,a.idToken);
       if(!p){const e=new Error('PROFILE_NOT_FOUND');e.code='PROFILE_NOT_FOUND';throw e;}
       if(norm(p.loginId||id)!==id){const e=new Error('LOGIN_ID_MISMATCH');e.code='LOGIN_ID_MISMATCH';throw e;}
-      const user={...p,id:a.localId,uid:a.localId,loginId:id,email:loginEmail(id),role:String(p.role||'').toUpperCase()};
+      const primaryRole=upper(p.role);
+      const user={...p,id:a.localId,uid:a.localId,loginId:id,email:loginEmail(id),role:primaryRole,roles:normalizeRoles(p)};
       setSession({token:a.idToken,refreshToken:a.refreshToken,expiresAt:Date.now()+Number(a.expiresIn||3600)*1000,user});
       return {token:a.idToken,user};
     },
-    save(token,user){const s=getSession()||{};setSession({...s,token:token||s.token,user:user||s.user});},
+    save(token,user){
+      const s=getSession()||{};
+      const nextUser=user?{...user,role:upper(user.role),roles:normalizeRoles(user)}:s.user;
+      setSession({...s,token:token||s.token,user:nextUser});
+    },
     getUser(){return getSession()?.user||null;},
     getToken(){return getSession()?.token||null;},
+    hasRole(role,user){
+      const u=user||getSession()?.user;
+      return !!u&&normalizeRoles(u).includes(upper(role));
+    },
     isLoggedIn(){return !!getSession()?.user;},
     logout(){clearSession();location.href=(window._YMS_BASE||'./')+'login.html';}
+  };
+
+  window.YMS_Roles={
+    list(user){return normalizeRoles(user||window.YMS_Auth.getUser());},
+    has(user,role){return !!user&&normalizeRoles(user).includes(upper(role));}
   };
 
   window.ymsPageInit=function(required=true){const u=window.YMS_Auth.getUser();if(!u&&required){location.href=(window._YMS_BASE||'./')+'login.html';return null;}return u;};
