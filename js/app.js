@@ -129,3 +129,67 @@
   };
   window.YMS_DEMO={attendance:{s001:[]},students:[],payments:[],classes:[],homework:[],notices:[]};
 })();
+
+/* YMS Master Track — PWA bootstrap */
+(function(){
+  'use strict';
+
+  const base = window._YMS_BASE || (() => {
+    const clean = location.href.split('?')[0].split('#')[0];
+    return clean.substring(0, clean.lastIndexOf('/') + 1);
+  })();
+
+  function ensureLink(rel, href, extra={}) {
+    if (document.querySelector(`link[rel="${rel}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = rel;
+    link.href = href;
+    Object.entries(extra).forEach(([k,v]) => link.setAttribute(k,v));
+    document.head.appendChild(link);
+  }
+
+  function ensureMeta(name, content) {
+    if (document.querySelector(`meta[name="${name}"]`)) return;
+    const meta = document.createElement('meta');
+    meta.name = name;
+    meta.content = content;
+    document.head.appendChild(meta);
+  }
+
+  ensureLink('manifest', base + 'manifest.json');
+  ensureLink('apple-touch-icon', base + 'images/icon-180.png', { sizes: '180x180' });
+  ensureMeta('mobile-web-app-capable', 'yes');
+  ensureMeta('apple-mobile-web-app-capable', 'yes');
+  ensureMeta('apple-mobile-web-app-status-bar-style', 'default');
+  ensureMeta('apple-mobile-web-app-title', 'YMS');
+
+  let deferredPrompt = null;
+  window.YMS_PWA = {
+    get canInstall(){ return !!deferredPrompt; },
+    async install(){
+      if (!deferredPrompt) return false;
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice.catch(() => null);
+      deferredPrompt = null;
+      return choice?.outcome === 'accepted';
+    }
+  };
+
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredPrompt = event;
+    window.dispatchEvent(new CustomEvent('yms-pwa-install-ready'));
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    window.dispatchEvent(new CustomEvent('yms-pwa-installed'));
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(base + 'service-worker.js', { scope: base })
+        .catch(err => console.warn('[YMS PWA] service worker registration failed:', err));
+    });
+  }
+})();
