@@ -1,23 +1,18 @@
-/* ============================================================
-   YMS Master Track — Service Worker v2.0.0
-   tables/* API는 절대 캐싱 안 함 — 항상 네트워크 직통
-============================================================ */
-
-const CACHE_NAME  = 'yms-v2.0.0';
-const OFFLINE_URL = 'offline.html';
-
-const PRECACHE_URLS = [
-  './',
-  './index.html',
+/* YMS Master Track — Service Worker v3.0.0 */
+const CACHE_NAME = 'yms-v3.0.0';
+const APP_SHELL = [
   './login.html',
   './css/style.css',
   './js/app.js',
-  './offline.html',
+  './manifest.json',
+  './images/icon-192.png',
+  './images/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS)).catch(() => {})
+    caches.open(CACHE_NAME)
+      .then(cache => Promise.all(APP_SHELL.map(url => cache.add(url).catch(() => null))))
   );
   self.skipWaiting();
 });
@@ -25,57 +20,54 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-  const url = event.request.url;
+  const request = event.request;
+  const url = new URL(request.url);
 
-  // ★ tables/ 관련 요청 → 무조건 네트워크 직통, 캐싱 절대 안 함
-  if (url.includes('tables/')) {
+  // Firebase/Auth/API traffic must always go directly to the network.
+  if (url.origin !== self.location.origin) return;
+  if (request.method !== 'GET') return;
+
+  // Pages: network first so app updates appear quickly.
+  if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
-      fetch(event.request, { cache: 'no-store' }).catch(() =>
-        new Response(JSON.stringify({ data: [], total: 0 }), {
-          headers: { 'Content-Type': 'application/json' }
+      fetch(request)
+        .then(response => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
         })
-      )
+        .catch(async () =>
+          (await caches.match(request)) ||
+          (await caches.match('./login.html')) ||
+          new Response('오프라인 상태입니다.', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+          })
+        )
     );
     return;
   }
 
-  // ★ GET 이외 요청 → 네트워크 직통
-  if (event.request.method !== 'GET') {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // http 아닌 요청 무시
-  if (!url.startsWith('http')) return;
-
-  // HTML → Network First
-  if (event.request.headers.get('accept')?.includes('text/html')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(res => {
-          caches.open(CACHE_NAME).then(c => c.put(event.request, res.clone()));
-          return res;
-        })
-        .catch(() => caches.match(event.request).then(c => c || caches.match(OFFLINE_URL)))
-    );
-    return;
-  }
-
-  // 정적 자산 → Cache First
+  // Local static assets: cache first, then network.
   event.respondWith(
-    caches.match(event.request).then(cached => {
+    caches.match(request).then(cached => {
       if (cached) return cached;
-      return fetch(event.request).then(res => {
-        caches.open(CACHE_NAME).then(c => c.put(event.request, res.clone()));
-        return res;
-      }).catch(() => caches.match(OFFLINE_URL));
+      return fetch(request).then(response => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        }
+        return response;
+      });
     })
   );
 });
