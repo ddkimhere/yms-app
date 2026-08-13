@@ -1,8 +1,9 @@
-/* YMS Master Track — Service Worker v3.6.0 */
-const CACHE_NAME = 'yms-v3.6.0';
+/* YMS Master Track — Service Worker v3.7.0 */
+const CACHE_NAME = 'yms-v3.7.0';
 const APP_SHELL = [
   './login.html',
   './student-home.html',
+  './parent-home.html',
   './css/style.css',
   './js/app.js',
   './js/admin-multirole-fix.js',
@@ -10,6 +11,7 @@ const APP_SHELL = [
   './js/student-dashboard.js',
   './js/student-management-cleanup.js',
   './js/admin-menu-cleanup.js',
+  './js/parent-home-fix.js',
   './manifest.json',
   './images/icon-source.svg',
   './images/icon-192.png',
@@ -33,28 +35,38 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-async function withAdminPatches(request, response) {
+async function patchHtml(request, response) {
   try {
     const url = new URL(request.url);
-    if (!url.pathname.endsWith('/admin.html') || !response.ok) return response;
+    if (!response.ok) return response;
     const type = response.headers.get('content-type') || '';
     if (!type.includes('text/html')) return response;
-    const html = await response.text();
-    const scripts = [
-      'js/admin-multirole-fix.js',
-      'js/admin-account-fix.js',
-      'js/student-dashboard.js',
-      'js/student-management-cleanup.js',
-      'js/admin-menu-cleanup.js'
-    ];
-    let patched = html;
-    const missing = scripts.filter(src => !patched.includes(src));
-    if (missing.length) {
-      patched = patched.replace('</body>', missing.map(src => `<script src="${src}"></script>`).join('') + '</body>');
+    let html = await response.text();
+
+    if (url.pathname.endsWith('/admin.html')) {
+      const scripts = [
+        'js/admin-multirole-fix.js',
+        'js/admin-account-fix.js',
+        'js/student-dashboard.js',
+        'js/student-management-cleanup.js',
+        'js/admin-menu-cleanup.js'
+      ];
+      const missing = scripts.filter(src => !html.includes(src));
+      if (missing.length) {
+        html = html.replace('</body>', missing.map(src => `<script src="${src}"></script>`).join('') + '</body>');
+      }
     }
+
+    if (url.pathname.endsWith('/parent-home.html') && !html.includes('js/parent-home-fix.js')) {
+      const appTag = '<script src="js/app.js"></script>';
+      html = html.includes(appTag)
+        ? html.replace(appTag, appTag + '<script src="js/parent-home-fix.js"></script>')
+        : html.replace('</body>', '<script src="js/parent-home-fix.js"></script></body>');
+    }
+
     const headers = new Headers(response.headers);
     headers.delete('content-length');
-    return new Response(patched, { status: response.status, statusText: response.statusText, headers });
+    return new Response(html, { status: response.status, statusText: response.statusText, headers });
   } catch {
     return response;
   }
@@ -75,11 +87,11 @@ self.addEventListener('fetch', event => {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
-          return withAdminPatches(request, response);
+          return patchHtml(request, response);
         })
         .catch(async () => {
           const cached = (await caches.match(request)) || (await caches.match('./login.html'));
-          if (cached) return withAdminPatches(request, cached);
+          if (cached) return patchHtml(request, cached);
           return new Response('오프라인 상태입니다.', {
             status: 503,
             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
