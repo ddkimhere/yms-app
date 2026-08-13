@@ -32,9 +32,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    body {
-      min-height: 100vh;
-    }
+    body { min-height: 100vh; }
 
     .page {
       min-height: 100vh;
@@ -133,9 +131,7 @@
       line-height: 1.65;
     }
 
-    .field {
-      margin-bottom: 18px;
-    }
+    .field { margin-bottom: 18px; }
 
     .field label {
       display: block;
@@ -145,9 +141,7 @@
       font-weight: 750;
     }
 
-    .input-wrap {
-      position: relative;
-    }
+    .input-wrap { position: relative; }
 
     input {
       width: 100%;
@@ -163,23 +157,15 @@
       transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
     }
 
-    input::placeholder {
-      color: #A5AEC3;
-    }
-
-    input:hover {
-      border-color: #C5D0E7;
-    }
-
+    input::placeholder { color: #A5AEC3; }
+    input:hover { border-color: #C5D0E7; }
     input:focus {
       border-color: var(--periwinkle);
       box-shadow: 0 0 0 4px rgba(116,146,213,.13);
       background: #fff;
     }
 
-    #password {
-      padding-right: 52px;
-    }
+    #password { padding-right: 52px; }
 
     .pw-toggle {
       position: absolute;
@@ -199,9 +185,7 @@
       transition: background .15s ease;
     }
 
-    .pw-toggle:hover {
-      background: #F2F5FB;
-    }
+    .pw-toggle:hover { background: #F2F5FB; }
 
     .error {
       display: none;
@@ -238,16 +222,8 @@
       transform: translateY(-1px);
       box-shadow: 0 13px 26px rgba(42,64,173,.27);
     }
-
-    .login-btn:active {
-      transform: translateY(0);
-    }
-
-    .login-btn:disabled {
-      cursor: default;
-      opacity: .65;
-      transform: none;
-    }
+    .login-btn:active { transform: translateY(0); }
+    .login-btn:disabled { cursor: default; opacity: .65; transform: none; }
 
     .spinner {
       width: 20px;
@@ -258,7 +234,6 @@
       border-radius: 50%;
       animation: spin .7s linear infinite;
     }
-
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .account-note {
@@ -279,39 +254,16 @@
     }
 
     @media (min-width: 760px) {
-      .page {
-        padding-bottom: 40px;
-      }
-
-      .hero {
-        min-height: 330px;
-        padding-top: 86px;
-      }
-
-      .content {
-        width: min(100% - 40px, 440px);
-      }
+      .page { padding-bottom: 40px; }
+      .hero { min-height: 330px; padding-top: 86px; }
+      .content { width: min(100% - 40px, 440px); }
     }
 
     @media (max-width: 420px) {
-      .hero {
-        min-height: 276px;
-        padding: 62px 20px 86px;
-      }
-
-      .hero p {
-        font-size: 13px;
-      }
-
-      .content {
-        width: calc(100% - 28px);
-        margin-top: -58px;
-      }
-
-      .login-card {
-        padding: 26px 20px 22px;
-        border-radius: 22px;
-      }
+      .hero { min-height: 276px; padding: 62px 20px 86px; }
+      .hero p { font-size: 13px; }
+      .content { width: calc(100% - 28px); margin-top: -58px; }
+      .login-card { padding: 26px 20px 22px; border-radius: 22px; }
     }
   </style>
 </head>
@@ -332,43 +284,23 @@
         <form id="loginForm" novalidate>
           <div class="field">
             <label for="loginId">아이디</label>
-            <input
-              id="loginId"
-              name="loginId"
-              type="text"
-              autocomplete="username"
-              autocapitalize="none"
-              spellcheck="false"
-              placeholder="아이디를 입력하세요"
-              required
-            >
+            <input id="loginId" name="loginId" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="아이디를 입력하세요" required>
           </div>
 
           <div class="field">
             <label for="password">비밀번호</label>
             <div class="input-wrap">
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                placeholder="비밀번호를 입력하세요"
-                required
-              >
+              <input id="password" name="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요" required>
               <button class="pw-toggle" id="pwToggle" type="button" aria-label="비밀번호 보기">👁</button>
             </div>
           </div>
 
           <div class="error" id="loginError" role="alert"></div>
-
-          <button class="login-btn" id="loginBtn" type="submit">
-            <span id="loginBtnText">로그인</span>
-          </button>
+          <button class="login-btn" id="loginBtn" type="submit"><span id="loginBtnText">로그인</span></button>
         </form>
 
         <div class="account-note">계정 생성 및 비밀번호 변경은 관리자에게 문의해주세요.</div>
       </section>
-
       <div class="footer">YMS Master Track</div>
     </main>
   </div>
@@ -378,19 +310,16 @@
       const cleanUrl = window.location.href.split('?')[0].split('#')[0];
       const base = cleanUrl.substring(0, cleanUrl.lastIndexOf('/') + 1);
       window._YMS_BASE = base;
-      window._ymsGo = function (path) {
-        window.location.href = base + path;
-      };
+      window._ymsGo = function (path) { window.location.href = base + path; };
     })();
   </script>
-
   <script src="js/app.js"></script>
-
   <script>
     const ROLE_HOME = Object.freeze({
       ADMIN: 'admin.html',
       TEACHER: 'teacher-home.html',
-      STUDENT: 'student-home.html'
+      STUDENT: 'student-home.html',
+      PARENT: 'parent-home.html'
     });
 
     const form = document.getElementById('loginForm');
@@ -401,16 +330,8 @@
     const loginBtnText = document.getElementById('loginBtnText');
     const pwToggle = document.getElementById('pwToggle');
 
-    function showError(message) {
-      errorEl.textContent = message;
-      errorEl.classList.add('show');
-    }
-
-    function clearError() {
-      errorEl.textContent = '';
-      errorEl.classList.remove('show');
-    }
-
+    function showError(message) { errorEl.textContent = message; errorEl.classList.add('show'); }
+    function clearError() { errorEl.textContent = ''; errorEl.classList.remove('show'); }
     function setLoading(loading) {
       loginBtn.disabled = loading;
       loginBtnText.innerHTML = loading ? '<div class="spinner" aria-label="로그인 중"></div>' : '로그인';
@@ -426,42 +347,25 @@
     form.addEventListener('submit', async function (event) {
       event.preventDefault();
       clearError();
-
       const loginId = loginIdEl.value.trim();
       const password = passwordEl.value;
 
-      if (!loginId || !password) {
-        showError('아이디와 비밀번호를 모두 입력해주세요.');
-        return;
-      }
-
+      if (!loginId || !password) { showError('아이디와 비밀번호를 모두 입력해주세요.'); return; }
       if (!window.YMS_Auth || typeof window.YMS_Auth.loginWithTable !== 'function') {
         showError('계정 인증 연결이 준비되지 않았습니다. 관리자 설정을 확인해주세요.');
         return;
       }
 
       setLoading(true);
-
       try {
         const userData = await window.YMS_Auth.loginWithTable(loginId, password);
-
-        if (!userData || !userData.user) {
-          showError('아이디 또는 비밀번호를 확인해주세요.');
-          return;
-        }
+        if (!userData || !userData.user) { showError('아이디 또는 비밀번호를 확인해주세요.'); return; }
 
         const role = String(userData.user.role || '').toUpperCase();
         const target = ROLE_HOME[role];
+        if (!target) { showError('이 계정에는 현재 YMS 앱 사용 권한이 없습니다.'); return; }
 
-        if (!target) {
-          showError('이 계정에는 현재 YMS 앱 사용 권한이 없습니다.');
-          return;
-        }
-
-        if (typeof window.YMS_Auth.save !== 'function') {
-          throw new Error('AUTH_SAVE_NOT_AVAILABLE');
-        }
-
+        if (typeof window.YMS_Auth.save !== 'function') throw new Error('AUTH_SAVE_NOT_AVAILABLE');
         window.YMS_Auth.save(userData.token, userData.user);
         window._ymsGo(target);
       } catch (error) {
