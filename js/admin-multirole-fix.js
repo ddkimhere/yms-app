@@ -1,4 +1,4 @@
-/* YMS admin multi-role compatibility */
+/* YMS admin compatibility patches */
 (function(){
   'use strict';
   const hasRole=(u,role)=>{
@@ -47,6 +47,56 @@
         };
       }
 
+      // admin.html의 기존 반 저장 함수는 GitHub Pages의 상대 URL
+      // fetch('tables/classes')를 호출하고 있어 실패한다.
+      // Firebase 호환 레이어인 _tFetch()를 사용하도록 교체한다.
+      if(typeof submitClassForm==='function') {
+        window.submitClassForm=async function(e){
+          e.preventDefault();
+          const editId=document.getElementById('classEditId').value;
+          const isEdit=!!editId;
+          const className=document.getElementById('clsName').value.trim();
+          if(!className){YMS_UI.toast('❌ 반 이름을 입력해주세요');return;}
+
+          const payload={
+            className,
+            subject:document.getElementById('clsSubject').value.trim(),
+            teacherName:document.getElementById('clsTeacher').value.trim(),
+            teacherId:document.getElementById('clsTeacherId').value.trim(),
+            startTime:document.getElementById('clsStart').value,
+            endTime:document.getElementById('clsEnd').value,
+            tuitionFee:Number(document.getElementById('clsFee').value)||0,
+            isActive:true,
+          };
+
+          const btn=document.querySelector('#classMgmtForm button[type="submit"]');
+          if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+          try{
+            const url=isEdit?`tables/classes/${editId}`:'tables/classes';
+            const method=isEdit?'PATCH':'POST';
+            const res=await _tFetch(url,{
+              method,
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify(payload),
+            });
+            if(!res.ok){
+              const detail=await res.text().catch(()=>`HTTP ${res.status}`);
+              throw new Error(`HTTP ${res.status}${detail?` · ${detail}`:''}`);
+            }
+            YMS_UI.toast(isEdit?'✅ 반 정보가 수정되었습니다':'✅ 반이 추가되었습니다');
+            document.getElementById('classMgmtPanel').classList.add('hidden');
+            document.getElementById('classMgmtForm').reset();
+            await loadClassesMgmt();
+            if(typeof loadAllData==='function') await loadAllData();
+          }catch(err){
+            console.error('[YMS] 반 저장 실패:',err);
+            YMS_UI.toast('❌ 저장 실패: '+(err?.message||'알 수 없는 오류'));
+          }finally{
+            if(btn){btn.disabled=false;btn.textContent='저장';}
+          }
+        };
+      }
+
       const refreshTeacherCount=()=>{
         try{
           const el=document.getElementById('dashTeachers');
@@ -56,7 +106,7 @@
       setTimeout(refreshTeacherCount,500);
       setTimeout(refreshTeacherCount,1500);
     } catch(err) {
-      console.warn('[YMS] multi-role admin patch failed',err);
+      console.warn('[YMS] admin compatibility patch failed',err);
     }
   });
 })();
