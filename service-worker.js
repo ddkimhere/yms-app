@@ -1,5 +1,5 @@
-/* YMS Master Track — Service Worker v3.10.0 */
-const CACHE_NAME = 'yms-v3.10.0';
+/* YMS Master Track — Service Worker v3.11.0 */
+const CACHE_NAME = 'yms-v3.11.0';
 const APP_SHELL = [
   './login.html',
   './student-home.html',
