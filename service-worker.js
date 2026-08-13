@@ -1,10 +1,12 @@
-/* YMS Master Track — Service Worker v3.2.0 */
-const CACHE_NAME = 'yms-v3.2.0';
+/* YMS Master Track — Service Worker v3.3.0 */
+const CACHE_NAME = 'yms-v3.3.0';
 const APP_SHELL = [
   './login.html',
   './css/style.css',
   './js/app.js',
   './js/admin-multirole-fix.js',
+  './js/admin-account-fix.js',
+  './js/student-dashboard.js',
   './manifest.json',
   './images/icon-source.svg',
   './images/icon-192.png',
@@ -28,16 +30,23 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-async function withAdminMultiRolePatch(request, response) {
+async function withAdminPatches(request, response) {
   try {
     const url = new URL(request.url);
     if (!url.pathname.endsWith('/admin.html') || !response.ok) return response;
     const type = response.headers.get('content-type') || '';
     if (!type.includes('text/html')) return response;
     const html = await response.text();
-    const patched = html.includes('admin-multirole-fix.js')
-      ? html
-      : html.replace('</body>', '<script src="js/admin-multirole-fix.js"></script></body>');
+    const scripts = [
+      'js/admin-multirole-fix.js',
+      'js/admin-account-fix.js',
+      'js/student-dashboard.js'
+    ];
+    let patched = html;
+    const missing = scripts.filter(src => !patched.includes(src));
+    if (missing.length) {
+      patched = patched.replace('</body>', missing.map(src => `<script src="${src}"></script>`).join('') + '</body>');
+    }
     const headers = new Headers(response.headers);
     headers.delete('content-length');
     return new Response(patched, { status: response.status, statusText: response.statusText, headers });
@@ -61,11 +70,11 @@ self.addEventListener('fetch', event => {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
-          return withAdminMultiRolePatch(request, response);
+          return withAdminPatches(request, response);
         })
         .catch(async () => {
           const cached = (await caches.match(request)) || (await caches.match('./login.html'));
-          if (cached) return withAdminMultiRolePatch(request, cached);
+          if (cached) return withAdminPatches(request, cached);
           return new Response('오프라인 상태입니다.', {
             status: 503,
             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
