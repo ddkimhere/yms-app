@@ -29,19 +29,22 @@ service cloud.firestore {
       return signedIn() && myRole() == 'PARENT';
     }
 
+    function parentHasChild(studentId) {
+      return isParent()
+        && myProfile().data.childIds is string
+        && (',' + myProfile().data.childIds + ',').matches('.*,' + studentId + ',.*');
+    }
+
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create, update, delete: if isAdmin();
     }
 
-    // 반 정보: 선생님/관리자 화면에서 담당 반을 불러올 때 사용
     match /classes/{classId} {
       allow read: if isAdmin() || isTeacher();
       allow create, update, delete: if isAdmin();
     }
 
-    // 학생 정보: 관리자/선생님은 담당 업무를 위해 조회 가능.
-    // 학생은 본인 레코드, 학부모는 연결된 자녀 레코드만 단건 조회 가능.
     match /students/{studentId} {
       allow get: if isAdmin()
                  || isTeacher()
@@ -49,13 +52,12 @@ service cloud.firestore {
                       resource.data.userId == request.auth.uid
                       || myProfile().data.studentId == studentId
                     ))
-                 || (isParent() && resource.data.parentId == request.auth.uid);
+                 || (isParent() && resource.data.parentId == request.auth.uid)
+                 || parentHasChild(studentId);
       allow list: if isAdmin() || isTeacher();
       allow create, update, delete: if isAdmin();
     }
 
-    // 숙제는 로그인한 학생/학부모/선생님/관리자가 읽을 수 있음.
-    // 등록은 선생님/관리자만, 수정·삭제는 관리자 또는 등록한 선생님만 가능.
     match /homework/{homeworkId} {
       allow read: if signedIn();
       allow create: if isAdmin()
@@ -64,7 +66,6 @@ service cloud.firestore {
                             || (isTeacher() && resource.data.teacherId == request.auth.uid);
     }
 
-    // 그 밖의 데이터는 현재와 동일하게 관리자만 접근
     match /{document=**} {
       allow read, write: if isAdmin();
     }
