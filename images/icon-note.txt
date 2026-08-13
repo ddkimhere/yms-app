@@ -1,0 +1,1 @@
+YMS icon updated to deep blue background with white YMS lettering. Binary icon files are committed separately.
