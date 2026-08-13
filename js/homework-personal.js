@@ -74,4 +74,7 @@
   };
 
   installFields();
+  if(!document.querySelector('script[src$="js/homework-filter.js"]')){
+    const s=document.createElement('script');s.src='js/homework-filter.js';document.body.appendChild(s);
+  }
 })();
