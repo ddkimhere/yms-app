@@ -9,8 +9,24 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    function myRole() {
+      return signedIn() ? myProfile().data.role : null;
+    }
+
     function isAdmin() {
-      return signedIn() && myProfile().data.role == 'ADMIN';
+      return signedIn() && myRole() == 'ADMIN';
+    }
+
+    function isTeacher() {
+      return signedIn() && myRole() == 'TEACHER';
+    }
+
+    function isStudent() {
+      return signedIn() && myRole() == 'STUDENT';
+    }
+
+    function isParent() {
+      return signedIn() && myRole() == 'PARENT';
     }
 
     match /users/{userId} {
@@ -18,6 +34,37 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // 반 정보: 선생님/관리자 화면에서 담당 반을 불러올 때 사용
+    match /classes/{classId} {
+      allow read: if isAdmin() || isTeacher();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 학생 정보: 관리자/선생님은 담당 업무를 위해 조회 가능.
+    // 학생은 본인 레코드, 학부모는 연결된 자녀 레코드만 단건 조회 가능.
+    match /students/{studentId} {
+      allow get: if isAdmin()
+                 || isTeacher()
+                 || (isStudent() && (
+                      resource.data.userId == request.auth.uid
+                      || myProfile().data.studentId == studentId
+                    ))
+                 || (isParent() && resource.data.parentId == request.auth.uid);
+      allow list: if isAdmin() || isTeacher();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 숙제는 로그인한 학생/학부모/선생님/관리자가 읽을 수 있음.
+    // 등록은 선생님/관리자만, 수정·삭제는 관리자 또는 등록한 선생님만 가능.
+    match /homework/{homeworkId} {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+                    || (isTeacher() && request.resource.data.teacherId == request.auth.uid);
+      allow update, delete: if isAdmin()
+                            || (isTeacher() && resource.data.teacherId == request.auth.uid);
+    }
+
+    // 그 밖의 데이터는 현재와 동일하게 관리자만 접근
     match /{document=**} {
       allow read, write: if isAdmin();
     }
