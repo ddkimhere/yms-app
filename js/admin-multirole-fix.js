@@ -1,112 +1,45 @@
-/* YMS admin compatibility patches */
+/* YMS admin/teacher compatibility patches */
 (function(){
-  'use strict';
-  const hasRole=(u,role)=>{
-    if(window.YMS_Roles?.has) return window.YMS_Roles.has(u,role);
-    const primary=String(u?.role||'').toUpperCase();
-    const extras=Array.isArray(u?.roles)?u.roles.map(r=>String(r||'').toUpperCase()):[];
-    return [primary,...extras].includes(String(role||'').toUpperCase());
-  };
+'use strict';
+const has=(u,r)=>window.YMS_Roles?.has?YMS_Roles.has(u,r):[u?.role,...(Array.isArray(u?.roles)?u.roles:[])].map(x=>String(x||'').toUpperCase()).includes(r);
+const norm=v=>String(v||'').trim().toLowerCase();
 
-  window.addEventListener('load',()=>{
-    if(!location.pathname.endsWith('/admin.html')) return;
+async function teacherScope(){
+  if(!location.pathname.endsWith('/teacher-home.html'))return;
+  const u=YMS_Auth?.getUser?.();if(!u||!has(u,'TEACHER'))return;
+  try{
+    const [a,b]=await Promise.all([_tFetch('tables/classes?limit=200'),_tFetch('tables/students?limit=500')]);
+    const cs=a.ok?(await a.json()).data||[]:[],ss=b.ok?(await b.json()).data||[]:[];
+    const assigned=Array.isArray(u.teacherClasses)?u.teacherClasses:String(u.teacherClasses||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const uid=String(u.id||u.uid||''),un=norm(u.name);
+    _myClasses=cs.filter(c=>(uid&&String(c.teacherId||'')===uid)||(un&&norm(c.teacherName)===un)||assigned.includes(String(c.id||''))||assigned.includes(String(c.className||'')));
+    const ids=new Set(_myClasses.map(c=>String(c.id||'')).filter(Boolean)),names=new Set(_myClasses.map(c=>String(c.className||'')).filter(Boolean));
+    _myStudents=ss.filter(s=>ids.has(String(s.classId||''))||names.has(String(s.className||'')));
+    const g=document.getElementById('greetName'),sub=document.getElementById('greetSub');
+    if(g)g.textContent=(u.name||'선생님')+' 선생님, 안녕하세요 👋';
+    if(sub)sub.textContent='내 담당 수업과 학생 현황만 보여드려요.';
+    if(typeof renderTeacherHome==='function')renderTeacherHome();
+    document.querySelectorAll('a[href="homework.html"]').forEach(a=>a.href='homework.html?mode=teacher');
+  }catch(e){console.warn('[YMS] teacher scope failed',e);}
+}
 
-    try {
-      if(typeof renderTeacherTable==='function') {
-        window.renderTeacherTable=function(){
-          const tbody=document.getElementById('teacherTableBody');
-          if(!tbody) return;
-          const teachers=_allUsers.filter(u=>hasRole(u,'TEACHER'));
-          if(!teachers.length){
-            tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray-mid);">등록된 선생님이 없습니다</td></tr>`;
-            return;
-          }
-          tbody.innerHTML=teachers.map(t=>{
-            const myClasses=_allClasses.filter(c=>c.teacherName===t.name||c.teacherId===t.id);
-            const clsLabel=myClasses.length?myClasses.map(c=>c.className).join(', '):(Array.isArray(t.teacherClasses)?t.teacherClasses.join(', '):(t.teacherClasses||'-'));
-            const dual=hasRole(t,'ADMIN')&&hasRole(t,'TEACHER')?'<span class="chip chip-blue" style="font-size:10px;margin-left:6px;">관리자 겸임</span>':'';
-            return `<tr>
-              <td><strong>${t.name||'-'}</strong>${dual}</td>
-              <td><code style="font-size:11px;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${t.loginId||'-'}</code></td>
-              <td style="font-size:12px;">${t.phone||'-'}</td>
-              <td style="font-size:12px;">${clsLabel}</td>
-              <td><span class="chip chip-green" style="font-size:11px;">활성</span></td>
-            </tr>`;
-          }).join('');
-        };
-      }
-
-      if(typeof populateTeacherDropdown==='function') {
-        window.populateTeacherDropdown=function(){
-          const sel=document.getElementById('clsTeacherSelect');
-          if(!sel) return;
-          const teachers=_allUsers.filter(u=>hasRole(u,'TEACHER'));
-          sel.innerHTML='<option value="">— 선생님 선택 —</option>'+teachers.map(t=>
-            `<option value="${t.name||''}" data-id="${t.id||''}">${t.name||'-'}${t.phone?' ('+t.phone+')':''}</option>`
-          ).join('');
-        };
-      }
-
-      // admin.html의 기존 반 저장 함수는 GitHub Pages의 상대 URL
-      // fetch('tables/classes')를 호출하고 있어 실패한다.
-      // Firebase 호환 레이어인 _tFetch()를 사용하도록 교체한다.
-      if(typeof submitClassForm==='function') {
-        window.submitClassForm=async function(e){
-          e.preventDefault();
-          const editId=document.getElementById('classEditId').value;
-          const isEdit=!!editId;
-          const className=document.getElementById('clsName').value.trim();
-          if(!className){YMS_UI.toast('❌ 반 이름을 입력해주세요');return;}
-
-          const payload={
-            className,
-            subject:document.getElementById('clsSubject').value.trim(),
-            teacherName:document.getElementById('clsTeacher').value.trim(),
-            teacherId:document.getElementById('clsTeacherId').value.trim(),
-            startTime:document.getElementById('clsStart').value,
-            endTime:document.getElementById('clsEnd').value,
-            tuitionFee:Number(document.getElementById('clsFee').value)||0,
-            isActive:true,
-          };
-
-          const btn=document.querySelector('#classMgmtForm button[type="submit"]');
-          if(btn){btn.disabled=true;btn.textContent='저장 중...';}
-          try{
-            const url=isEdit?`tables/classes/${editId}`:'tables/classes';
-            const method=isEdit?'PATCH':'POST';
-            const res=await _tFetch(url,{
-              method,
-              headers:{'Content-Type':'application/json'},
-              body:JSON.stringify(payload),
-            });
-            if(!res.ok){
-              const detail=await res.text().catch(()=>`HTTP ${res.status}`);
-              throw new Error(`HTTP ${res.status}${detail?` · ${detail}`:''}`);
-            }
-            YMS_UI.toast(isEdit?'✅ 반 정보가 수정되었습니다':'✅ 반이 추가되었습니다');
-            document.getElementById('classMgmtPanel').classList.add('hidden');
-            document.getElementById('classMgmtForm').reset();
-            await loadClassesMgmt();
-            if(typeof loadAllData==='function') await loadAllData();
-          }catch(err){
-            console.error('[YMS] 반 저장 실패:',err);
-            YMS_UI.toast('❌ 저장 실패: '+(err?.message||'알 수 없는 오류'));
-          }finally{
-            if(btn){btn.disabled=false;btn.textContent='저장';}
-          }
-        };
-      }
-
-      const refreshTeacherCount=()=>{
-        try{
-          const el=document.getElementById('dashTeachers');
-          if(el&&typeof _allUsers!=='undefined') el.textContent=_allUsers.filter(u=>hasRole(u,'TEACHER')).length;
-        }catch{}
-      };
-      setTimeout(refreshTeacherCount,500);
-      setTimeout(refreshTeacherCount,1500);
-    } catch(err) {
-      console.warn('[YMS] admin compatibility patch failed',err);
-    }
-  });
+window.addEventListener('load',()=>{
+  if(location.pathname.endsWith('/teacher-home.html')){teacherScope();setTimeout(teacherScope,700);return;}
+  if(!location.pathname.endsWith('/admin.html'))return;
+  try{
+    if(typeof renderTeacherTable==='function')window.renderTeacherTable=function(){
+      const tb=document.getElementById('teacherTableBody');if(!tb)return;const ts=_allUsers.filter(u=>has(u,'TEACHER'));
+      if(!ts.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray-mid);">등록된 선생님이 없습니다</td></tr>';return;}
+      tb.innerHTML=ts.map(t=>{const cs=_allClasses.filter(c=>c.teacherName===t.name||c.teacherId===t.id),cl=cs.length?cs.map(c=>c.className).join(', '):(Array.isArray(t.teacherClasses)?t.teacherClasses.join(', '):(t.teacherClasses||'-')),dual=has(t,'ADMIN')&&has(t,'TEACHER')?'<span class="chip chip-blue" style="font-size:10px;margin-left:6px;">관리자 겸임</span>':'';return `<tr><td><strong>${t.name||'-'}</strong>${dual}</td><td><code style="font-size:11px;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${t.loginId||'-'}</code></td><td>${t.phone||'-'}</td><td>${cl}</td><td><span class="chip chip-green">활성</span></td></tr>`;}).join('');
+    };
+    if(typeof populateTeacherDropdown==='function')window.populateTeacherDropdown=function(){const s=document.getElementById('clsTeacherSelect');if(!s)return;const ts=_allUsers.filter(u=>has(u,'TEACHER'));s.innerHTML='<option value="">— 선생님 선택 —</option>'+ts.map(t=>`<option value="${t.name||''}" data-id="${t.id||''}">${t.name||'-'}${t.phone?' ('+t.phone+')':''}</option>`).join('');};
+    if(typeof submitClassForm==='function')window.submitClassForm=async function(e){
+      e.preventDefault();const id=document.getElementById('classEditId').value,name=document.getElementById('clsName').value.trim();if(!name){YMS_UI.toast('❌ 반 이름을 입력해주세요');return;}
+      const p={className:name,subject:document.getElementById('clsSubject').value.trim(),teacherName:document.getElementById('clsTeacher').value.trim(),teacherId:document.getElementById('clsTeacherId').value.trim(),startTime:document.getElementById('clsStart').value,endTime:document.getElementById('clsEnd').value,tuitionFee:Number(document.getElementById('clsFee').value)||0,isActive:true};
+      const btn=document.querySelector('#classMgmtForm button[type="submit"]');if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+      try{const r=await _tFetch(id?`tables/classes/${id}`:'tables/classes',{method:id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!r.ok)throw new Error('HTTP '+r.status);YMS_UI.toast(id?'✅ 반 정보가 수정되었습니다':'✅ 반이 추가되었습니다');document.getElementById('classMgmtPanel').classList.add('hidden');document.getElementById('classMgmtForm').reset();await loadClassesMgmt();if(typeof loadAllData==='function')await loadAllData();}catch(err){YMS_UI.toast('❌ 저장 실패: '+(err?.message||'오류'));}finally{if(btn){btn.disabled=false;btn.textContent='저장';}}
+    };
+    const refresh=()=>{const e=document.getElementById('dashTeachers');if(e&&typeof _allUsers!=='undefined')e.textContent=_allUsers.filter(u=>has(u,'TEACHER')).length;};setTimeout(refresh,500);setTimeout(refresh,1500);
+  }catch(e){console.warn('[YMS] compatibility patch failed',e);}
+});
 })();
