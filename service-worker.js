@@ -1,5 +1,5 @@
-/* YMS Master Track — Service Worker v3.9.0 */
-const CACHE_NAME = 'yms-v3.9.0';
+/* YMS Master Track — Service Worker v3.10.0 */
+const CACHE_NAME = 'yms-v3.10.0';
 const APP_SHELL = [
   './login.html',
   './student-home.html',
@@ -14,6 +14,7 @@ const APP_SHELL = [
   './js/admin-menu-cleanup.js',
   './js/parent-home-fix.js',
   './js/parent-link-repair.js',
+  './js/parent-account-save-fix.js',
   './manifest.json',
   './images/icon-source.svg',
   './images/icon-192.png',
@@ -53,7 +54,8 @@ async function patchHtml(request, response) {
         'js/student-dashboard.js',
         'js/student-management-cleanup.js',
         'js/admin-menu-cleanup.js',
-        'js/parent-link-repair.js'
+        'js/parent-link-repair.js',
+        'js/parent-account-save-fix.js'
       ];
       const missing = scripts.filter(src => !html.includes(src));
       if (missing.length) {
