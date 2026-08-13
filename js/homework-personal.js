@@ -42,4 +42,13 @@
     const list=students.filter(s=>s.isActive!==false).sort((a,b)=>(a.className||'').localeCompare(b.className||'','ko')||(a.name||'').localeCompare(b.name||'','ko'));
     sel.innerHTML='<option value="">— 학생 선택 —</option>'+list.map(s=>'<option value="'+s.id+'">'+(s.name||'-')+(s.className?' · '+s.className:'')+'</option>').join('');
   }
+
+  async function prepare(){
+    installFields();
+    await loadStudents();
+    fillStudents();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',prepare);
+  else prepare();
 })();
