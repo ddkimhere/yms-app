@@ -69,6 +69,10 @@
       realClasses.innerHTML='<span class="nav-icon">🏫</span> 반 관리';
       realClasses.setAttribute('onclick',"switchSection('classes-mgmt',this)");
     }
+    if(notices){
+      notices.innerHTML='<span class="nav-icon">📢</span> 공지 관리';
+      notices.setAttribute('onclick',"_ymsGo('notices.html')");
+    }
 
     nav.innerHTML='';
     if(dashboard) nav.appendChild(dashboard);
