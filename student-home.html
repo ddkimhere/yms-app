@@ -4,205 +4,128 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>학생 홈 · YMS Master Track</title>
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#E8B84B">
+  <meta name="theme-color" content="#1E3278">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="YMS">
   <link rel="apple-touch-icon" href="images/icon-192.png">
   <link rel="stylesheet" href="css/style.css">
   <style>
-    :root{--navy:#1E3278;--navy-dark:#14245A;--navy-lt:#2A4099;--periwinkle:#7492D5;--periwinkle-lt:#A8BDE8;--periwinkle-bg:#EEF3FB;--sky-bg:#F4F7FD;--warm-white:#fff;--charcoal:#1A2340;--gray-dark:#3D4A6B;--gray-mid:#7A87A8;--gray-light:#BDC6DC;--gray-bg:#EDF0F7;--beige:#E3E8F4;--beige-dark:#C8D1E8;--present:#2E9E6B;--late:#E8A020;--absent:#E04040;--pending:#8A96B2;--mustard:var(--periwinkle);--mustard-lt:var(--periwinkle-lt);--mustard-bg:var(--periwinkle-bg);--orange:var(--navy);--orange-lt:var(--navy-lt);--orange-dark:var(--navy-dark);--cream:var(--sky-bg);--shadow-sm:0 1px 4px rgba(30,50,120,.08);--shadow-md:0 4px 16px rgba(30,50,120,.12);--shadow-lg:0 8px 32px rgba(30,50,120,.16);--radius-sm:8px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--radius-full:9999px;--font-kr:'Noto Sans KR',-apple-system,sans-serif;--font-en:'Nunito',sans-serif;}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    html,body{font-family:var(--font-kr);background:var(--sky-bg);color:var(--charcoal);min-height:100vh;-webkit-font-smoothing:antialiased;}
-    .app-wrapper{max-width:430px;min-height:100vh;margin:0 auto;background:var(--sky-bg);position:relative;overflow-x:hidden;}
-
+    :root{--navy:#1E3278;--navy-dark:#14245A;--blue:#7492D5;--blue-light:#A8BDE8;--bg:#F4F7FD;--card:#fff;--text:#1A2340;--muted:#7A87A8;--line:#E3E8F4;--green:#2E9E6B;--orange:#E8A020;--red:#E04040;}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR","Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+    button,a{font:inherit}
+    .student-app{width:100%;max-width:560px;margin:0 auto;min-height:100vh;background:var(--bg)}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(244,247,253,.96);backdrop-filter:blur(12px);border-bottom:1px solid rgba(227,232,244,.8)}
+    .brand{display:flex;align-items:center;gap:10px}.brand-mark{width:38px;height:38px;border-radius:12px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}.brand-text strong{display:block;font-size:15px;color:var(--navy-dark)}.brand-text span{font-size:10px;color:var(--muted)}
+    .top-actions{display:flex;gap:8px}.icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;position:relative;cursor:pointer}.noti-dot{display:none;position:absolute;width:8px;height:8px;border-radius:50%;background:var(--red);right:6px;top:6px;border:2px solid #fff}
+    .hero{margin:16px 16px 12px;padding:20px;border-radius:22px;background:linear-gradient(135deg,#1E3278 0%,#4967B4 100%);color:#fff;box-shadow:0 10px 28px rgba(30,50,120,.18)}
+    .hero-kicker{font-size:11px;opacity:.78;font-weight:700}.hero-name{margin-top:5px;font-size:23px;font-weight:900;letter-spacing:-.4px}.hero-sub{margin-top:7px;font-size:12px;opacity:.86}.hero-meta{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}.hero-chip{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.13);font-size:11px;font-weight:700}
+    .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 14px}.summary-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:14px 15px;box-shadow:0 3px 12px rgba(30,50,120,.05)}.summary-label{font-size:10px;color:var(--muted);font-weight:700}.summary-value{margin-top:5px;font-size:18px;font-weight:900;color:var(--navy-dark)}
+    .content{padding:0 16px}.section{margin-bottom:16px}.section-head{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 10px}.section-title{font-size:15px;font-weight:900;color:var(--navy-dark)}.section-more{font-size:11px;color:var(--blue);font-weight:700;text-decoration:none}
+    .empty-card{padding:22px 14px;text-align:center;background:#fff;border:1px dashed #CAD4E8;border-radius:16px;color:var(--muted);font-size:12px}
+    .homework-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px 16px;margin-bottom:9px;box-shadow:0 3px 12px rgba(30,50,120,.05)}.hw-top{display:flex;align-items:flex-start;gap:10px}.hw-main{flex:1;min-width:0}.hw-title{font-size:14px;font-weight:800;color:var(--text);line-height:1.4}.hw-meta{margin-top:4px;font-size:10px;color:var(--muted)}.hw-content{margin-top:7px;font-size:12px;line-height:1.55;color:#46516C}.hw-badge{flex-shrink:0;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800}.hw-due{margin-top:9px;font-size:10px;color:var(--muted)}
+    .notice-card{width:100%;border:1px solid #C8D7F2;background:linear-gradient(135deg,#EFF4FD,#E7EEFA);border-radius:16px;padding:14px 15px;display:flex;align-items:center;gap:11px;text-align:left;color:var(--navy-dark);cursor:pointer}.notice-card strong{display:block;font-size:12px}.notice-card span{display:block;margin-top:3px;font-size:10px;color:var(--muted)}
+    .bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:30;width:100%;max-width:560px;display:grid;grid-template-columns:repeat(4,1fr);padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);backdrop-filter:blur(14px);border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(30,50,120,.06)}
+    .nav-btn{border:none;background:none;color:#8A95AD;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;font-size:9px;font-weight:700}.nav-btn .ico{font-size:20px;line-height:1}.nav-btn.active{color:var(--navy)}
+    .modal{position:fixed;inset:0;z-index:100;background:rgba(20,36,90,.42);display:flex;align-items:flex-end;justify-content:center;padding:14px}.modal.hidden{display:none}.sheet{width:100%;max-width:560px;background:#fff;border-radius:22px 22px 16px 16px;padding:18px}.sheet-handle{width:42px;height:4px;border-radius:999px;background:#D7DEEC;margin:0 auto 14px}.sheet-title{font-size:17px;font-weight:900;color:var(--navy-dark);margin-bottom:12px}.sheet-btn{width:100%;min-height:46px;border:1px solid #F1C4C4;border-radius:12px;background:#FFF6F6;color:#C73535;font-weight:800;cursor:pointer}
+    @media(min-width:700px){.student-app{margin-top:18px;border-radius:24px;overflow:hidden;box-shadow:0 16px 40px rgba(30,50,120,.08)}.bottom-nav{bottom:12px;border:1px solid var(--line);border-radius:18px;max-width:520px}.hero{margin-top:20px}}
   </style>
 </head>
 <body>
-<div class="app-wrapper">
-  <!-- App Bar -->
-  <header class="app-bar">
-    <div class="app-bar-left">
-      <span class="app-bar-title">Master Track</span>
-    </div>
-    <div class="app-bar-right">
-      <button class="icon-btn" onclick="window.location.href='notices.html'" id="notiBtn" style="position:relative;">🔔<span id="notiDot" style="display:none;position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#E04040;border:1.5px solid #fff;"></span></button>
-      <button class="icon-btn" onclick="showMyPage()">👤</button>
+<div class="student-app">
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">YMS</div><div class="brand-text"><strong>Master Track</strong><span>Student</span></div></div>
+    <div class="top-actions">
+      <button class="icon-btn" onclick="_ymsGo('notices.html')" aria-label="공지">🔔<i class="noti-dot" id="notiDot"></i></button>
+      <button class="icon-btn" onclick="showMyPage()" aria-label="내 정보">👤</button>
     </div>
   </header>
 
-  <!-- Greeting -->
-  <div class="greeting-section">
-    <div class="greeting-name" id="greetName">안녕하세요 👋</div>
-    <div class="greeting-sub">오늘도 열심히 해봐요!</div>
+  <section class="hero">
+    <div class="hero-kicker">오늘도 차근차근</div>
+    <div class="hero-name" id="greetName">안녕하세요 👋</div>
+    <div class="hero-sub">오늘 할 일을 확인하고 하나씩 끝내봐요.</div>
+    <div class="hero-meta"><span class="hero-chip" id="heroGrade">학년 -</span><span class="hero-chip" id="heroClass">반 -</span></div>
+  </section>
+
+  <div class="summary-grid">
+    <div class="summary-card"><div class="summary-label">이번 숙제</div><div class="summary-value" id="summaryHomework">0개</div></div>
+    <div class="summary-card"><div class="summary-label">가장 가까운 마감</div><div class="summary-value" id="summaryDue">-</div></div>
   </div>
 
-  <div class="page-content" style="padding-top:12px;">
+  <main class="content">
+    <section class="section">
+      <div class="section-head"><div class="section-title">📖 이번 숙제</div><a class="section-more" href="homework.html">전체보기</a></div>
+      <div id="hwList"><div class="empty-card">숙제를 불러오는 중...</div></div>
+    </section>
 
-
-    <!-- Homework -->
-    <div class="section-header">
-      <div class="section-title">📖 이번 숙제</div>
-      <a href="homework.html" class="section-more">전체보기</a>
-    </div>
-    <div id="hwList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:4px;"></div>
-
-    <!-- 미읽음 공지 배너 -->
-    <div id="unreadNoticeBanner" style="display:none;margin-bottom:16px;">
-      <button onclick="window.location.href='notices.html'" style="width:100%;background:linear-gradient(135deg,#EEF3FB,#E8EDF8);border:1.5px solid var(--periwinkle-lt);border-radius:var(--radius-md);padding:14px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;">
-        <span style="font-size:22px;">🔔</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--navy);">읽지 않은 공지사항이 있습니다</div>
-          <div style="font-size:11px;color:var(--gray-mid);margin-top:2px;">탭하여 확인하기</div>
-        </div>
-        <span style="margin-left:auto;font-size:16px;color:var(--periwinkle);">›</span>
-      </button>
-    </div>
-
-  </div>
-
-  <!-- Tab Bar -->
-  <nav class="tab-bar" id="tabBar"></nav>
+    <section class="section" id="unreadNoticeBanner" style="display:none">
+      <div class="section-head"><div class="section-title">🔔 새 공지</div><a class="section-more" href="notices.html">전체보기</a></div>
+      <button class="notice-card" onclick="_ymsGo('notices.html')"><div style="font-size:21px">📢</div><div><strong>읽지 않은 공지사항이 있어요</strong><span>눌러서 확인하기</span></div><div style="margin-left:auto;font-size:20px">›</div></button>
+    </section>
+  </main>
 </div>
 
-<!-- My Page Modal -->
-<div id="myModal" class="modal-overlay hidden">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title">MY</div>
-    <div id="myPageContent"></div>
-    <button class="btn btn-ghost btn-full mt-12" onclick="document.getElementById('myModal').classList.add('hidden')">닫기</button>
-  </div>
+<nav class="bottom-nav">
+  <a class="nav-btn active" href="student-home.html"><span class="ico">🏠</span><span>홈</span></a>
+  <a class="nav-btn" href="homework.html"><span class="ico">📚</span><span>숙제</span></a>
+  <a class="nav-btn" href="notices.html"><span class="ico">🔔</span><span>공지</span></a>
+  <button class="nav-btn" onclick="showMyPage()"><span class="ico">👤</span><span>MY</span></button>
+</nav>
+
+<div id="myModal" class="modal hidden">
+  <div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">MY</div><button class="sheet-btn" onclick="YMS_Auth.logout()">로그아웃</button></div>
 </div>
 
 <script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);if(!document.querySelector('base')){var e=document.createElement('base');e.href=b;document.head.insertBefore(e,document.head.firstChild);}window._ymsGo=function(p){location.href=b+p;};})()</script>
 <script src="js/app.js"></script>
 <script>
-  const user = ymsPageInit(true);
-  let _stuProfile  = null; // tables/students 내 본인 레코드
-  let _stuHomework = [];   // 내 반 숙제 목록
+  const user=ymsPageInit(true);
+  let profile=null, homework=[];
+  const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-  async function init() {
-    if (!user) return;
-    ymsRenderTabBar('student-home.html');
-    document.getElementById('greetName').textContent = `${user.name} 학생, 안녕하세요 👋`;
-
-    // ── 0. 공지 미읽음 뱃지
-    checkUnreadNotices();
-
-    // ── 1. 학생 프로필 조회 (className, grade 등)
-    try {
-      const sid = user.studentId || user._tableId;
-      if (sid) {
-        const r = await _tFetch(`tables/students/${sid}`);
-        if (r.ok) _stuProfile = await r.json();
-      }
-      if (!_stuProfile) {
-        // studentId 없으면 name으로 검색
-        const r2 = await _tFetch(`tables/students?search=${encodeURIComponent(user.name)}&limit=5`);
-        if (r2.ok) {
-          const j = await r2.json();
-          _stuProfile = (j.data||[]).find(s => s.name === user.name) || null;
-        }
-      }
-    } catch(e) { console.warn('[YMS] 학생 프로필 조회 실패', e); }
-
-    const myClassName = _stuProfile?.className || '';
-
-    // ── 2. 숙제 조회 (내 반 필터)
-    try {
-      const r = await _tFetch('tables/homework?limit=50');
-      if (r.ok) {
-        const j = await r.json();
-        let list = j.data || [];
-        if (myClassName) list = list.filter(h => h.className === myClassName);
-        _stuHomework = list.filter(h => {
-          if (!h.dueAt) return true;
-          return (new Date(h.dueAt) - Date.now()) > -86400000 * 1; // 1일 지난 것 제외
-        });
-      }
-    } catch(e) { console.warn('[YMS] 숙제 조회 실패', e); }
-
-    // ── 3. 렌더
-    // 숙제 목록
-    const hwEl = document.getElementById('hwList');
-    hwEl.innerHTML = '';
-    if (_stuHomework.length === 0) {
-      hwEl.innerHTML = `<div style="text-align:center;padding:24px;color:var(--gray-mid);font-size:13px;">📭 등록된 숙제가 없습니다</div>`;
-    } else {
-      _stuHomework.slice(0, 5).forEach(h => {
-        const due = h.dueAt ? new Date(h.dueAt) : null;
-        const diff = due ? Math.ceil((due - Date.now()) / 86400000) : null;
-        const badge = diff === null ? 'NEW' : diff < 0 ? '기한초과' : diff === 0 ? '오늘마감' : `D-${diff}`;
-        const badgeColor = diff === null ? '#7492D5' : diff < 0 ? '#E04040' : diff <= 1 ? '#E8A020' : '#2E9E6B';
-        const card = document.createElement('div');
-        card.style.cssText = 'background:#fff;border:1px solid var(--beige);border-radius:14px;padding:14px 16px;cursor:pointer;';
-        card.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:14px;font-weight:700;color:var(--charcoal);margin-bottom:4px;">${h.title||'(제목 없음)'}</div>
-              <div style="font-size:12px;color:var(--gray-mid);">${h.className||''} ${h.teacherName ? '· '+h.teacherName+' 선생님' : ''}</div>
-              ${h.content ? `<div style="font-size:12px;color:var(--charcoal);margin-top:6px;line-height:1.5;white-space:pre-wrap;">${h.content}</div>` : ''}
-            </div>
-            <span style="flex-shrink:0;background:${badgeColor}15;color:${badgeColor};border:1px solid ${badgeColor}40;border-radius:9999px;font-size:11px;font-weight:700;padding:3px 10px;">${badge}</span>
-          </div>
-          ${due ? `<div style="font-size:11px;color:var(--gray-mid);margin-top:8px;">📅 마감: ${due.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})}</div>` : ''}`;
-        hwEl.appendChild(card);
-      });
-    }
+  async function loadProfile(){
+    try{
+      const sid=user?.studentId||user?._tableId;
+      if(sid){const r=await _tFetch(`tables/students/${sid}`);if(r.ok)profile=await r.json();}
+      if(!profile){const r=await _tFetch('tables/students?limit=500');if(r.ok){const j=await r.json();profile=(j.data||[]).find(s=>s.userId===user.id||s.name===user.name)||null;}}
+    }catch(e){console.warn('[YMS] profile load failed',e)}
   }
 
-  /* ── 공지 미읽음 뱃지 체크 ───────────────────────────────
-     localStorage yms_read_notices 와 DB 공지 목록을 비교하여
-     미읽음이 있으면 🔔 버튼·탭 아이콘에 빨간 점 표시         */
-  async function checkUnreadNotices() {
-    try {
-      const r = await _tFetch('tables/notices?limit=100');
-      if (!r.ok) return;
-      const json = await r.json();
-      let list = (json.data || []).filter(n => n.isActive !== false);
-
-      // 학생 소속 반 기준 필터 (이미 _stuProfile 조회 후에 호출되어도 되지만,
-      // init() 선두에서 호출하므로 className은 나중에 채워질 수 있음 — 전체 공지 기준)
-      const myClass = _stuProfile?.className || '';
-      if (myClass) {
-        list = list.filter(n => n.targetType === 'ALL' || n.targetClassName === myClass);
-      } else {
-        list = list.filter(n => n.targetType === 'ALL');
-      }
-
-      const readSet = (() => {
-        try { return new Set(JSON.parse(localStorage.getItem('yms_read_notices') || '[]')); }
-        catch { return new Set(); }
-      })();
-
-      const hasUnread = list.some(n => !readSet.has(n.id));
-      const dotEl      = document.getElementById('notiDot');
-      const tabDotEl   = document.getElementById('tabNotiDot');
-      const bannerEl   = document.getElementById('unreadNoticeBanner');
-      if (hasUnread) {
-        if (dotEl)    dotEl.style.display    = 'block';
-        if (tabDotEl) tabDotEl.style.display = 'block';
-        if (bannerEl) bannerEl.style.display = 'block';
-      }
-    } catch(e) { /* silent */ }
+  async function loadHomework(){
+    try{const r=await _tFetch('tables/homework?limit=100');if(!r.ok)return;const j=await r.json();let list=j.data||[];if(profile?.className)list=list.filter(h=>h.className===profile.className);homework=list.filter(h=>!h.dueAt||new Date(h.dueAt)-Date.now()>-86400000).sort((a,b)=>new Date(a.dueAt||'2999-12-31')-new Date(b.dueAt||'2999-12-31'));}catch(e){console.warn('[YMS] homework load failed',e)}
   }
 
-  function showMyPage() {
-    document.getElementById('myPageContent').innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-        <button class="btn btn-ghost btn-full" style="color:var(--absent);" onclick="YMS_Auth.logout()">🚪 로그아웃</button>
-      </div>`;
-    document.getElementById('myModal').classList.remove('hidden');
+  function renderHero(){
+    document.getElementById('greetName').textContent=`${user?.name||'학생'} 학생, 안녕하세요 👋`;
+    document.getElementById('heroGrade').textContent=profile?.grade||'학년 미등록';
+    document.getElementById('heroClass').textContent=profile?.className||'반 미지정';
   }
 
-  document.getElementById('myModal').addEventListener('click', function(e) {
-    if (e.target === this) this.classList.add('hidden');
-  });
+  function renderHomework(){
+    document.getElementById('summaryHomework').textContent=`${homework.length}개`;
+    const next=homework.find(h=>h.dueAt);
+    document.getElementById('summaryDue').textContent=next?new Date(next.dueAt).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}):'-';
+    const wrap=document.getElementById('hwList');
+    if(!homework.length){wrap.innerHTML='<div class="empty-card">🎉 등록된 숙제가 없어요</div>';return;}
+    wrap.innerHTML=homework.slice(0,5).map(h=>{
+      const due=h.dueAt?new Date(h.dueAt):null;const diff=due?Math.ceil((due-Date.now())/86400000):null;const badge=diff===null?'NEW':diff<0?'기한초과':diff===0?'오늘마감':`D-${diff}`;const tone=diff===null?'#7492D5':diff<0?'#E04040':diff<=1?'#E8A020':'#2E9E6B';
+      return `<div class="homework-card"><div class="hw-top"><div class="hw-main"><div class="hw-title">${esc(h.title||'제목 없음')}</div><div class="hw-meta">${esc(h.className||'')}${h.teacherName?' · '+esc(h.teacherName)+' 선생님':''}</div>${h.content?`<div class="hw-content">${esc(h.content)}</div>`:''}</div><span class="hw-badge" style="color:${tone};background:${tone}14;border:1px solid ${tone}33">${badge}</span></div>${due?`<div class="hw-due">📅 마감 ${due.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})}</div>`:''}</div>`;
+    }).join('');
+  }
 
+  async function checkUnread(){
+    try{const r=await _tFetch('tables/notices?limit=100');if(!r.ok)return;const j=await r.json();let list=(j.data||[]).filter(n=>n.isActive!==false);if(profile?.className)list=list.filter(n=>!n.targetType||n.targetType==='ALL'||n.targetClassName===profile.className);const read=new Set(JSON.parse(localStorage.getItem('yms_read_notices')||'[]'));const unread=list.some(n=>!read.has(n.id));if(unread){document.getElementById('notiDot').style.display='block';document.getElementById('unreadNoticeBanner').style.display='block';}}catch{}
+  }
+
+  function showMyPage(){document.getElementById('myModal').classList.remove('hidden')}
+  document.getElementById('myModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.add('hidden')});
+
+  async function init(){if(!user)return;await loadProfile();renderHero();await Promise.all([loadHomework(),checkUnread()]);renderHomework();}
   init();
 </script>
 </body>
