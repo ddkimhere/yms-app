@@ -1,5 +1,5 @@
-/* YMS Master Track — Service Worker v3.3.0 */
-const CACHE_NAME = 'yms-v3.3.0';
+/* YMS Master Track — Service Worker v3.4.0 */
+const CACHE_NAME = 'yms-v3.4.0';
 const APP_SHELL = [
   './login.html',
   './css/style.css',
@@ -7,6 +7,7 @@ const APP_SHELL = [
   './js/admin-multirole-fix.js',
   './js/admin-account-fix.js',
   './js/student-dashboard.js',
+  './js/student-management-cleanup.js',
   './manifest.json',
   './images/icon-source.svg',
   './images/icon-192.png',
@@ -40,7 +41,8 @@ async function withAdminPatches(request, response) {
     const scripts = [
       'js/admin-multirole-fix.js',
       'js/admin-account-fix.js',
-      'js/student-dashboard.js'
+      'js/student-dashboard.js',
+      'js/student-management-cleanup.js'
     ];
     let patched = html;
     const missing = scripts.filter(src => !patched.includes(src));
