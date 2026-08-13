@@ -1,5 +1,5 @@
-/* YMS Master Track — Service Worker v3.8.0 */
-const CACHE_NAME = 'yms-v3.8.0';
+/* YMS Master Track — Service Worker v3.9.0 */
+const CACHE_NAME = 'yms-v3.9.0';
 const APP_SHELL = [
   './login.html',
   './student-home.html',
@@ -8,6 +8,7 @@ const APP_SHELL = [
   './js/app.js',
   './js/admin-multirole-fix.js',
   './js/admin-account-fix.js',
+  './js/account-id-migration.js',
   './js/student-dashboard.js',
   './js/student-management-cleanup.js',
   './js/admin-menu-cleanup.js',
@@ -48,6 +49,7 @@ async function patchHtml(request, response) {
       const scripts = [
         'js/admin-multirole-fix.js',
         'js/admin-account-fix.js',
+        'js/account-id-migration.js',
         'js/student-dashboard.js',
         'js/student-management-cleanup.js',
         'js/admin-menu-cleanup.js',
