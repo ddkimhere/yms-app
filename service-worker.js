@@ -1,9 +1,10 @@
-/* YMS Master Track — Service Worker v3.13.0 */
-const CACHE_NAME = 'yms-v3.13.0';
+/* YMS Master Track — Service Worker v3.14.0 */
+const CACHE_NAME = 'yms-v3.14.0';
 const APP_SHELL = [
   './login.html',
   './student-home.html',
   './parent-home.html',
+  './homework.html',
   './css/style.css',
   './js/app.js',
   './js/admin-multirole-fix.js',
@@ -13,6 +14,7 @@ const APP_SHELL = [
   './js/admin-structure-fix.js',
   './js/admin-menu-cleanup.js',
   './js/student-select-options.js',
+  './js/homework-personal.js',
   './js/parent-home-fix.js',
   './js/parent-link-repair.js',
   './js/parent-account-save-fix.js',
@@ -63,6 +65,10 @@ async function patchHtml(request, response) {
       if (missing.length) {
         html = html.replace('</body>', missing.map(src => `<script src="${src}"></script>`).join('') + '</body>');
       }
+    }
+
+    if (url.pathname.endsWith('/homework.html') && !html.includes('js/homework-personal.js')) {
+      html = html.replace('</body>', '<script src="js/homework-personal.js"></script></body>');
     }
 
     if (url.pathname.endsWith('/parent-home.html') && !html.includes('js/parent-home-fix.js')) {
