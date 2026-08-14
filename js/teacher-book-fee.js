@@ -27,6 +27,8 @@
   function ensureStyle(){
     if(document.getElementById('yms-bookfee-style')) return;
     const s=document.createElement('style');s.id='yms-bookfee-style';s.textContent=`
+      @media(min-width:821px){.teacher-quick-nav{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
+      @media(max-width:820px){.teacher-quick-nav{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
       #bookFeeModal{z-index:100500!important}
       #bookFeeModal .modal-sheet{width:min(100%,520px)!important}
       #bookFeeModal .bookfee-actions{display:flex;gap:8px;margin-top:4px}
