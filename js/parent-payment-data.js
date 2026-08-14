@@ -1,4 +1,4 @@
-/* Secure parent payment query: only linked child's payments */
+/* Secure parent billing queries: linked child's tuition + book fees */
 (function(){
   'use strict';
   function decodeVal(v){
@@ -16,22 +16,27 @@
     Object.entries(doc?.fields||{}).forEach(([k,v])=>out[k]=decodeVal(v));
     return out;
   }
-  async function query(studentId){
+  function linkedChild(studentId){
     const user=window.YMS_Auth?.getUser?.();
     const role=String(user?.role||'').toUpperCase();
-    if(role!=='PARENT'||!studentId)return [];
+    if(role!=='PARENT'||!studentId)return false;
     const childIds=Array.isArray(user.childIds)?user.childIds:String(user.childIds||'').split(',').map(x=>x.trim()).filter(Boolean);
-    if(!childIds.includes(String(studentId)))throw new Error('연결된 자녀의 수강료만 확인할 수 있습니다.');
+    return childIds.includes(String(studentId));
+  }
+  async function run(collectionId,studentId,label){
+    if(!linkedChild(studentId))throw new Error('연결된 자녀의 정보만 확인할 수 있습니다.');
     const token=window.YMS_Auth?.getToken?.();
     if(!token)throw new Error('로그인이 필요합니다.');
     const url='https://firestore.googleapis.com/v1/projects/yms-app-bb735/databases/(default)/documents:runQuery';
-    const body={structuredQuery:{from:[{collectionId:'payments'}],where:{fieldFilter:{field:{fieldPath:'studentId'},op:'EQUAL',value:{stringValue:String(studentId)}}},limit:200}};
+    const body={structuredQuery:{from:[{collectionId}],where:{fieldFilter:{field:{fieldPath:'studentId'},op:'EQUAL',value:{stringValue:String(studentId)}}},limit:300}};
     const r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok)throw new Error('수강료 정보를 불러오지 못했습니다.');
+    if(!r.ok)throw new Error(`${label} 정보를 불러오지 못했습니다.`);
     const rows=await r.json();
     return rows.filter(x=>x.document).map(x=>decodeDoc(x.document));
   }
-  window.YMS_ParentPayments={query};
+  const query=studentId=>run('payments',studentId,'수강료');
+  const queryBookFees=studentId=>run('bookFees',studentId,'교재비');
+  window.YMS_ParentPayments={query,queryBookFees};
 
   const base=window._tFetch;
   if(base&&!base.__parentPaymentSecure){
