@@ -63,6 +63,19 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /bookFees/{bookFeeId} {
+      allow read: if isAdmin()
+                  || (isTeacher() && resource.data.teacherId == request.auth.uid)
+                  || (isParent() && parentHasChild(resource.data.studentId));
+      allow create: if isAdmin()
+                    || (isTeacher()
+                        && request.resource.data.teacherId == request.auth.uid
+                        && request.resource.data.amount is number
+                        && request.resource.data.amount > 0);
+      allow update, delete: if isAdmin()
+                            || (isTeacher() && resource.data.teacherId == request.auth.uid);
+    }
+
     match /{document=**} {
       allow read, write: if isAdmin();
     }
