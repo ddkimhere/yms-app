@@ -57,17 +57,46 @@
     }
   }
 
+  async function getStudentDefaults(studentId){
+    if(!studentId) return null;
+    try{
+      if(typeof _allStudents!=='undefined'&&Array.isArray(_allStudents)){
+        const found=_allStudents.find(s=>String(s.id)===String(studentId));
+        if(found) return found;
+      }
+    }catch{}
+    try{
+      const r=await _tFetch(`tables/students/${encodeURIComponent(studentId)}`,{cache:'no-store'});
+      if(r.ok) return await r.json();
+    }catch{}
+    return null;
+  }
+
+  async function applyStudentDefaults(){
+    installFields();
+    const sel=document.getElementById('at_student');
+    const studentId=sel?.value||'';
+    if(!studentId) return;
+    const stu=await getStudentDefaults(studentId);
+    if(!stu) return;
+
+    const base=document.getElementById('at_baseAmount');
+    const discount=document.getElementById('at_discountAmount');
+    const reason=document.getElementById('at_discountReason');
+    if(!base||!discount||!reason) return;
+
+    const defaultBase=Math.max(0,Number(stu.tuitionBaseAmount??stu.tuitionFee??stu.tuitionAmount??0)||0);
+    const defaultDiscount=Math.min(defaultBase,Math.max(0,Number(stu.tuitionDiscountAmount||0)||0));
+    base.value=defaultBase;
+    discount.value=defaultDiscount;
+    reason.value=stu.tuitionDiscountReason||'';
+    base.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+
   const oldStudentChange=window.onAdminTuitionStudentChange;
   window.onAdminTuitionStudentChange=function(){
     if(typeof oldStudentChange==='function') oldStudentChange();
-    installFields();
-    const amount=document.getElementById('at_amount');
-    const base=document.getElementById('at_baseAmount');
-    if(base&&amount){
-      base.value=amount.value||0;
-      const dis=document.getElementById('at_discountAmount');if(dis)dis.value=0;
-      base.dispatchEvent(new Event('input'));
-    }
+    setTimeout(applyStudentDefaults,0);
   };
 
   const oldShow=window.showAdminAddTuition;
