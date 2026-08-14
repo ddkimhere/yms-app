@@ -57,6 +57,12 @@ service cloud.firestore {
                                 && resource.data.targetType == 'CLASS');
     }
 
+    match /payments/{paymentId} {
+      allow read: if isAdmin()
+                  || (isParent() && parentHasChild(resource.data.studentId));
+      allow create, update, delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if isAdmin();
     }
