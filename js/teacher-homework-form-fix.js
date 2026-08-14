@@ -1,4 +1,4 @@
-/* YMS teacher quick homework form: textbook + mobile-safe submit actions */
+/* YMS teacher quick homework form: mobile-safe submit actions */
 (function(){
   'use strict';
 
@@ -13,16 +13,7 @@
     const form=document.getElementById('hwRegForm');
     if(!form) return;
 
-    if(!document.getElementById('hwTextbook')){
-      const content=document.getElementById('hwContent')?.closest('.form-group');
-      if(content){
-        const row=document.createElement('div');
-        row.className='form-group';
-        row.style.marginBottom='0';
-        row.innerHTML='<label class="form-label" for="hwTextbook">교재</label><input type="text" class="form-input" id="hwTextbook" placeholder="예) Reading it 200-1 / 워크북">';
-        content.before(row);
-      }
-    }
+    document.getElementById('hwTextbook')?.closest('.form-group')?.remove();
 
     const submit=document.getElementById('hwRegSubmitBtn');
     const actions=submit?.parentElement;
@@ -90,7 +81,6 @@
         teacherId:u?.id||u?.uid||'',
         teacherName:u?.name||'',
         title:document.getElementById('hwTitle')?.value.trim()||'',
-        textbook:document.getElementById('hwTextbook')?.value.trim()||'',
         content:document.getElementById('hwContent')?.value.trim()||'',
         dueAt:due?new Date(due+'T21:00:00+09:00').toISOString():null,
         isVisible:true
