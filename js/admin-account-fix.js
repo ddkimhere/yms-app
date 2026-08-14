@@ -19,6 +19,61 @@
     return fields;
   }
 
+  function installStudentTuitionFields(){
+    const form=document.getElementById('acctForm');
+    const role=document.getElementById('acctRole');
+    if(!form||!role) return;
+
+    let box=document.getElementById('acctStudentTuitionBox');
+    if(!box){
+      box=document.createElement('div');
+      box.id='acctStudentTuitionBox';
+      box.style='display:none;padding:14px;border:1px solid #E3E8F4;border-radius:14px;background:#F8FAFE;margin:10px 0;';
+      box.innerHTML=`
+        <div style="font-size:13px;font-weight:900;color:#14245A;margin-bottom:10px;">💳 기본 수강료 설정</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">기본 수강료</label>
+            <input type="number" class="form-input" id="acctTuitionBaseAmount" min="0" step="1000" inputmode="numeric" placeholder="예) 250000">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">할인 금액</label>
+            <input type="number" class="form-input" id="acctTuitionDiscountAmount" min="0" step="1000" inputmode="numeric" value="0" placeholder="0">
+          </div>
+        </div>
+        <div class="form-group" style="margin:10px 0 0;">
+          <label class="form-label">할인 사유</label>
+          <input type="text" class="form-input" id="acctTuitionDiscountReason" placeholder="예) 형제 할인 · 장기 재원 할인">
+        </div>
+        <div id="acctTuitionPreview" style="margin-top:10px;padding:9px 11px;border-radius:10px;background:#EEF3FB;color:#1E3278;font-size:11px;font-weight:800;">최종 수강료 0원</div>`;
+      const memo=document.getElementById('acctMemo');
+      const anchor=memo?.closest('.form-group')||form.querySelector('button[type="submit"]')?.parentElement;
+      if(anchor) anchor.before(box); else form.appendChild(box);
+
+      const calc=()=>{
+        const base=Math.max(0,Number(document.getElementById('acctTuitionBaseAmount')?.value)||0);
+        const discount=Math.min(base,Math.max(0,Number(document.getElementById('acctTuitionDiscountAmount')?.value)||0));
+        const finalAmount=Math.max(0,base-discount);
+        const preview=document.getElementById('acctTuitionPreview');
+        if(preview) preview.textContent=discount>0
+          ? `기본 ${base.toLocaleString('ko-KR')}원 - 할인 ${discount.toLocaleString('ko-KR')}원 = 최종 ${finalAmount.toLocaleString('ko-KR')}원`
+          : `최종 수강료 ${finalAmount.toLocaleString('ko-KR')}원`;
+      };
+      document.getElementById('acctTuitionBaseAmount')?.addEventListener('input',calc);
+      document.getElementById('acctTuitionDiscountAmount')?.addEventListener('input',calc);
+      calc();
+    }
+
+    const toggle=()=>{
+      box.style.display=String(role.value||'').toUpperCase()==='STUDENT'?'block':'none';
+    };
+    if(role.dataset.tuitionBound!=='1'){
+      role.addEventListener('change',toggle);
+      role.dataset.tuitionBound='1';
+    }
+    toggle();
+  }
+
   async function ensureFirebaseConfig(){
     if(window.YMS_FIREBASE_CONFIG) return window.YMS_FIREBASE_CONFIG;
     await new Promise((resolve,reject)=>{
@@ -40,7 +95,6 @@
   }
 
   async function ensureFreshAdminToken(){
-    // _tFetch 내부가 필요하면 토큰을 갱신하므로 가벼운 읽기를 한 번 거친다.
     try{ await window._tFetch('tables/users?limit=1'); }catch{}
     const token=window.YMS_Auth?.getToken?.();
     if(!token) throw new Error('관리자 로그인 정보가 만료되었습니다. 다시 로그인해주세요.');
@@ -60,7 +114,6 @@
     let json=await res.json().catch(()=>({}));
 
     if(!res.ok && json?.error?.message==='EMAIL_EXISTS'){
-      // 이전 저장 실패로 Auth 계정만 만들어진 경우 같은 비밀번호로 UID를 복구한다.
       res=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(cfg.apiKey)}`,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -100,8 +153,13 @@
 
   async function linkStudent(savedUser,role,name){
     if(role!=='STUDENT') return;
+    installStudentTuitionFields();
     const classSel=document.getElementById('acctClassSelect');
     const opt=classSel?.options[classSel.selectedIndex];
+    const tuitionBaseAmount=Math.max(0,Number(document.getElementById('acctTuitionBaseAmount')?.value)||0);
+    const tuitionDiscountAmount=Math.min(tuitionBaseAmount,Math.max(0,Number(document.getElementById('acctTuitionDiscountAmount')?.value)||0));
+    const tuitionDiscountReason=(document.getElementById('acctTuitionDiscountReason')?.value||'').trim();
+    if(tuitionDiscountAmount>0&&!tuitionDiscountReason) throw new Error('할인 금액이 있으면 할인 사유를 입력해주세요.');
     const stuPayload={
       name,
       grade:document.getElementById('acctGrade')?.value.trim()||'',
@@ -110,6 +168,10 @@
       teacherName:opt?.dataset.teacher||'',
       levelCode:opt?.dataset.level||'',
       classId:classSel?.value||'',
+      tuitionBaseAmount,
+      tuitionDiscountAmount,
+      tuitionDiscountReason,
+      tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),
       isActive:true,
       userId:savedUser.id
     };
@@ -136,10 +198,13 @@
 
   window.addEventListener('load',()=>{
     if(!location.pathname.endsWith('/admin.html')) return;
+    installStudentTuitionFields();
+    setTimeout(installStudentTuitionFields,300);
     if(typeof window.submitAcctForm!=='function') return;
 
     window.submitAcctForm=async function(e){
       e.preventDefault();
+      installStudentTuitionFields();
       const editId=document.getElementById('acctEditId').value;
       const isEdit=!!editId;
       const role=document.getElementById('acctRole').value;
