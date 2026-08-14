@@ -1,0 +1,85 @@
+/* YMS admin student default tuition UI */
+(function(){
+  'use strict';
+  if(!location.pathname.endsWith('/admin.html')) return;
+
+  let lastLoaded='';
+  const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
+
+  function calc(){
+    const base=Math.max(0,Number(document.getElementById('acctTuitionBaseAmount')?.value)||0);
+    const discount=Math.min(base,Math.max(0,Number(document.getElementById('acctTuitionDiscountAmount')?.value)||0));
+    const el=document.getElementById('acctTuitionPreview');
+    if(el) el.textContent=discount?`기본 ${money(base)} - 할인 ${money(discount)} = 최종 ${money(base-discount)}`:`최종 수강료 ${money(base)}`;
+  }
+
+  function install(){
+    const studentRow=document.getElementById('acctStudentRow');
+    if(!studentRow) return;
+    const panel=studentRow.firstElementChild;
+    if(!panel||document.getElementById('acctStudentTuitionBox')) return;
+
+    const box=document.createElement('div');
+    box.id='acctStudentTuitionBox';
+    box.style='margin-top:14px;padding-top:14px;border-top:1px solid #C5D3F5;';
+    box.innerHTML=`
+      <div style="font-size:12px;font-weight:800;color:#1E3278;margin-bottom:10px;">💳 기본 수강료 · 할인</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">기본 수강료</label>
+          <input type="number" class="form-input" id="acctTuitionBaseAmount" min="0" step="1000" inputmode="numeric" placeholder="예) 250000">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">할인 금액</label>
+          <input type="number" class="form-input" id="acctTuitionDiscountAmount" min="0" step="1000" inputmode="numeric" value="0" placeholder="0">
+        </div>
+      </div>
+      <div class="form-group" style="margin:10px 0 0;">
+        <label class="form-label">할인 사유</label>
+        <input type="text" class="form-input" id="acctTuitionDiscountReason" placeholder="예) 형제 할인">
+      </div>
+      <div id="acctTuitionPreview" style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff;color:#1E3278;font-size:11px;font-weight:800;">최종 수강료 0원</div>`;
+    panel.appendChild(box);
+    document.getElementById('acctTuitionBaseAmount')?.addEventListener('input',calc);
+    document.getElementById('acctTuitionDiscountAmount')?.addEventListener('input',calc);
+    calc();
+  }
+
+  async function loadExisting(){
+    install();
+    const role=String(document.getElementById('acctRole')?.value||'').toUpperCase();
+    if(role!=='STUDENT') return;
+    const sid=document.getElementById('acctLinkedStudentId')?.value||'';
+    if(!sid||sid===lastLoaded) return;
+    lastLoaded=sid;
+    try{
+      const r=await _tFetch(`tables/students/${encodeURIComponent(sid)}`,{cache:'no-store'});
+      if(!r.ok) return;
+      const s=await r.json();
+      const b=document.getElementById('acctTuitionBaseAmount');
+      const d=document.getElementById('acctTuitionDiscountAmount');
+      const reason=document.getElementById('acctTuitionDiscountReason');
+      if(b) b.value=Number(s.tuitionBaseAmount||0)||'';
+      if(d) d.value=Number(s.tuitionDiscountAmount||0)||0;
+      if(reason) reason.value=s.tuitionDiscountReason||'';
+      calc();
+    }catch(e){console.warn('[YMS] load student tuition defaults',e);}
+  }
+
+  function resetWhenNew(){
+    const edit=document.getElementById('acctEditId')?.value||'';
+    const sid=document.getElementById('acctLinkedStudentId')?.value||'';
+    if(!edit&&!sid&&lastLoaded){
+      lastLoaded='';
+      const b=document.getElementById('acctTuitionBaseAmount');
+      const d=document.getElementById('acctTuitionDiscountAmount');
+      const r=document.getElementById('acctTuitionDiscountReason');
+      if(b)b.value='';if(d)d.value='0';if(r)r.value='';calc();
+    }
+  }
+
+  function tick(){install();loadExisting();resetWhenNew();}
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',tick); else tick();
+  window.addEventListener('load',()=>{tick();setTimeout(tick,200);setTimeout(tick,700);});
+  setInterval(tick,500);
+})();
