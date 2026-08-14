@@ -45,9 +45,16 @@
 
   function ensureQuickLink(){
     const nav=document.querySelector('.teacher-quick-nav');
-    if(!nav||document.getElementById('bookFeeQuickLink')) return;
-    const a=document.createElement('a');a.id='bookFeeQuickLink';a.className='teacher-quick-link';a.href='#';a.innerHTML='<span>📘</span><span>교재비 등록</span>';
-    a.addEventListener('click',e=>{e.preventDefault();openModal();});nav.appendChild(a);
+    if(!nav) return;
+    let a=document.getElementById('bookFeeQuickLink');
+    if(!a){
+      a=document.createElement('a');a.id='bookFeeQuickLink';a.className='teacher-quick-link';a.href='#';a.innerHTML='<span>📘</span><span>교재비 등록</span>';
+      nav.appendChild(a);
+    }
+    if(a.dataset.bookFeeBound!=='1'){
+      a.addEventListener('click',e=>{e.preventDefault();openModal();});
+      a.dataset.bookFeeBound='1';
+    }
   }
 
   function ensureModal(){
