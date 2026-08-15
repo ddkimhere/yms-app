@@ -17,8 +17,40 @@
     return window.matchMedia('(max-width: 767px)').matches;
   }
 
+  function ensureLogoutButton(){
+    const topbar=document.querySelector('.admin-topbar');
+    if(!topbar) return;
+    let btn=document.getElementById('adminMobileLogoutBtn');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.id='adminMobileLogoutBtn';
+      btn.type='button';
+      btn.innerHTML='<span aria-hidden="true">🚪</span><span>로그아웃</span>';
+      btn.addEventListener('click',()=>window.YMS_Auth?.logout?.());
+      topbar.appendChild(btn);
+    }
+    btn.style.setProperty('display',mobileOnly()?'inline-flex':'none','important');
+    btn.style.setProperty('align-items','center','important');
+    btn.style.setProperty('justify-content','center','important');
+    btn.style.setProperty('gap','5px','important');
+    btn.style.setProperty('margin-left','auto','important');
+    btn.style.setProperty('min-height','38px','important');
+    btn.style.setProperty('padding','0 12px','important');
+    btn.style.setProperty('border','1px solid #D7DEEC','important');
+    btn.style.setProperty('border-radius','12px','important');
+    btn.style.setProperty('background','#fff','important');
+    btn.style.setProperty('color','#1E3278','important');
+    btn.style.setProperty('font-size','12px','important');
+    btn.style.setProperty('font-weight','800','important');
+    btn.style.setProperty('box-shadow','none','important');
+    btn.style.setProperty('white-space','nowrap','important');
+    btn.style.setProperty('cursor','pointer','important');
+    btn.style.setProperty('z-index','5','important');
+  }
+
   function fixMobileAdmin(){
     hideAttendanceMenu();
+    ensureLogoutButton();
     if(!mobileOnly()) return;
 
     const overlay=document.getElementById('sidebarOverlay');
@@ -119,7 +151,6 @@
     const toggle=document.getElementById('menuToggle');
     if(toggle) toggle.style.setProperty('display','none','important');
 
-    // Prevent legacy mobile-sidebar functions from re-opening an overlay.
     window.toggleSidebar=function(){ fixMobileAdmin(); };
     window.closeSidebar=function(){ fixMobileAdmin(); };
   }
