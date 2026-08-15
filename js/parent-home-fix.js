@@ -23,6 +23,18 @@
 
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+  function syncParentIdentity(){
+    if(!location.pathname.endsWith('/parent-home.html')) return;
+    const current=window.YMS_Auth?.getUser?.();
+    if(!current) return;
+    if(String(current.role||'').toUpperCase()!=='PARENT'){
+      location.replace('login.html');
+      return;
+    }
+    const greet=document.getElementById('greetName');
+    if(greet) greet.textContent=`안녕하세요, ${current.name||'학부모'}님 👋`;
+  }
+
   if (!window.renderHomeworkItem) {
     window.renderHomeworkItem=function(hw,onClick){
       const item=document.createElement('button');item.type='button';item.className='parent-list-item';
@@ -79,4 +91,8 @@
     @media(max-width:480px){.greeting-name{font-size:21px}.page-content{padding-left:14px!important;padding-right:14px!important}.app-bar{padding-left:16px;padding-right:16px}}
   `;
   document.head.appendChild(css);
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',syncParentIdentity);
+  else syncParentIdentity();
+  window.addEventListener('pageshow',syncParentIdentity);
 })();
