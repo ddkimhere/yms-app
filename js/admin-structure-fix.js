@@ -2,22 +2,55 @@
 (function(){
   'use strict';
 
+  const norm=v=>String(v||'').trim().toLowerCase();
+  function roleList(u){
+    const primary=String(u?.role||'').toUpperCase();
+    const raw=u?.roles;
+    const extras=Array.isArray(raw)
+      ? raw
+      : String(raw||'').split(',').map(v=>v.trim()).filter(Boolean);
+    return [...new Set([primary,...extras.map(v=>String(v).toUpperCase())].filter(Boolean))];
+  }
   function isStudentUser(u){
-    const role=String(u?.role||'').toUpperCase();
-    const roles=Array.isArray(u?.roles)?u.roles.map(r=>String(r).toUpperCase()):[];
-    return u?.isActive!==false&&(role==='STUDENT'||roles.includes('STUDENT'));
+    return u?.isActive!==false && roleList(u).includes('STUDENT');
+  }
+
+  function sameStudent(s,u){
+    if(!s||!u) return false;
+    if(u.id && String(s.userId||'')===String(u.id)) return true;
+    if(u.studentId && String(s.id||'')===String(u.studentId)) return true;
+    if(s.id && String(u.studentId||'')===String(s.id)) return true;
+    // Older records sometimes lost the ids but kept the same student name.
+    if(norm(s.name) && norm(u.name) && norm(s.name)===norm(u.name)) return true;
+    return false;
   }
 
   function mergeStudentUsers(users){
     try{
       if(typeof _allStudents==='undefined'||!Array.isArray(_allStudents)) return;
       const source=Array.isArray(users)?users:(typeof _allUsers!=='undefined'&&Array.isArray(_allUsers)?_allUsers:[]);
-      source.filter(isStudentUser).forEach(u=>{
-        const exists=_allStudents.some(s=>
-          (u.id&&String(s.userId||'')===String(u.id)) ||
-          (u.studentId&&String(s.id||'')===String(u.studentId))
-        );
-        if(exists) return;
+      const studentUsers=source.filter(isStudentUser);
+
+      studentUsers.forEach(u=>{
+        const idx=_allStudents.findIndex(s=>sameStudent(s,u));
+        if(idx>=0){
+          const old=_allStudents[idx]||{};
+          // An active STUDENT login must remain visible even if an old students doc was inactive.
+          _allStudents[idx]={
+            ...old,
+            userId:u.id||old.userId||'',
+            id:old.id||u.studentId||('user-'+u.id),
+            name:old.name||u.name||u.loginId||'학생',
+            grade:old.grade||u.grade||'',
+            schoolName:old.schoolName||u.schoolName||'',
+            className:old.className||u.className||'',
+            teacherName:old.teacherName||u.teacherName||'',
+            classId:old.classId||u.classId||'',
+            isActive:true,
+            _accountStudent:true
+          };
+          return;
+        }
         _allStudents.push({
           id:u.studentId||('user-'+u.id),
           userId:u.id,
@@ -28,9 +61,23 @@
           teacherName:u.teacherName||'',
           classId:u.classId||'',
           isActive:true,
-          _virtualStudent:true
+          _virtualStudent:true,
+          _accountStudent:true
         });
       });
+
+      // Remove accidental duplicate rows after id/name recovery, preferring a real students document.
+      const seenUsers=new Set(),seenStudents=new Set(),deduped=[];
+      _allStudents.forEach(s=>{
+        const uk=String(s.userId||'').trim();
+        const sk=String(s.id||'').trim();
+        if(uk&&seenUsers.has(uk)) return;
+        if(sk&&seenStudents.has(sk)) return;
+        if(uk)seenUsers.add(uk);
+        if(sk)seenStudents.add(sk);
+        deduped.push(s);
+      });
+      _allStudents.splice(0,_allStudents.length,...deduped);
     }catch(err){console.warn('[YMS] 학생 목록 병합 실패',err);}
   }
 
