@@ -145,7 +145,9 @@
   window.YMS_CONFIG={TABLE_AUTH:true};
   window.YMS_UI={
     toast(m){let e=document.getElementById('yms-toast');if(!e){e=document.createElement('div');e.id='yms-toast';Object.assign(e.style,{position:'fixed',left:'50%',bottom:'24px',transform:'translateX(-50%)',zIndex:99999,padding:'10px 16px',borderRadius:'9999px',background:'#1E3278',color:'#fff',fontSize:'13px'});document.body.appendChild(e);}e.textContent=m;clearTimeout(e._t);e._t=setTimeout(()=>e.remove(),2200);},
-    attBadge(s){return `<span>${({PRESENT:'출석',LATE:'지각',ABSENT:'결석'}[s]||s||'-')}</span>`;}
+    attBadge(s){return `<span>${({PRESENT:'출석',LATE:'지각',ABSENT:'결석'}[s]||s||'-')}</span>`;},
+    renderEmpty(message='표시할 내용이 없습니다'){return `<div class="empty-state" style="padding:34px 16px;text-align:center;color:#8A96B2;font-size:13px;"><div class="empty-msg">${String(message)}</div></div>`;},
+    showLoading(target){const el=typeof target==='string'?document.querySelector(target):target;if(el)el.innerHTML='<div class="empty-state" style="padding:34px 16px;text-align:center;color:#8A96B2;font-size:13px;"><div class="empty-msg">불러오는 중...</div></div>';}
   };
   window.YMS_DEMO={attendance:{s001:[]},students:[],payments:[],classes:[],homework:[],notices:[]};
 })();
