@@ -107,29 +107,19 @@
     if(email==='@yms.local') throw new Error('사용할 수 없는 아이디입니다');
 
     let res=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(cfg.apiKey)}`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,password,returnSecureToken:true})
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})
     });
     let json=await res.json().catch(()=>({}));
 
     if(!res.ok && json?.error?.message==='EMAIL_EXISTS'){
       res=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(cfg.apiKey)}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({email,password,returnSecureToken:true})
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})
       });
       json=await res.json().catch(()=>({}));
-      if(!res.ok){
-        throw new Error('이미 존재하는 아이디입니다. 기존 비밀번호가 다르면 다른 아이디를 사용해주세요.');
-      }
+      if(!res.ok) throw new Error('이미 존재하는 아이디입니다. 기존 비밀번호가 다르면 다른 아이디를 사용해주세요.');
     } else if(!res.ok){
       const code=json?.error?.message||`HTTP ${res.status}`;
-      const friendly={
-        WEAK_PASSWORD:'비밀번호는 6자리 이상으로 입력해주세요.',
-        INVALID_EMAIL:'아이디 형식이 올바르지 않습니다.',
-        OPERATION_NOT_ALLOWED:'Firebase 이메일/비밀번호 로그인이 비활성화되어 있습니다.'
-      }[code];
+      const friendly={WEAK_PASSWORD:'비밀번호는 6자리 이상으로 입력해주세요.',INVALID_EMAIL:'아이디 형식이 올바르지 않습니다.',OPERATION_NOT_ALLOWED:'Firebase 이메일/비밀번호 로그인이 비활성화되어 있습니다.'}[code];
       throw new Error(friendly||code);
     }
     return {uid:json.localId,email};
@@ -139,11 +129,7 @@
     const cfg=await ensureFirebaseConfig();
     const token=await ensureFreshAdminToken();
     const url=`https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/users/${encodeURIComponent(uid)}`;
-    const res=await fetch(url,{
-      method:'PATCH',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
-      body:JSON.stringify({fields:encodeFields(profile)})
-    });
+    const res=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({fields:encodeFields(profile)})});
     if(!res.ok){
       const txt=await res.text().catch(()=>`HTTP ${res.status}`);
       throw new Error(`사용자 프로필 저장 실패 (${res.status}) ${txt}`);
@@ -160,21 +146,7 @@
     const tuitionDiscountAmount=Math.min(tuitionBaseAmount,Math.max(0,Number(document.getElementById('acctTuitionDiscountAmount')?.value)||0));
     const tuitionDiscountReason=(document.getElementById('acctTuitionDiscountReason')?.value||'').trim();
     if(tuitionDiscountAmount>0&&!tuitionDiscountReason) throw new Error('할인 금액이 있으면 할인 사유를 입력해주세요.');
-    const stuPayload={
-      name,
-      grade:document.getElementById('acctGrade')?.value.trim()||'',
-      schoolName:document.getElementById('acctSchoolName')?.value.trim()||'',
-      className:opt?.dataset.name||'',
-      teacherName:opt?.dataset.teacher||'',
-      levelCode:opt?.dataset.level||'',
-      classId:classSel?.value||'',
-      tuitionBaseAmount,
-      tuitionDiscountAmount,
-      tuitionDiscountReason,
-      tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),
-      isActive:true,
-      userId:savedUser.id
-    };
+    const stuPayload={name,grade:document.getElementById('acctGrade')?.value.trim()||'',schoolName:document.getElementById('acctSchoolName')?.value.trim()||'',className:opt?.dataset.name||'',teacherName:opt?.dataset.teacher||'',levelCode:opt?.dataset.level||'',classId:classSel?.value||'',tuitionBaseAmount,tuitionDiscountAmount,tuitionDiscountReason,tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),isActive:true,userId:savedUser.id};
     const linkedId=document.getElementById('acctLinkedStudentId')?.value||'';
     const stuRes=linkedId
       ? await _tFetch(`tables/students/${linkedId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(stuPayload)})
@@ -183,17 +155,13 @@
     const student=await stuRes.json();
     const studentId=linkedId||student.id;
     if(studentId){
-      await _tFetch(`tables/users/${savedUser.id}`,{
-        method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentId})
-      });
+      await _tFetch(`tables/users/${savedUser.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentId})});
     }
   }
 
   async function linkParent(savedUser,childIds){
     if(!childIds.length) return;
-    await Promise.allSettled(childIds.map(id=>_tFetch(`tables/students/${id}`,{
-      method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({parentId:savedUser.id})
-    })));
+    await Promise.allSettled(childIds.map(id=>_tFetch(`tables/students/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({parentId:savedUser.id})})));
   }
 
   window.addEventListener('load',()=>{
@@ -215,32 +183,16 @@
       if(!loginId){YMS_UI.toast('❌ 아이디를 입력해주세요');return;}
       if(!name){YMS_UI.toast('❌ 이름을 입력해주세요');return;}
       if(!isEdit && !pw){YMS_UI.toast('❌ 비밀번호를 입력해주세요');return;}
-      if(!isEdit && Array.isArray(window._acctList) && _acctList.some(u=>norm(u.loginId)===loginId)){
-        YMS_UI.toast('❌ 이미 사용 중인 아이디입니다');return;
-      }
+      if(!isEdit && Array.isArray(window._acctList) && _acctList.some(u=>norm(u.loginId)===loginId)){YMS_UI.toast('❌ 이미 사용 중인 아이디입니다');return;}
 
-      const payload={
-        loginId,
-        name,
-        role,
-        roles:[role],
-        phone:document.getElementById('acctPhone').value.trim(),
-        academyId:'ac-001',
-        isActive:true,
-        childIds:document.getElementById('acctChildIds').value.trim(),
-        studentId:document.getElementById('acctStudentId').value.trim(),
-        teacherClasses:document.getElementById('acctTeacherClasses').value.trim(),
-        memo:document.getElementById('acctMemo').value.trim()
-      };
+      const payload={loginId,name,role,roles:[role],phone:document.getElementById('acctPhone').value.trim(),academyId:'ac-001',isActive:true,childIds:document.getElementById('acctChildIds').value.trim(),studentId:document.getElementById('acctStudentId').value.trim(),teacherClasses:document.getElementById('acctTeacherClasses').value.trim(),memo:document.getElementById('acctMemo').value.trim()};
 
       const btn=document.querySelector('#acctForm button[type="submit"]');
       if(btn){btn.disabled=true;btn.textContent='저장 중...';}
       try{
         let savedUser;
         if(isEdit){
-          const res=await _tFetch(`tables/users/${editId}`,{
-            method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
-          });
+          const res=await _tFetch(`tables/users/${editId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           if(!res.ok) throw new Error(`HTTP ${res.status}`);
           savedUser={id:editId,...payload};
         }else{
@@ -254,15 +206,14 @@
           await linkParent(savedUser,childIds);
         }
 
-        if(isEdit && pw){
-          YMS_UI.toast('✅ 계정 정보 수정 완료 · 비밀번호 변경은 별도 기능으로 추가할게요');
-        }else{
-          YMS_UI.toast(isEdit?'✅ 계정이 수정되었습니다':`✅ ${name} 로그인 계정이 생성되었습니다`);
-        }
+        if(isEdit && pw) YMS_UI.toast('✅ 계정 정보 수정 완료 · 비밀번호 변경은 별도 기능으로 추가할게요');
+        else YMS_UI.toast(isEdit?'✅ 계정이 수정되었습니다':`✅ ${name} 로그인 계정이 생성되었습니다`);
+
         document.getElementById('acctPanel').classList.add('hidden');
         document.getElementById('acctForm').reset();
         if(typeof loadAccounts==='function') await loadAccounts();
         if(typeof loadAllData==='function') await loadAllData();
+        if(typeof window.YMS_syncStudentUsers==='function') await window.YMS_syncStudentUsers();
       }catch(err){
         console.error('[YMS] 계정 생성 실패',err);
         YMS_UI.toast('❌ 계정 저장 실패: '+(err?.message||'알 수 없는 오류'));
