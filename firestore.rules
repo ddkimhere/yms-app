@@ -13,6 +13,15 @@ service cloud.firestore {
         && myProfile().data.childIds is string
         && (',' + myProfile().data.childIds + ',').matches('.*,' + studentId + ',.*');
     }
+    function teacherOwnsClass(classId) {
+      return isTeacher()
+        && classId is string
+        && exists(/databases/$(database)/documents/classes/$(classId))
+        && (
+          get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid
+          || get(/databases/$(database)/documents/classes/$(classId)).data.teacherName == myProfile().data.name
+        );
+    }
 
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
@@ -74,6 +83,25 @@ service cloud.firestore {
                         && request.resource.data.amount > 0);
       allow update, delete: if isAdmin()
                             || (isTeacher() && resource.data.teacherId == request.auth.uid);
+    }
+
+    match /counseling/{counselingId} {
+      allow read: if isAdmin()
+                  || teacherOwnsClass(resource.data.classId)
+                  || (isStudent() && myProfile().data.studentId == resource.data.studentId)
+                  || (isParent() && parentHasChild(resource.data.studentId));
+
+      allow create: if isAdmin()
+                    || (isStudent()
+                        && request.resource.data.requesterId == request.auth.uid
+                        && myProfile().data.studentId == request.resource.data.studentId)
+                    || (isParent()
+                        && request.resource.data.requesterId == request.auth.uid
+                        && parentHasChild(request.resource.data.studentId));
+
+      allow update: if isAdmin()
+                    || teacherOwnsClass(resource.data.classId);
+      allow delete: if isAdmin();
     }
 
     match /{document=**} {
