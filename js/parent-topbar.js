@@ -28,7 +28,6 @@
     }
     .app-bar #roleChip{display:none!important}
 
-    /* parent-payment.html uses its own .top header */
     .top{
       height:64px!important;min-height:64px!important;display:flex!important;align-items:center!important;
       gap:10px!important;padding:0 16px!important;background:#fff!important;
@@ -43,16 +42,32 @@
   `;
   if(!document.getElementById(style.id)) document.head.appendChild(style);
 
+  function goParentHome(){
+    if(typeof window._ymsGo==='function') window._ymsGo('parent-home.html');
+    else location.href='parent-home.html';
+  }
+
   function clean(){
     const roleChip=document.getElementById('roleChip');
     if(roleChip) roleChip.style.display='none';
 
-    // Keep the functional action button on counseling; remove empty right areas elsewhere.
     const right=document.querySelector('.app-bar-right');
     if(right && !right.querySelector('button:not(.hidden),a:not(.hidden)')) right.style.display='none';
+
+    // Parent pages must not use browser history: it may contain pages from a previous account session.
+    document.querySelectorAll('.app-bar .icon-btn,.top .back').forEach(btn=>{
+      const text=(btn.textContent||'').trim();
+      const onclick=btn.getAttribute('onclick')||'';
+      if(text==='←'||onclick.includes('history.back')){
+        btn.onclick=function(e){e?.preventDefault?.();goParentHome();};
+        btn.setAttribute('onclick','return false');
+        btn.setAttribute('aria-label','학부모 홈으로');
+      }
+    });
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',clean);
   else clean();
   window.addEventListener('load',clean);
+  window.addEventListener('pageshow',clean);
 })();
