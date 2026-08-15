@@ -8,12 +8,15 @@
     return u?.isActive!==false&&(role==='STUDENT'||roles.includes('STUDENT'));
   }
 
-  function mergeStudentUsers(){
+  function mergeStudentUsers(users){
     try{
-      if(typeof _allUsers==='undefined'||typeof _allStudents==='undefined') return;
-      if(!Array.isArray(_allUsers)||!Array.isArray(_allStudents)) return;
-      _allUsers.filter(isStudentUser).forEach(u=>{
-        const exists=_allStudents.some(s=>s.userId===u.id||(u.studentId&&s.id===u.studentId));
+      if(typeof _allStudents==='undefined'||!Array.isArray(_allStudents)) return;
+      const source=Array.isArray(users)?users:(typeof _allUsers!=='undefined'&&Array.isArray(_allUsers)?_allUsers:[]);
+      source.filter(isStudentUser).forEach(u=>{
+        const exists=_allStudents.some(s=>
+          (u.id&&String(s.userId||'')===String(u.id)) ||
+          (u.studentId&&String(s.id||'')===String(u.studentId))
+        );
         if(exists) return;
         _allStudents.push({
           id:u.studentId||('user-'+u.id),
@@ -30,6 +33,33 @@
       });
     }catch(err){console.warn('[YMS] 학생 목록 병합 실패',err);}
   }
+
+  async function syncStudentUsers(){
+    try{
+      const [ur,sr]=await Promise.all([
+        _tFetch('tables/users?limit=1000',{cache:'no-store'}),
+        _tFetch('tables/students?limit=1000',{cache:'no-store'})
+      ]);
+      const users=ur.ok?((await ur.json()).data||[]):[];
+      const students=sr.ok?((await sr.json()).data||[]):[];
+
+      if(typeof _allUsers!=='undefined'&&Array.isArray(_allUsers)&&ur.ok){
+        _allUsers.splice(0,_allUsers.length,...users);
+      }
+      if(typeof _allStudents!=='undefined'&&Array.isArray(_allStudents)&&sr.ok){
+        _allStudents.splice(0,_allStudents.length,...students);
+      }
+      mergeStudentUsers(users);
+      if(typeof window.renderStudentTable==='function') window.renderStudentTable();
+      return true;
+    }catch(err){
+      console.warn('[YMS] 학생/계정 동기화 실패',err);
+      mergeStudentUsers();
+      if(typeof window.renderStudentTable==='function') window.renderStudentTable();
+      return false;
+    }
+  }
+  window.YMS_syncStudentUsers=syncStudentUsers;
 
   function makeStudentsViewOnly(){
     const section=document.getElementById('section-students');
@@ -88,9 +118,8 @@
     const original=window.initStudents;
     const wrapped=async function(){
       const result=await original.apply(this,arguments);
-      mergeStudentUsers();
+      await syncStudentUsers();
       makeStudentsViewOnly();
-      if(typeof window.renderStudentTable==='function') window.renderStudentTable();
       return result;
     };
     wrapped.__structureWrapped=true;
