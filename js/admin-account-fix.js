@@ -137,7 +137,7 @@
     return {id:uid,...profile};
   }
 
-  async function linkStudent(savedUser,role,name){
+  async function linkStudent(savedUser,role,name,isEdit){
     if(role!=='STUDENT') return;
     installStudentTuitionFields();
     const classSel=document.getElementById('acctClassSelect');
@@ -147,7 +147,10 @@
     const tuitionDiscountReason=(document.getElementById('acctTuitionDiscountReason')?.value||'').trim();
     if(tuitionDiscountAmount>0&&!tuitionDiscountReason) throw new Error('할인 금액이 있으면 할인 사유를 입력해주세요.');
     const stuPayload={name,grade:document.getElementById('acctGrade')?.value.trim()||'',schoolName:document.getElementById('acctSchoolName')?.value.trim()||'',className:opt?.dataset.name||'',teacherName:opt?.dataset.teacher||'',levelCode:opt?.dataset.level||'',classId:classSel?.value||'',tuitionBaseAmount,tuitionDiscountAmount,tuitionDiscountReason,tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),isActive:true,userId:savedUser.id};
-    const linkedId=document.getElementById('acctLinkedStudentId')?.value||'';
+
+    // Never trust a hidden linked student id when creating a brand-new account.
+    // It may be left over from a previous edit and can overwrite another student's document.
+    const linkedId=isEdit ? (document.getElementById('acctLinkedStudentId')?.value||'') : '';
     const stuRes=linkedId
       ? await _tFetch(`tables/students/${linkedId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(stuPayload)})
       : await _tFetch('tables/students',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(stuPayload)});
@@ -185,6 +188,11 @@
       if(!isEdit && !pw){YMS_UI.toast('❌ 비밀번호를 입력해주세요');return;}
       if(!isEdit && Array.isArray(window._acctList) && _acctList.some(u=>norm(u.loginId)===loginId)){YMS_UI.toast('❌ 이미 사용 중인 아이디입니다');return;}
 
+      if(!isEdit){
+        const linked=document.getElementById('acctLinkedStudentId');
+        if(linked) linked.value='';
+      }
+
       const payload={loginId,name,role,roles:[role],phone:document.getElementById('acctPhone').value.trim(),academyId:'ac-001',isActive:true,childIds:document.getElementById('acctChildIds').value.trim(),studentId:document.getElementById('acctStudentId').value.trim(),teacherClasses:document.getElementById('acctTeacherClasses').value.trim(),memo:document.getElementById('acctMemo').value.trim()};
 
       const btn=document.querySelector('#acctForm button[type="submit"]');
@@ -200,7 +208,7 @@
           savedUser=await writeExactUserProfile(auth.uid,{...payload,email:auth.email});
         }
 
-        await linkStudent(savedUser,role,name);
+        await linkStudent(savedUser,role,name,isEdit);
         if(role==='PARENT'){
           const childIds=payload.childIds.split(',').map(v=>v.trim()).filter(Boolean);
           await linkParent(savedUser,childIds);
