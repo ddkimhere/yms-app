@@ -4,27 +4,48 @@
 
   const norm=v=>String(v||'').trim().toLowerCase();
   const normName=v=>norm(v).replace(/[\s·._-]+/g,'');
+  const normRole=v=>{
+    const r=String(v||'').trim().toUpperCase();
+    if(r==='학생') return 'STUDENT';
+    if(r==='학부모') return 'PARENT';
+    if(r==='선생님'||r==='교사') return 'TEACHER';
+    if(r==='관리자') return 'ADMIN';
+    return r;
+  };
   function roleList(u){
-    const primary=String(u?.role||'').toUpperCase();
+    const primary=normRole(u?.role);
     const raw=u?.roles;
     const extras=Array.isArray(raw)
       ? raw
       : String(raw||'').split(',').map(v=>v.trim()).filter(Boolean);
-    return [...new Set([primary,...extras.map(v=>String(v).toUpperCase())].filter(Boolean))];
+    return [...new Set([primary,...extras.map(normRole)].filter(Boolean))];
   }
   function isStudentUser(u){
     return u?.isActive!==false && roleList(u).includes('STUDENT');
   }
 
-  function sameStudent(s,u){
-    if(!s||!u) return false;
-    if(u.id && String(s.userId||'')===String(u.id)) return true;
-    if(u.studentId && String(s.id||'')===String(u.studentId)) return true;
-    if(s.id && String(u.studentId||'')===String(s.id)) return true;
-    // Older records sometimes lost the ids but kept the same student name.
+  function matchStudent(s,u){
+    if(!s||!u) return '';
+    const sid=String(s.id||'').trim();
+    const suid=String(s.userId||'').trim();
+    const uid=String(u.id||u.uid||'').trim();
+    const linked=String(u.studentId||'').trim();
     const sn=normName(s.name),un=normName(u.name);
-    if(sn && un && sn===un) return true;
-    return false;
+
+    // userId is the strongest ownership link.
+    if(uid && suid===uid) return 'USER_ID';
+
+    // A studentId link is trusted only when names do not contradict each other.
+    // This prevents a stale hidden linkedStudentId from making a new account disappear
+    // into somebody else's students document.
+    if(linked && sid===linked){
+      if(!sn || !un || sn===un) return 'STUDENT_ID';
+      return '';
+    }
+
+    // Legacy records may have lost ids but kept the same student name.
+    if(sn && un && sn===un) return 'NAME';
+    return '';
   }
 
   function mergeStudentUsers(users){
@@ -34,28 +55,41 @@
       const studentUsers=source.filter(isStudentUser);
 
       studentUsers.forEach(u=>{
-        const idx=_allStudents.findIndex(s=>sameStudent(s,u));
+        let idx=-1,match='';
+        for(let i=0;i<_allStudents.length;i++){
+          const m=matchStudent(_allStudents[i],u);
+          if(m){idx=i;match=m;break;}
+        }
+
         if(idx>=0){
           const old=_allStudents[idx]||{};
-          // An active STUDENT login must remain visible even if an old students doc was inactive.
           _allStudents[idx]={
             ...old,
-            userId:u.id||old.userId||'',
-            id:old.id||u.studentId||('user-'+u.id),
-            name:old.name||u.name||u.loginId||'학생',
+            userId:u.id||u.uid||old.userId||'',
+            id:old.id||u.studentId||('account-'+(u.id||u.uid||Date.now())),
+            // Account name wins for an exact user ownership link so a stale student
+            // document cannot keep showing another student's old name.
+            name:(match==='USER_ID' ? (u.name||old.name) : (old.name||u.name)) || u.loginId || '학생',
             grade:old.grade||u.grade||'',
             schoolName:old.schoolName||u.schoolName||'',
             className:old.className||u.className||'',
             teacherName:old.teacherName||u.teacherName||'',
             classId:old.classId||u.classId||'',
             isActive:true,
-            _accountStudent:true
+            _accountStudent:true,
+            _accountMatch:match
           };
           return;
         }
+
+        // Keep a unique virtual id even when u.studentId incorrectly points at another
+        // student's document. The real document remains visible and this STUDENT account
+        // gets its own row instead of being deduplicated away.
+        const uid=String(u.id||u.uid||'').trim();
         _allStudents.push({
-          id:u.studentId||('user-'+u.id),
-          userId:u.id,
+          id:'account-'+(uid||Math.random().toString(36).slice(2)),
+          linkedStudentId:u.studentId||'',
+          userId:uid,
           name:u.name||u.loginId||'학생',
           grade:u.grade||'',
           schoolName:u.schoolName||'',
@@ -64,22 +98,19 @@
           classId:u.classId||'',
           isActive:true,
           _virtualStudent:true,
-          _accountStudent:true
+          _accountStudent:true,
+          _linkNeedsRepair:!!u.studentId
         });
       });
 
-      // Remove accidental duplicate rows after id/name recovery, preferring the first merged row.
-      const seenUsers=new Set(),seenStudents=new Set(),seenNames=new Set(),deduped=[];
+      const seenUsers=new Set(),seenStudents=new Set(),deduped=[];
       _allStudents.forEach(s=>{
         const uk=String(s.userId||'').trim();
         const sk=String(s.id||'').trim();
-        const nk=normName(s.name);
         if(uk&&seenUsers.has(uk)) return;
         if(sk&&seenStudents.has(sk)) return;
-        if(!uk&&!sk&&nk&&seenNames.has(nk)) return;
         if(uk)seenUsers.add(uk);
         if(sk)seenStudents.add(sk);
-        if(nk)seenNames.add(nk);
         deduped.push(s);
       });
       _allStudents.splice(0,_allStudents.length,...deduped);
