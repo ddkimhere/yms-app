@@ -3,6 +3,7 @@
   'use strict';
 
   const norm=v=>String(v||'').trim().toLowerCase();
+  const normName=v=>norm(v).replace(/[\s·._-]+/g,'');
   function roleList(u){
     const primary=String(u?.role||'').toUpperCase();
     const raw=u?.roles;
@@ -21,7 +22,8 @@
     if(u.studentId && String(s.id||'')===String(u.studentId)) return true;
     if(s.id && String(u.studentId||'')===String(s.id)) return true;
     // Older records sometimes lost the ids but kept the same student name.
-    if(norm(s.name) && norm(u.name) && norm(s.name)===norm(u.name)) return true;
+    const sn=normName(s.name),un=normName(u.name);
+    if(sn && un && sn===un) return true;
     return false;
   }
 
@@ -66,15 +68,18 @@
         });
       });
 
-      // Remove accidental duplicate rows after id/name recovery, preferring a real students document.
-      const seenUsers=new Set(),seenStudents=new Set(),deduped=[];
+      // Remove accidental duplicate rows after id/name recovery, preferring the first merged row.
+      const seenUsers=new Set(),seenStudents=new Set(),seenNames=new Set(),deduped=[];
       _allStudents.forEach(s=>{
         const uk=String(s.userId||'').trim();
         const sk=String(s.id||'').trim();
+        const nk=normName(s.name);
         if(uk&&seenUsers.has(uk)) return;
         if(sk&&seenStudents.has(sk)) return;
+        if(!uk&&!sk&&nk&&seenNames.has(nk)) return;
         if(uk)seenUsers.add(uk);
         if(sk)seenStudents.add(sk);
+        if(nk)seenNames.add(nk);
         deduped.push(s);
       });
       _allStudents.splice(0,_allStudents.length,...deduped);
