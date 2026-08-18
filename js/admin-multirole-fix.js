@@ -14,20 +14,25 @@ function strictTeacherClasses(classes,u){
   const assigned=assignedClasses(u);
   const uid=str(u?.id||u?.uid);
   const uname=norm(u?.name);
+  const primary=String(u?.role||'').toUpperCase();
 
-  // Explicit account assignment is authoritative when present.
+  // 1) Explicit account assignment is authoritative.
   if(assigned.length){
     const set=new Set(assigned);
     return classes.filter(c=>set.has(str(c.id||c.classId))||set.has(str(c.className)));
   }
 
-  // Otherwise prefer an exact teacher UID relationship.
+  // 2) Otherwise use only an exact teacher UID relationship.
   if(uid){
     const byId=classes.filter(c=>str(c.teacherId)===uid);
     if(byId.length) return byId;
   }
 
-  // Legacy fallback only when no explicit assignment/UID relationship exists.
+  // 3) ADMIN+TEACHER accounts must never expand to every class by teacherName.
+  //    Their teacher screen shows only explicit teacherClasses / teacherId assignments.
+  if(primary==='ADMIN') return [];
+
+  // 4) Legacy pure teacher accounts may still fall back to teacherName.
   return uname?classes.filter(c=>norm(c.teacherName)===uname):[];
 }
 
@@ -46,6 +51,7 @@ async function teacherScope(){
     if(sub)sub.textContent='내 담당 수업과 학생 현황만 보여드려요.';
     if(typeof renderTeacherHome==='function')renderTeacherHome();
     document.querySelectorAll('a[href="homework.html"]').forEach(a=>a.href='homework.html?mode=teacher');
+    document.querySelectorAll('a[href="attendance.html"]').forEach(a=>a.href='attendance.html?mode=teacher');
   }catch(e){console.warn('[YMS] teacher scope failed',e);}
 }
 
