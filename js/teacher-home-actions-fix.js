@@ -13,6 +13,7 @@
       body.yms-att-modal-open{overflow:hidden!important;padding-bottom:0!important}
       #attModal{z-index:100001!important}
       #attModal .modal-sheet{max-height:calc(100dvh - 12px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding-bottom:calc(24px + env(safe-area-inset-bottom))!important}
+      #attModalDate{margin:-4px 0 8px;padding:8px 10px;border-radius:10px;background:#F4F7FD;color:#526080;font-size:12px;font-weight:800}
       @media(max-width:700px){
         #attModal{align-items:flex-end!important;padding:0!important}
         #attModal .modal-sheet{width:100%!important;max-width:560px!important;border-radius:24px 24px 0 0!important}
@@ -21,11 +22,31 @@
     document.head.appendChild(s);
   }
 
+  function formatToday(){
+    const d=new Date();
+    const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+    return `📅 ${y}. ${m}. ${day}.`;
+  }
+
+  function ensureAttDate(){
+    const modal=document.getElementById('attModal');
+    if(!modal)return;
+    let el=document.getElementById('attModalDate');
+    if(!el){
+      el=document.createElement('div');el.id='attModalDate';
+      const label=document.getElementById('attModalClassLabel');
+      if(label)label.before(el);
+      else modal.querySelector('.modal-title')?.after(el);
+    }
+    el.textContent=formatToday();
+  }
+
   function syncAttModal(){
     const modal=document.getElementById('attModal');
     const open=!!modal&&!modal.classList.contains('hidden');
     document.body.classList.toggle('yms-att-modal-open',open);
     if(open){
+      ensureAttDate();
       const sheet=modal.querySelector('.modal-sheet');
       if(sheet&&sheet.scrollTop<0)sheet.scrollTop=0;
     }
@@ -45,9 +66,7 @@
     try{
       if(text.includes('출결')){
         if(typeof showAttModal==='function'){
-          showAttModal(cid);
-          setTimeout(syncAttModal,0);
-          return true;
+          showAttModal(cid);setTimeout(syncAttModal,0);return true;
         }
         location.href='attendance.html';return true;
       }
@@ -67,26 +86,18 @@
   document.addEventListener('click',function(e){
     const btn=e.target?.closest?.('.class-actions button');
     if(!btn)return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    run(btn);
+    e.preventDefault();e.stopImmediatePropagation();run(btn);
   },true);
 
   function normalize(){
     document.querySelectorAll('.class-actions button').forEach(btn=>{
-      const cid=classIdFrom(btn);
-      if(cid)btn.dataset.classId=cid;
-      btn.removeAttribute('onclick');
+      const cid=classIdFrom(btn);if(cid)btn.dataset.classId=cid;btn.removeAttribute('onclick');
     });
-    syncAttModal();
+    ensureAttDate();syncAttModal();
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(normalize,0));
   else setTimeout(normalize,0);
-
-  const observer=new MutationObserver(()=>{
-    normalize();
-    syncAttModal();
-  });
+  const observer=new MutationObserver(()=>{normalize();syncAttModal();});
   observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 })();
