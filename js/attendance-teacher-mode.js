@@ -1,20 +1,30 @@
-/* YMS attendance: teacher mode + unified mobile layout */
+/* YMS attendance: teacher/admin mode + unified mobile layout */
 (function(){
   'use strict';
   if(!location.pathname.endsWith('/attendance.html')) return;
   const auth=window.YMS_Auth;
   if(!auth?.getUser) return;
+
+  const params=new URLSearchParams(location.search);
+  const requestedMode=String(params.get('mode')||'').toLowerCase();
   const originalGetUser=auth.getUser.bind(auth);
   const current=originalGetUser();
+  const primary=String(current?.role||'').toUpperCase();
   const roles=Array.isArray(current?.roles)?current.roles.map(r=>String(r).toUpperCase()):[];
-  const hasTeacher=String(current?.role||'').toUpperCase()==='TEACHER'||roles.includes('TEACHER');
-  if(!hasTeacher) return;
+  const hasTeacher=primary==='TEACHER'||roles.includes('TEACHER');
+  const isAdmin=primary==='ADMIN';
+  const adminMode=requestedMode==='admin'||(isAdmin&&requestedMode!=='teacher');
+  const teacherMode=!adminMode&&(requestedMode==='teacher'||primary==='TEACHER'||hasTeacher);
 
-  auth.getUser=function(){
-    const u=originalGetUser();
-    if(!u) return u;
-    return {...u,role:'TEACHER',roles:Array.isArray(u.roles)?u.roles:['TEACHER']};
-  };
+  // 운영자모드에서는 ADMIN 권한을 그대로 유지해 전체 반을 볼 수 있게 한다.
+  // 선생님모드에서만 ADMIN+TEACHER 겸임 계정을 TEACHER처럼 보이게 한다.
+  if(teacherMode&&hasTeacher){
+    auth.getUser=function(){
+      const u=originalGetUser();
+      if(!u) return u;
+      return {...u,role:'TEACHER',roles:Array.isArray(u.roles)?u.roles:['TEACHER']};
+    };
+  }
 
   if(typeof window.ymsRenderTabBar!=='function') window.ymsRenderTabBar=function(){return null;};
 
@@ -57,6 +67,7 @@
   }
 
   async function rescope(){
+    if(!teacherMode) return;
     try{
       if(typeof _allClasses==='undefined'||typeof _allStudents==='undefined')return;
       const u=originalGetUser();if(!u)return;
@@ -77,5 +88,5 @@
     const right=document.querySelector('.app-bar-right');if(right && !right.querySelector('button:not(.hidden),a:not(.hidden)')) right.style.display='none';
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',clean); else clean();
-  window.addEventListener('load',()=>{clean();setTimeout(rescope,150);setTimeout(rescope,700);});
+  window.addEventListener('load',()=>{clean();if(teacherMode){setTimeout(rescope,150);setTimeout(rescope,700);}});
 })();
