@@ -3,18 +3,44 @@
 'use strict';
 const has=(u,r)=>window.YMS_Roles?.has?YMS_Roles.has(u,r):[u?.role,...(Array.isArray(u?.roles)?u.roles:[])].map(x=>String(x||'').toUpperCase()).includes(r);
 const norm=v=>String(v||'').trim().toLowerCase();
+const str=v=>String(v||'').trim();
+
+function assignedClasses(u){
+  return (Array.isArray(u?.teacherClasses)?u.teacherClasses:String(u?.teacherClasses||'').split(','))
+    .map(str).filter(Boolean);
+}
+
+function strictTeacherClasses(classes,u){
+  const assigned=assignedClasses(u);
+  const uid=str(u?.id||u?.uid);
+  const uname=norm(u?.name);
+
+  // Explicit account assignment is authoritative when present.
+  if(assigned.length){
+    const set=new Set(assigned);
+    return classes.filter(c=>set.has(str(c.id||c.classId))||set.has(str(c.className)));
+  }
+
+  // Otherwise prefer an exact teacher UID relationship.
+  if(uid){
+    const byId=classes.filter(c=>str(c.teacherId)===uid);
+    if(byId.length) return byId;
+  }
+
+  // Legacy fallback only when no explicit assignment/UID relationship exists.
+  return uname?classes.filter(c=>norm(c.teacherName)===uname):[];
+}
 
 async function teacherScope(){
   if(!location.pathname.endsWith('/teacher-home.html'))return;
   const u=YMS_Auth?.getUser?.();if(!u||!has(u,'TEACHER'))return;
   try{
-    const [a,b]=await Promise.all([_tFetch('tables/classes?limit=200'),_tFetch('tables/students?limit=500')]);
+    const [a,b]=await Promise.all([_tFetch('tables/classes?limit=200',{cache:'no-store'}),_tFetch('tables/students?limit=500',{cache:'no-store'})]);
     const cs=a.ok?(await a.json()).data||[]:[],ss=b.ok?(await b.json()).data||[]:[];
-    const assigned=Array.isArray(u.teacherClasses)?u.teacherClasses:String(u.teacherClasses||'').split(',').map(x=>x.trim()).filter(Boolean);
-    const uid=String(u.id||u.uid||''),un=norm(u.name);
-    _myClasses=cs.filter(c=>(uid&&String(c.teacherId||'')===uid)||(un&&norm(c.teacherName)===un)||assigned.includes(String(c.id||''))||assigned.includes(String(c.className||'')));
-    const ids=new Set(_myClasses.map(c=>String(c.id||'')).filter(Boolean)),names=new Set(_myClasses.map(c=>String(c.className||'')).filter(Boolean));
-    _myStudents=ss.filter(s=>ids.has(String(s.classId||''))||names.has(String(s.className||'')));
+    _myClasses=strictTeacherClasses(cs,u);
+    const ids=new Set(_myClasses.map(c=>str(c.id||c.classId)).filter(Boolean));
+    const names=new Set(_myClasses.map(c=>str(c.className)).filter(Boolean));
+    _myStudents=ss.filter(s=>ids.has(str(s.classId))||names.has(str(s.className)));
     const g=document.getElementById('greetName'),sub=document.getElementById('greetSub');
     if(g)g.textContent=(u.name||'선생님')+' 선생님, 안녕하세요 👋';
     if(sub)sub.textContent='내 담당 수업과 학생 현황만 보여드려요.';
@@ -23,8 +49,10 @@ async function teacherScope(){
   }catch(e){console.warn('[YMS] teacher scope failed',e);}
 }
 
+window.YMS_strictTeacherClasses=strictTeacherClasses;
+
 window.addEventListener('load',()=>{
-  if(location.pathname.endsWith('/teacher-home.html')){teacherScope();setTimeout(teacherScope,700);return;}
+  if(location.pathname.endsWith('/teacher-home.html')){teacherScope();setTimeout(teacherScope,250);setTimeout(teacherScope,900);return;}
   if(!location.pathname.endsWith('/admin.html'))return;
   try{
     if(typeof renderTeacherTable==='function')window.renderTeacherTable=function(){
