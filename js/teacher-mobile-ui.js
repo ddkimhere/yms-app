@@ -49,6 +49,13 @@
         .filter-scroll{padding-top:18px!important}
         #teacherView{padding-top:18px!important}
 
+        /* Attendance needs extra room above the fixed teacher bottom navigation. */
+        body.yms-teacher-attendance{padding-bottom:calc(150px + env(safe-area-inset-bottom))!important}
+        body.yms-teacher-attendance .app-wrapper{padding-bottom:calc(150px + env(safe-area-inset-bottom))!important}
+        body.yms-teacher-attendance #teacherView{padding-bottom:calc(120px + env(safe-area-inset-bottom))!important}
+        body.yms-teacher-attendance #teacherView .page-content{padding-bottom:calc(112px + env(safe-area-inset-bottom))!important}
+        body.yms-teacher-attendance #saveAttBtn{margin-bottom:22px!important}
+
         /* Do not move the homework write FAB into the header. */
         .app-bar .fab{position:fixed!important}
         #tabBar.tab-bar{display:none!important}
@@ -58,6 +65,8 @@
   }
 
   function setup(){
+    if(page==='attendance.html') document.body.classList.add('yms-teacher-attendance');
+
     const bar=document.querySelector('.app-bar');
     const left=bar?.querySelector('.app-bar-left');
     if(!bar||!left) return;
