@@ -5,6 +5,32 @@
   const isTeacher=!!u&&(String(u.role||'').toUpperCase()==='TEACHER'||String(u.role||'').toUpperCase()==='ADMIN'||window.YMS_Auth?.hasRole?.('TEACHER',u));
   if(!isTeacher||!(location.pathname||'').endsWith('/teacher-home.html'))return;
 
+  if(!document.getElementById('yms-teacher-att-modal-fix-style')){
+    const s=document.createElement('style');
+    s.id='yms-teacher-att-modal-fix-style';
+    s.textContent=`
+      body.yms-att-modal-open #teacherMobileNav{display:none!important}
+      body.yms-att-modal-open{overflow:hidden!important;padding-bottom:0!important}
+      #attModal{z-index:100001!important}
+      #attModal .modal-sheet{max-height:calc(100dvh - 12px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding-bottom:calc(24px + env(safe-area-inset-bottom))!important}
+      @media(max-width:700px){
+        #attModal{align-items:flex-end!important;padding:0!important}
+        #attModal .modal-sheet{width:100%!important;max-width:560px!important;border-radius:24px 24px 0 0!important}
+      }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function syncAttModal(){
+    const modal=document.getElementById('attModal');
+    const open=!!modal&&!modal.classList.contains('hidden');
+    document.body.classList.toggle('yms-att-modal-open',open);
+    if(open){
+      const sheet=modal.querySelector('.modal-sheet');
+      if(sheet&&sheet.scrollTop<0)sheet.scrollTop=0;
+    }
+  }
+
   function classIdFrom(btn){
     const raw=btn?.getAttribute('onclick')||'';
     const m=raw.match(/(?:showAttModal|showHwRegModal)\(['"]([^'"]*)['"]\)/);
@@ -18,7 +44,11 @@
     const cid=classIdFrom(btn);
     try{
       if(text.includes('출결')){
-        if(typeof showAttModal==='function'){showAttModal(cid);return true;}
+        if(typeof showAttModal==='function'){
+          showAttModal(cid);
+          setTimeout(syncAttModal,0);
+          return true;
+        }
         location.href='attendance.html';return true;
       }
       if(text.includes('숙제')){
@@ -48,9 +78,15 @@
       if(cid)btn.dataset.classId=cid;
       btn.removeAttribute('onclick');
     });
+    syncAttModal();
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(normalize,0));
   else setTimeout(normalize,0);
-  new MutationObserver(normalize).observe(document.documentElement,{childList:true,subtree:true});
+
+  const observer=new MutationObserver(()=>{
+    normalize();
+    syncAttModal();
+  });
+  observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 })();
