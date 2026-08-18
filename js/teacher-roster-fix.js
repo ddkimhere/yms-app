@@ -35,6 +35,7 @@
       const byId=classes.filter(c=>val(c.teacherId)===uid);
       if(byId.length) return byId;
     }
+    if(primary==='ADMIN') return [];
     return name?classes.filter(c=>norm(c.teacherName)===name):[];
   }
 
