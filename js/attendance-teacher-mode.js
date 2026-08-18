@@ -16,11 +16,7 @@
     return {...u,role:'TEACHER',roles:Array.isArray(u.roles)?u.roles:['TEACHER']};
   };
 
-  // attendance.html still calls this legacy helper before loading teacher data.
-  // Keep the page initialization moving even when the helper is no longer in app.js.
-  if(typeof window.ymsRenderTabBar!=='function'){
-    window.ymsRenderTabBar=function(){ return null; };
-  }
+  if(typeof window.ymsRenderTabBar!=='function') window.ymsRenderTabBar=function(){return null;};
 
   if(!document.getElementById('yms-attendance-teacher-style')){
     const s=document.createElement('style');
@@ -50,13 +46,36 @@
     document.head.appendChild(s);
   }
 
-  function clean(){
-    const roleChip=document.getElementById('roleChip');
-    if(roleChip) roleChip.style.display='none';
-    const right=document.querySelector('.app-bar-right');
-    if(right && !right.querySelector('button:not(.hidden),a:not(.hidden)')) right.style.display='none';
+  const str=v=>String(v||'').trim();
+  const norm=v=>str(v).toLowerCase();
+  function assigned(u){return (Array.isArray(u?.teacherClasses)?u.teacherClasses:String(u?.teacherClasses||'').split(',')).map(str).filter(Boolean);}
+  function strict(classes,u){
+    const a=assigned(u),uid=str(u?.id||u?.uid),name=norm(u?.name);
+    if(a.length){const set=new Set(a);return classes.filter(c=>set.has(str(c.id||c.classId))||set.has(str(c.className)));}
+    if(uid){const byId=classes.filter(c=>str(c.teacherId)===uid);if(byId.length)return byId;}
+    return name?classes.filter(c=>norm(c.teacherName)===name):[];
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',clean);
-  else clean();
-  window.addEventListener('load',clean);
+
+  async function rescope(){
+    try{
+      if(typeof _allClasses==='undefined'||typeof _allStudents==='undefined')return;
+      const u=originalGetUser();if(!u)return;
+      const r=await _tFetch('tables/classes?limit=200',{cache:'no-store'});if(!r.ok)return;
+      const classes=(await r.json()).data||[];
+      const mine=strict(classes,u);
+      _allClasses.splice(0,_allClasses.length,...mine);
+      const ids=new Set(mine.map(c=>str(c.id||c.classId)).filter(Boolean));
+      const names=new Set(mine.map(c=>str(c.className)).filter(Boolean));
+      const sr=await _tFetch('tables/students?limit=500',{cache:'no-store'});
+      if(sr.ok){const students=(await sr.json()).data||[];_allStudents.splice(0,_allStudents.length,...students.filter(s=>ids.has(str(s.classId))||names.has(str(s.className))));}
+      if(typeof renderClassTabs==='function')renderClassTabs();
+    }catch(e){console.warn('[YMS] 출결 담당 반 필터 실패',e);}
+  }
+
+  function clean(){
+    const roleChip=document.getElementById('roleChip');if(roleChip) roleChip.style.display='none';
+    const right=document.querySelector('.app-bar-right');if(right && !right.querySelector('button:not(.hidden),a:not(.hidden)')) right.style.display='none';
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',clean); else clean();
+  window.addEventListener('load',()=>{clean();setTimeout(rescope,150);setTimeout(rescope,700);});
 })();
