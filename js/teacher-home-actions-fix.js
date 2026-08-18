@@ -68,7 +68,7 @@
         if(typeof showAttModal==='function'){
           showAttModal(cid);setTimeout(syncAttModal,0);return true;
         }
-        location.href='attendance.html';return true;
+        location.href='attendance.html?mode=teacher';return true;
       }
       if(text.includes('숙제')){
         if(typeof showHwRegModal==='function'){showHwRegModal(cid);return true;}
@@ -76,7 +76,7 @@
       }
     }catch(e){
       console.error('[YMS] 선생님 홈 빠른 버튼 오류',e);
-      if(text.includes('출결')) location.href='attendance.html';
+      if(text.includes('출결')) location.href='attendance.html?mode=teacher';
       else if(text.includes('숙제')) location.href='homework.html';
       return true;
     }
@@ -85,14 +85,24 @@
 
   document.addEventListener('click',function(e){
     const btn=e.target?.closest?.('.class-actions button');
-    if(!btn)return;
-    e.preventDefault();e.stopImmediatePropagation();run(btn);
+    if(btn){e.preventDefault();e.stopImmediatePropagation();run(btn);return;}
+
+    const quick=e.target?.closest?.('.teacher-quick-nav a');
+    if(quick&&/attendance\.html(?:$|[?#])/.test(quick.getAttribute('href')||'')){
+      e.preventDefault();e.stopImmediatePropagation();location.href='attendance.html?mode=teacher';return;
+    }
+
+    const widget=e.target?.closest?.('#ymsHomeWidgets .yms-widget-card');
+    if(widget&&String(widget.querySelector('.yms-widget-label')?.textContent||'').includes('출결')){
+      e.preventDefault();e.stopImmediatePropagation();location.href='attendance.html?mode=teacher';
+    }
   },true);
 
   function normalize(){
     document.querySelectorAll('.class-actions button').forEach(btn=>{
       const cid=classIdFrom(btn);if(cid)btn.dataset.classId=cid;btn.removeAttribute('onclick');
     });
+    document.querySelectorAll('.teacher-quick-nav a[href^="attendance.html"]').forEach(a=>a.href='attendance.html?mode=teacher');
     ensureAttDate();syncAttModal();
   }
 
