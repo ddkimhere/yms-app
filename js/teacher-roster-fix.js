@@ -8,6 +8,9 @@
   const val=v=>String(v||'').trim();
   const user=window.YMS_Auth?.getUser?.();
   if(!user) return;
+  const mode=new URLSearchParams(location.search).get('mode')||'';
+  const primary=String(user.role||'').toUpperCase();
+  const adminAttendance=page==='attendance.html'&&(mode==='admin'||(primary==='ADMIN'&&mode!=='teacher'));
 
   function classMatchesStudent(cls,s){
     const cid=val(cls?.id||cls?.classId), sid=val(s?.classId);
@@ -24,8 +27,6 @@
   function ownedClasses(classes){
     const assigned=assignedList();
     const uid=val(user.id||user.uid), name=norm(user.name);
-
-    // On teacher-facing screens, even ADMIN+TEACHER users must be limited to teaching assignments.
     if(assigned.length){
       const exact=new Set(assigned);
       return classes.filter(c=>exact.has(val(c.id||c.classId))||assigned.some(x=>norm(x)===norm(c.className||c.name)));
@@ -54,7 +55,7 @@
   }
 
   async function repairAttendance(){
-    if(page!=='attendance.html') return;
+    if(page!=='attendance.html'||adminAttendance) return;
     try{
       const [classes,students]=await Promise.all([fetchData('tables/classes?limit=300'),fetchData('tables/students?limit=1000')]);
       const mine=ownedClasses(classes);
