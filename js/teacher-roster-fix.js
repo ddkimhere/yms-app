@@ -2,8 +2,6 @@
 (function(){
   'use strict';
   const page=(location.pathname.split('/').pop()||'').toLowerCase();
-  // teacher-home is handled exclusively by admin-multirole-fix.js.
-  // Running two independent class/student reload loops on teacher-home caused mobile freezes.
   if(page!=='attendance.html') return;
 
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,'');
@@ -38,7 +36,6 @@
       const byId=classes.filter(c=>val(c.teacherId)===uid);
       if(byId.length)return byId;
     }
-    if(primary==='ADMIN')return [];
     return name?classes.filter(c=>norm(c.teacherName)===name):[];
   }
 
@@ -64,5 +61,5 @@
     finally{running=false;}
   }
 
-  window.addEventListener('load',()=>setTimeout(repairAttendance,250),{once:true});
+  window.addEventListener('load',()=>setTimeout(repairAttendance,180),{once:true});
 })();
