@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   const u=window.YMS_Auth?.getUser?.();
-  const isTeacher=!!u&&(String(u.role||'').toUpperCase()==='TEACHER'||String(u.role||'').toUpperCase()==='ADMIN'||window.YMS_Auth?.hasRole?.('TEACHER',u));
+  const isTeacher=!!u&&(String(u.role||'').toUpperCase()==='TEACHER'||window.YMS_Auth?.hasRole?.('TEACHER',u));
   if(!isTeacher||!(location.pathname||'').endsWith('/teacher-home.html'))return;
 
   if(!document.getElementById('yms-teacher-att-modal-fix-style')){
@@ -44,12 +44,9 @@
   function syncAttModal(){
     const modal=document.getElementById('attModal');
     const open=!!modal&&!modal.classList.contains('hidden');
-    document.body.classList.toggle('yms-att-modal-open',open);
-    if(open){
-      ensureAttDate();
-      const sheet=modal.querySelector('.modal-sheet');
-      if(sheet&&sheet.scrollTop<0)sheet.scrollTop=0;
-    }
+    const bodyOpen=document.body.classList.contains('yms-att-modal-open');
+    if(open!==bodyOpen) document.body.classList.toggle('yms-att-modal-open',open);
+    if(open) ensureAttDate();
   }
 
   function classIdFrom(btn){
@@ -66,18 +63,19 @@
     try{
       if(text.includes('출결')){
         if(typeof showAttModal==='function'){
-          showAttModal(cid);setTimeout(syncAttModal,0);return true;
+          showAttModal(cid);
+          requestAnimationFrame(syncAttModal);
+          return true;
         }
         location.href='attendance.html?mode=teacher';return true;
       }
       if(text.includes('숙제')){
         if(typeof showHwRegModal==='function'){showHwRegModal(cid);return true;}
-        location.href='homework.html';return true;
+        location.href='homework.html?mode=teacher';return true;
       }
     }catch(e){
       console.error('[YMS] 선생님 홈 빠른 버튼 오류',e);
-      if(text.includes('출결')) location.href='attendance.html?mode=teacher';
-      else if(text.includes('숙제')) location.href='homework.html';
+      location.href=text.includes('출결')?'attendance.html?mode=teacher':'homework.html?mode=teacher';
       return true;
     }
     return false;
@@ -85,7 +83,9 @@
 
   document.addEventListener('click',function(e){
     const btn=e.target?.closest?.('.class-actions button');
-    if(btn){e.preventDefault();e.stopImmediatePropagation();run(btn);return;}
+    if(btn){
+      e.preventDefault();e.stopImmediatePropagation();run(btn);return;
+    }
 
     const quick=e.target?.closest?.('.teacher-quick-nav a');
     if(quick&&/attendance\.html(?:$|[?#])/.test(quick.getAttribute('href')||'')){
@@ -94,20 +94,27 @@
 
     const widget=e.target?.closest?.('#ymsHomeWidgets .yms-widget-card');
     if(widget&&String(widget.querySelector('.yms-widget-label')?.textContent||'').includes('출결')){
-      e.preventDefault();e.stopImmediatePropagation();location.href='attendance.html?mode=teacher';
+      e.preventDefault();e.stopImmediatePropagation();location.href='attendance.html?mode=teacher';return;
     }
+
+    // Modal close/cancel clicks: sync once after the page's own handler finishes.
+    if(e.target?.closest?.('#attModal')) setTimeout(syncAttModal,0);
   },true);
 
   function normalize(){
     document.querySelectorAll('.class-actions button').forEach(btn=>{
-      const cid=classIdFrom(btn);if(cid)btn.dataset.classId=cid;btn.removeAttribute('onclick');
+      const cid=classIdFrom(btn);
+      if(cid)btn.dataset.classId=cid;
+      btn.removeAttribute('onclick');
     });
     document.querySelectorAll('.teacher-quick-nav a[href^="attendance.html"]').forEach(a=>a.href='attendance.html?mode=teacher');
-    ensureAttDate();syncAttModal();
+    document.querySelectorAll('.teacher-quick-nav a[href^="homework.html"]').forEach(a=>a.href='homework.html?mode=teacher');
+    syncAttModal();
   }
 
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(normalize,0));
+  // No MutationObserver here. The old observer watched class mutations that this
+  // script itself created, which could cause an endless feedback loop on mobile.
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(normalize,0),{once:true});
   else setTimeout(normalize,0);
-  const observer=new MutationObserver(()=>{normalize();syncAttModal();});
-  observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+  window.addEventListener('load',()=>setTimeout(normalize,150),{once:true});
 })();
