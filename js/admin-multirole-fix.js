@@ -5,6 +5,19 @@ const has=(u,r)=>window.YMS_Roles?.has?YMS_Roles.has(u,r):[u?.role,...(Array.isA
 const norm=v=>String(v||'').trim().toLowerCase();
 const str=v=>String(v||'').trim();
 
+// ADMIN and TEACHER now use completely separate home screens.
+const currentUser=window.YMS_Auth?.getUser?.();
+const currentRole=String(currentUser?.role||'').toUpperCase();
+const currentPage=(location.pathname.split('/').pop()||'').toLowerCase();
+if(currentPage==='teacher-home.html'&&currentRole==='ADMIN'){
+  location.replace('admin.html');
+  return;
+}
+if(currentPage==='admin.html'&&currentRole==='TEACHER'){
+  location.replace('teacher-home.html');
+  return;
+}
+
 function assignedClasses(u){
   return (Array.isArray(u?.teacherClasses)?u.teacherClasses:String(u?.teacherClasses||'').split(','))
     .map(str).filter(Boolean);
@@ -15,19 +28,14 @@ function strictTeacherClasses(classes,u){
   const uid=str(u?.id||u?.uid);
   const uname=norm(u?.name);
 
-  // 1) Explicit account assignment is authoritative when present.
   if(assigned.length){
     const exact=new Set(assigned);
     return classes.filter(c=>exact.has(str(c.id||c.classId))||assigned.some(x=>norm(x)===norm(c.className||c.name)));
   }
-
-  // 2) Prefer exact teacher UID relationship.
   if(uid){
     const byId=classes.filter(c=>str(c.teacherId)===uid);
     if(byId.length)return byId;
   }
-
-  // 3) Legacy classes were saved by teacherName. Keep that relationship for ADMIN+TEACHER too.
   return uname?classes.filter(c=>norm(c.teacherName)===uname):[];
 }
 
@@ -35,7 +43,7 @@ let teacherScopeRunning=false;
 let teacherScopeDone=false;
 async function teacherScope(){
   if(!location.pathname.endsWith('/teacher-home.html')||teacherScopeRunning||teacherScopeDone)return;
-  const u=YMS_Auth?.getUser?.();if(!u||!has(u,'TEACHER'))return;
+  const u=YMS_Auth?.getUser?.();if(!u||String(u.role||'').toUpperCase()!=='TEACHER')return;
   teacherScopeRunning=true;
   try{
     const [a,b]=await Promise.all([
@@ -51,6 +59,7 @@ async function teacherScope(){
     const g=document.getElementById('greetName'),sub=document.getElementById('greetSub');
     if(g)g.textContent=(u.name||'선생님')+' 선생님, 안녕하세요 👋';
     if(sub)sub.textContent='내 담당 수업과 학생 현황만 보여드려요.';
+    document.getElementById('adminShortcut')?.remove();
     if(typeof renderTeacherHome==='function')renderTeacherHome();
     document.querySelectorAll('a[href="homework.html"]').forEach(a=>a.href='homework.html?mode=teacher');
     document.querySelectorAll('a[href="attendance.html"]').forEach(a=>a.href='attendance.html?mode=teacher');
@@ -68,7 +77,7 @@ window.addEventListener('load',()=>{
     if(typeof renderTeacherTable==='function')window.renderTeacherTable=function(){
       const tb=document.getElementById('teacherTableBody');if(!tb)return;const ts=_allUsers.filter(u=>has(u,'TEACHER'));
       if(!ts.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray-mid);">등록된 선생님이 없습니다</td></tr>';return;}
-      tb.innerHTML=ts.map(t=>{const cs=_allClasses.filter(c=>c.teacherName===t.name||c.teacherId===t.id),cl=cs.length?cs.map(c=>c.className).join(', '):(Array.isArray(t.teacherClasses)?t.teacherClasses.join(', '):(t.teacherClasses||'-')),dual=has(t,'ADMIN')&&has(t,'TEACHER')?'<span class="chip chip-blue" style="font-size:10px;margin-left:6px;">관리자 겸임</span>':'';return `<tr><td><strong>${t.name||'-'}</strong>${dual}</td><td><code style="font-size:11px;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${t.loginId||'-'}</code></td><td>${t.phone||'-'}</td><td>${cl}</td><td><span class="chip chip-green">활성</span></td></tr>`;}).join('');
+      tb.innerHTML=ts.map(t=>{const cs=_allClasses.filter(c=>c.teacherName===t.name||c.teacherId===t.id),cl=cs.length?cs.map(c=>c.className).join(', '):(Array.isArray(t.teacherClasses)?t.teacherClasses.join(', '):(t.teacherClasses||'-'));return `<tr><td><strong>${t.name||'-'}</strong></td><td><code style="font-size:11px;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${t.loginId||'-'}</code></td><td>${t.phone||'-'}</td><td>${cl}</td><td><span class="chip chip-green">활성</span></td></tr>`;}).join('');
     };
     if(typeof populateTeacherDropdown==='function')window.populateTeacherDropdown=function(){const s=document.getElementById('clsTeacherSelect');if(!s)return;const ts=_allUsers.filter(u=>has(u,'TEACHER'));s.innerHTML='<option value="">— 선생님 선택 —</option>'+ts.map(t=>`<option value="${t.name||''}" data-id="${t.id||''}">${t.name||'-'}${t.phone?' ('+t.phone+')':''}</option>`).join('');};
     if(typeof submitClassForm==='function')window.submitClassForm=async function(e){
