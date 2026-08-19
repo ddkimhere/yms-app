@@ -4,6 +4,7 @@
   window.YMS_DEMO=window.YMS_DEMO||{};
   if(!Array.isArray(window.YMS_DEMO.calendarEvents)) window.YMS_DEMO.calendarEvents=[];
   if(!Array.isArray(window.YMS_DEMO.teacherClasses)) window.YMS_DEMO.teacherClasses=[];
+  if(typeof window.ymsRenderTabBar!=='function') window.ymsRenderTabBar=function(){};
 
   const upper=v=>String(v||'').trim().toUpperCase();
   const str=v=>String(v||'').trim();
