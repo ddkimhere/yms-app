@@ -2,6 +2,18 @@
 (function(){
   'use strict';
 
+  function removeTeacherScreenShortcut(){
+    document.querySelectorAll('button,a').forEach(el=>{
+      const text=(el.textContent||'').replace(/\s+/g,' ').trim();
+      const onclick=el.getAttribute('onclick')||'';
+      const href=el.getAttribute('href')||'';
+      if(text.includes('선생님 화면') || onclick.includes('teacher-home.html') || href.includes('teacher-home.html')){
+        // Only remove the admin dashboard shortcut. Keep teacher management controls intact.
+        if(!text.includes('선생님 관리')) el.remove();
+      }
+    });
+  }
+
   function hideAttendanceMenu(){
     const sidebar=document.getElementById('adminSidebar');
     if(!sidebar) return;
@@ -49,6 +61,7 @@
   }
 
   function fixMobileAdmin(){
+    removeTeacherScreenShortcut();
     hideAttendanceMenu();
     ensureLogoutButton();
     if(!mobileOnly()) return;
@@ -156,6 +169,7 @@
   }
 
   function run(){
+    removeTeacherScreenShortcut();
     fixMobileAdmin();
     setTimeout(fixMobileAdmin,120);
     setTimeout(fixMobileAdmin,500);
