@@ -3,10 +3,12 @@
   'use strict';
   let visible=[];
   let active='ALL';
+  let ready=false;
   const me=()=>window.YMS_Auth?.getUser?.()||null;
   const upper=v=>String(v||'').trim().toUpperCase();
   const str=v=>String(v||'').trim();
   const norm=v=>str(v).toLowerCase().replace(/[\s·._-]+/g,'');
+  const baseRender=typeof window.renderHomework==='function'?window.renderHomework:null;
 
   function badge(dueAt){
     if(!dueAt)return'NEW';
@@ -94,21 +96,16 @@
 
   function matchesStudentHomework(h,s){
     if(!s)return false;
-
-    // 개인 숙제는 절대로 반 전체 조건으로 fallback 하지 않는다.
     if(isPersonalHomework(h)){
       const targetId=str(h.targetStudentId);
       const studentIds=new Set([str(s.id),str(s.studentId),str(s.userId)].filter(Boolean));
       if(targetId) return studentIds.has(targetId);
-
-      // 이전 데이터 중 ID가 누락된 개인 숙제만 이름+반 일치로 복구한다.
       const targetName=norm(h.targetStudentName);
       if(!targetName||targetName!==norm(s.name)) return false;
       if(h.classId&&s.classId&&str(h.classId)!==str(s.classId)) return false;
       if(h.className&&s.className&&norm(h.className)!==norm(s.className)) return false;
       return true;
     }
-
     if(h.classId&&s.classId) return str(h.classId)===str(s.classId);
     return !!h.className&&!!s.className&&norm(h.className)===norm(s.className);
   }
@@ -125,9 +122,24 @@
     return !!uid&&str(h.teacherId)===uid;
   }
 
+  function renderSafe(list){
+    if(typeof baseRender!=='function')return;
+    const u=me(),r=upper(u?.role),roles=Array.isArray(u?.roles)?u.roles.map(upper):[];
+    const protectedRole=r==='PARENT'||r==='STUDENT'||r==='TEACHER'||roles.includes('TEACHER');
+    if(protectedRole&&!ready){baseRender([]);return;}
+    if(!protectedRole){baseRender(Array.isArray(list)?list:[]);return;}
+    const allowed=new Set(visible.map(h=>String(h.id||'')));
+    const safe=(Array.isArray(list)?list:[]).filter(h=>allowed.has(String(h.id||'')));
+    baseRender(safe);
+  }
+
+  if(baseRender){
+    window.renderHomework=function(list){renderSafe(list);};
+  }
+
   function draw(){
     const list=active==='ALL'?visible:visible.filter(h=>h.badge===active);
-    if(typeof window.renderHomework==='function')window.renderHomework(list);
+    if(typeof baseRender==='function')baseRender(list);
   }
 
   window.setFilter=function(el,filter){
@@ -137,6 +149,7 @@
 
   async function refresh(){
     let u=me();if(!u)return;
+    ready=false;
     try{
       u=await freshProfile(u);
       const r=await _tFetch('tables/homework?limit=500',{cache:'no-store'});if(!r.ok)return;
@@ -160,13 +173,16 @@
       }
 
       list=list.map(h=>isPersonalHomework(h)?{...h,className:'👤 '+(h.targetStudentName||'개인')+(h.className?' · '+h.className:'')}:h);
-      visible=list;draw();
-    }catch(e){console.warn('[YMS] 숙제 대상 필터 실패',e);}
+      visible=list;ready=true;draw();
+    }catch(e){
+      console.warn('[YMS] 숙제 대상 필터 실패',e);
+      visible=[];ready=true;draw();
+    }
   }
 
   window.YMS_homeworkMatchesStudent=matchesStudentHomework;
   window.YMS_isPersonalHomework=isPersonalHomework;
   window.YMS_refreshHomeworkAudience=refresh;
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,250));
-  else setTimeout(refresh,250);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,0));
+  else setTimeout(refresh,0);
 })();
