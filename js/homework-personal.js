@@ -15,7 +15,8 @@
       const allStudents=sr.ok?((await sr.json()).data||[]):[];
       const allClasses=cr.ok?((await cr.json()).data||[]):[];
 
-      if(isAdmin()&&!isTeacher()){
+      // ADMIN is always academy-wide, even when the account also has TEACHER role.
+      if(isAdmin()){
         students=allStudents;
         teacherClasses=allClasses;
         return;
@@ -61,7 +62,8 @@
   }
 
   function fillClasses(){
-    const sel=document.getElementById('hwClassId');if(!sel||!isTeacher())return;
+    const sel=document.getElementById('hwClassId');if(!sel)return;
+    if(!isAdmin()&&!isTeacher())return;
     sel.innerHTML=teacherClasses.map(c=>'<option value="'+c.id+'" data-name="'+(c.className||'')+'" data-level="'+(c.levelCode||'')+'">'+(c.className||'-')+'</option>').join('');
   }
 
@@ -84,7 +86,7 @@
       const student=type==='STUDENT'?students.find(s=>String(s.id)===String(stuSel?.value)):null;
       if(type==='STUDENT'&&!student)throw new Error('학생을 선택해주세요.');
       const opt=classSel?.options[classSel.selectedIndex];
-      if(type==='CLASS'&&isTeacher()&&!opt)throw new Error('담당 반이 없습니다.');
+      if(type==='CLASS'&&(isTeacher()||isAdmin())&&!opt)throw new Error('등록할 반이 없습니다.');
       const due=document.getElementById('hwDueDate')?.value||'',u=authUser();
       const classId=student?.classId||classSel?.value||'';
       const p={
