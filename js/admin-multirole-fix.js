@@ -14,51 +14,55 @@ function strictTeacherClasses(classes,u){
   const assigned=assignedClasses(u);
   const uid=str(u?.id||u?.uid);
   const uname=norm(u?.name);
-  const primary=String(u?.role||'').toUpperCase();
 
-  // 1) Explicit account assignment is authoritative.
+  // 1) Explicit account assignment is authoritative when present.
   if(assigned.length){
-    const set=new Set(assigned);
-    return classes.filter(c=>set.has(str(c.id||c.classId))||set.has(str(c.className)));
+    const exact=new Set(assigned);
+    return classes.filter(c=>exact.has(str(c.id||c.classId))||assigned.some(x=>norm(x)===norm(c.className||c.name)));
   }
 
-  // 2) Otherwise use only an exact teacher UID relationship.
+  // 2) Prefer exact teacher UID relationship.
   if(uid){
     const byId=classes.filter(c=>str(c.teacherId)===uid);
-    if(byId.length) return byId;
+    if(byId.length)return byId;
   }
 
-  // 3) ADMIN+TEACHER accounts must never expand to every class by teacherName.
-  //    Their teacher screen shows only explicit teacherClasses / teacherId assignments.
-  if(primary==='ADMIN') return [];
-
-  // 4) Legacy pure teacher accounts may still fall back to teacherName.
+  // 3) Legacy classes were saved by teacherName. Keep that relationship for ADMIN+TEACHER too.
   return uname?classes.filter(c=>norm(c.teacherName)===uname):[];
 }
 
+let teacherScopeRunning=false;
+let teacherScopeDone=false;
 async function teacherScope(){
-  if(!location.pathname.endsWith('/teacher-home.html'))return;
+  if(!location.pathname.endsWith('/teacher-home.html')||teacherScopeRunning||teacherScopeDone)return;
   const u=YMS_Auth?.getUser?.();if(!u||!has(u,'TEACHER'))return;
+  teacherScopeRunning=true;
   try{
-    const [a,b]=await Promise.all([_tFetch('tables/classes?limit=200',{cache:'no-store'}),_tFetch('tables/students?limit=500',{cache:'no-store'})]);
-    const cs=a.ok?(await a.json()).data||[]:[],ss=b.ok?(await b.json()).data||[]:[];
+    const [a,b]=await Promise.all([
+      _tFetch('tables/classes?limit=200',{cache:'no-store'}),
+      _tFetch('tables/students?limit=500',{cache:'no-store'})
+    ]);
+    const cs=a.ok?(await a.json()).data||[]:[];
+    const ss=b.ok?(await b.json()).data||[]:[];
     _myClasses=strictTeacherClasses(cs,u);
     const ids=new Set(_myClasses.map(c=>str(c.id||c.classId)).filter(Boolean));
-    const names=new Set(_myClasses.map(c=>str(c.className)).filter(Boolean));
-    _myStudents=ss.filter(s=>ids.has(str(s.classId))||names.has(str(s.className)));
+    const names=new Set(_myClasses.map(c=>norm(c.className||c.name)).filter(Boolean));
+    _myStudents=ss.filter(s=>s.isActive!==false&&(ids.has(str(s.classId))||names.has(norm(s.className))));
     const g=document.getElementById('greetName'),sub=document.getElementById('greetSub');
     if(g)g.textContent=(u.name||'선생님')+' 선생님, 안녕하세요 👋';
     if(sub)sub.textContent='내 담당 수업과 학생 현황만 보여드려요.';
     if(typeof renderTeacherHome==='function')renderTeacherHome();
     document.querySelectorAll('a[href="homework.html"]').forEach(a=>a.href='homework.html?mode=teacher');
     document.querySelectorAll('a[href="attendance.html"]').forEach(a=>a.href='attendance.html?mode=teacher');
+    teacherScopeDone=true;
   }catch(e){console.warn('[YMS] teacher scope failed',e);}
+  finally{teacherScopeRunning=false;}
 }
 
 window.YMS_strictTeacherClasses=strictTeacherClasses;
 
 window.addEventListener('load',()=>{
-  if(location.pathname.endsWith('/teacher-home.html')){teacherScope();setTimeout(teacherScope,250);setTimeout(teacherScope,900);return;}
+  if(location.pathname.endsWith('/teacher-home.html')){setTimeout(teacherScope,120);return;}
   if(!location.pathname.endsWith('/admin.html'))return;
   try{
     if(typeof renderTeacherTable==='function')window.renderTeacherTable=function(){
