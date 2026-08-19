@@ -1,5 +1,5 @@
-/* YMS Master Track — Service Worker v3.81.0 */
-const CACHE_NAME='yms-v3.81.0';
+/* YMS Master Track — Service Worker v3.82.0 */
+const CACHE_NAME='yms-v3.82.0';
 const APP_SHELL=['./login.html','./student-home.html','./parent-home.html','./parent-payment.html','./homework.html','./teacher-home.html','./attendance.html','./notices.html','./counseling.html','./css/style.css','./js/app.js','./js/admin-multirole-fix.js','./js/admin-account-fix.js','./js/admin-student-tuition-ui.js','./js/account-id-migration.js','./js/student-dashboard.js','./js/admin-structure-fix.js','./js/admin-menu-cleanup.js','./js/student-select-options.js','./js/class-grade-sort.js','./js/student-class-sync.js','./js/home-widgets.js','./js/student-homework-privacy.js','./js/tuition-discount.js','./js/tuition-jpg.js','./js/payment-year-grid.js','./js/homework-ui-compat.js','./js/homework-personal.js','./js/homework-filter.js','./js/notice-role.js','./js/home-notices.js','./js/parent-home-fix.js','./js/parent-tabbar.js','./js/parent-topbar.js','./js/parent-payment-data.js','./js/parent-link-repair.js','./js/parent-account-save-fix.js','./js/student-mobile-ui.js','./js/teacher-mobile-nav.js','./js/teacher-mobile-ui.js','./js/teacher-homework-form-fix.js','./js/teacher-home-actions-fix.js','./js/teacher-home-scope-lite.js','./js/teacher-roster-fix.js','./js/teacher-book-fee.js','./js/attendance-teacher-mode.js','./js/admin-attendance-all.js','./js/counseling-live.js','./manifest.json','./images/dairoom-pay-qr.svg','./images/icon-source.svg','./images/icon-192.png','./images/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>Promise.all(APP_SHELL.map(u=>c.add(u).catch(()=>null)))));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});
@@ -41,9 +41,9 @@ const isParentPage=['/homework.html','/notices.html','/counseling.html','/parent
 if(isParentPage&&!html.includes('yms-parent-tabbar-hardfix'))html=html.replace('</head>',PARENT_TAB_CSS+'</head>');
 const appTag='<script src="js/app.js"></script>';
 const pm=pre.filter(s=>!html.includes(s));
-if(pm.length)html=html.includes(appTag)?html.replace(appTag,appTag+pm.map(s=>`<script src="${s}?v=3.81.0"></script>`).join('')):html.replace('</body>',pm.map(s=>`<script src="${s}?v=3.81.0"></script>`).join('')+'</body>');
+if(pm.length)html=html.includes(appTag)?html.replace(appTag,appTag+pm.map(s=>`<script src="${s}?v=3.82.0"></script>`).join('')):html.replace('</body>',pm.map(s=>`<script src="${s}?v=3.82.0"></script>`).join('')+'</body>');
 const em=end.filter(s=>!html.includes(s));
-if(em.length)html=html.replace('</body>',em.map(s=>`<script src="${s}?v=3.81.0"></script>`).join('')+'</body>');
+if(em.length)html=html.replace('</body>',em.map(s=>`<script src="${s}?v=3.82.0"></script>`).join('')+'</body>');
 const h=new Headers(res.headers);h.delete('content-length');return new Response(html,{status:res.status,statusText:res.statusText,headers:h});
 }catch{return res;}}
 self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(u.origin!==self.location.origin||r.method!=='GET')return;if(r.mode==='navigate'||r.headers.get('accept')?.includes('text/html')){e.respondWith(fetch(r).then(async res=>{if(res.ok)caches.open(CACHE_NAME).then(c=>c.put(r,res.clone()));return patchHtml(r,res);}).catch(async()=>patchHtml(r,(await caches.match(r))||(await caches.match('./login.html')))));return;}e.respondWith(caches.match(r).then(cached=>cached||fetch(r).then(res=>{if(res.ok)caches.open(CACHE_NAME).then(c=>c.put(r,res.clone()));return res;})));});
