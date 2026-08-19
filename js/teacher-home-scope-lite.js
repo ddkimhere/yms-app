@@ -26,6 +26,19 @@
     return !!norm(user.name)&&norm(c?.teacherName)===norm(user.name);
   }
 
+  function gradeKey(c){
+    const s=[c?.grade,c?.className,c?.name,c?.levelCode].filter(Boolean).join(' ');
+    let m;
+    m=s.match(/초중학교\s*([4-6])\s*(?:학년)?/i); if(m)return 100+Number(m[1]);
+    m=s.match(/(?:초등학교|초등|초)\s*([1-6])\s*(?:학년)?/i); if(m)return 100+Number(m[1]);
+    m=s.match(/(?:중학교|중등|중)\s*([1-3])\s*(?:학년)?/i); if(m)return 200+Number(m[1]);
+    m=s.match(/(?:고등학교|고등|고)\s*([1-3])\s*(?:학년)?/i); if(m)return 300+Number(m[1]);
+    return 999;
+  }
+  function sortClasses(list){
+    return list.slice().sort((a,b)=>gradeKey(a)-gradeKey(b)||String(a?.className||a?.name||'').localeCompare(String(b?.className||b?.name||''),'ko',{numeric:true,sensitivity:'base'}));
+  }
+
   let done=false;
   function apply(){
     if(done) return true;
@@ -34,7 +47,7 @@
       const count=document.getElementById('todayClassCount');
       if(count&&String(count.textContent||'').includes('불러오는 중')) return false;
 
-      const filtered=_myClasses.filter(mine);
+      const filtered=sortClasses(_myClasses.filter(mine));
       const ids=new Set(filtered.map(c=>val(c.id||c.classId)).filter(Boolean));
       const names=new Set(filtered.map(c=>norm(c.className||c.name)).filter(Boolean));
       const students=_myStudents.filter(s=>ids.has(val(s.classId))||names.has(norm(s.className)));
@@ -49,6 +62,8 @@
       if(sub) sub.textContent='내 담당 수업과 학생 현황만 보여드려요.';
       document.querySelectorAll('a[href="attendance.html"]').forEach(a=>a.href='attendance.html?mode=teacher');
       document.querySelectorAll('a[href="homework.html"]').forEach(a=>a.href='homework.html?mode=teacher');
+
+      // Render only once after scoping/sorting. No MutationObserver or repeated resorting on teacher home.
       if(typeof renderTeacherHome==='function') renderTeacherHome();
       done=true;
       return true;
@@ -61,6 +76,6 @@
   let tries=0;
   const timer=setInterval(()=>{
     tries++;
-    if(apply()||tries>=20) clearInterval(timer);
-  },100);
+    if(apply()||tries>=12) clearInterval(timer);
+  },120);
 })();
