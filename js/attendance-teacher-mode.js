@@ -16,8 +16,8 @@
   const adminMode=requestedMode==='admin'||(isAdmin&&requestedMode!=='teacher');
   const teacherMode=!adminMode&&(requestedMode==='teacher'||primary==='TEACHER'||hasTeacher);
 
-  // 운영자모드에서는 ADMIN 권한을 그대로 유지해 전체 반을 볼 수 있게 한다.
-  // 선생님모드에서만 ADMIN+TEACHER 겸임 계정을 TEACHER처럼 보이게 한다.
+  // 운영자모드는 ADMIN 권한 그대로 전체 반을 본다.
+  // 선생님모드에서만 기존 겸임 계정을 TEACHER처럼 처리한다.
   if(teacherMode&&hasTeacher){
     auth.getUser=function(){
       const u=originalGetUser();
@@ -57,36 +57,77 @@
   }
 
   const str=v=>String(v||'').trim();
-  const norm=v=>str(v).toLowerCase();
-  function assigned(u){return (Array.isArray(u?.teacherClasses)?u.teacherClasses:String(u?.teacherClasses||'').split(',')).map(str).filter(Boolean);}
+  const norm=v=>str(v).toLowerCase().replace(/\s+/g,'');
+
+  function assigned(u){
+    return (Array.isArray(u?.teacherClasses)?u.teacherClasses:String(u?.teacherClasses||'').split(','))
+      .map(str).filter(Boolean);
+  }
+
   function strict(classes,u){
     const a=assigned(u),uid=str(u?.id||u?.uid),name=norm(u?.name);
-    if(a.length){const set=new Set(a);return classes.filter(c=>set.has(str(c.id||c.classId))||set.has(str(c.className)));}
-    if(uid){const byId=classes.filter(c=>str(c.teacherId)===uid);if(byId.length)return byId;}
+    if(a.length){
+      return classes.filter(c=>a.some(x=>str(x)===str(c.id||c.classId)||norm(x)===norm(c.className||c.name)));
+    }
+    if(uid){
+      const byId=classes.filter(c=>str(c.teacherId)===uid);
+      if(byId.length) return byId;
+    }
     return name?classes.filter(c=>norm(c.teacherName)===name):[];
   }
 
-  async function rescope(){
-    if(!teacherMode) return;
+  function classMatchesStudent(cls,s){
+    const cid=str(cls?.id||cls?.classId),sid=str(s?.classId);
+    if(cid&&sid&&cid===sid) return true;
+    const cn=norm(cls?.className||cls?.name),sn=norm(s?.className);
+    return !!cn&&!!sn&&cn===sn;
+  }
+
+  async function fetchData(path){
     try{
-      if(typeof _allClasses==='undefined'||typeof _allStudents==='undefined')return;
-      const u=originalGetUser();if(!u)return;
-      const r=await _tFetch('tables/classes?limit=200',{cache:'no-store'});if(!r.ok)return;
-      const classes=(await r.json()).data||[];
+      const r=await _tFetch(path,{cache:'no-store'});
+      if(!r.ok) return [];
+      return (await r.json()).data||[];
+    }catch{return [];}
+  }
+
+  let scoped=false;
+  async function rescopeOnce(){
+    if(!teacherMode||scoped) return;
+    scoped=true;
+    try{
+      if(typeof _allClasses==='undefined'||typeof _allStudents==='undefined'){
+        scoped=false;
+        return;
+      }
+      const u=originalGetUser();
+      if(!u) return;
+      const [classes,students]=await Promise.all([
+        fetchData('tables/classes?limit=300'),
+        fetchData('tables/students?limit=1000')
+      ]);
       const mine=strict(classes,u);
+      const roster=students.filter(s=>s.isActive!==false&&mine.some(c=>classMatchesStudent(c,s)));
       _allClasses.splice(0,_allClasses.length,...mine);
-      const ids=new Set(mine.map(c=>str(c.id||c.classId)).filter(Boolean));
-      const names=new Set(mine.map(c=>str(c.className)).filter(Boolean));
-      const sr=await _tFetch('tables/students?limit=500',{cache:'no-store'});
-      if(sr.ok){const students=(await sr.json()).data||[];_allStudents.splice(0,_allStudents.length,...students.filter(s=>ids.has(str(s.classId))||names.has(str(s.className))));}
-      if(typeof renderClassTabs==='function')renderClassTabs();
-    }catch(e){console.warn('[YMS] 출결 담당 반 필터 실패',e);}
+      _allStudents.splice(0,_allStudents.length,...roster);
+      if(typeof renderClassTabs==='function') renderClassTabs();
+    }catch(e){
+      scoped=false;
+      console.warn('[YMS] 출결 담당 반 필터 실패',e);
+    }
   }
 
   function clean(){
-    const roleChip=document.getElementById('roleChip');if(roleChip) roleChip.style.display='none';
-    const right=document.querySelector('.app-bar-right');if(right && !right.querySelector('button:not(.hidden),a:not(.hidden)')) right.style.display='none';
+    const roleChip=document.getElementById('roleChip');
+    if(roleChip) roleChip.style.display='none';
+    const right=document.querySelector('.app-bar-right');
+    if(right&&!right.querySelector('button:not(.hidden),a:not(.hidden)')) right.style.display='none';
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',clean); else clean();
-  window.addEventListener('load',()=>{clean();if(teacherMode){setTimeout(rescope,150);setTimeout(rescope,700);}});
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',clean,{once:true});
+  else clean();
+  window.addEventListener('load',()=>{
+    clean();
+    if(teacherMode) setTimeout(rescopeOnce,180);
+  },{once:true});
 })();
