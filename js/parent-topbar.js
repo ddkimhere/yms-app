@@ -47,6 +47,21 @@
     else location.href='parent-home.html';
   }
 
+  function bindBack(btn){
+    if(!btn||btn.dataset.ymsParentBack==='1') return;
+    const text=(btn.textContent||'').trim();
+    const inline=btn.getAttribute('onclick')||'';
+    if(text!=='←'&&!inline.includes('history.back')) return;
+    btn.removeAttribute('onclick');
+    btn.dataset.ymsParentBack='1';
+    btn.setAttribute('aria-label','학부모 홈으로');
+    btn.addEventListener('click',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      goParentHome();
+    });
+  }
+
   function clean(){
     const roleChip=document.getElementById('roleChip');
     if(roleChip) roleChip.style.display='none';
@@ -54,16 +69,8 @@
     const right=document.querySelector('.app-bar-right');
     if(right && !right.querySelector('button:not(.hidden),a:not(.hidden)')) right.style.display='none';
 
-    // Parent pages must not use browser history: it may contain pages from a previous account session.
-    document.querySelectorAll('.app-bar .icon-btn,.top .back').forEach(btn=>{
-      const text=(btn.textContent||'').trim();
-      const onclick=btn.getAttribute('onclick')||'';
-      if(text==='←'||onclick.includes('history.back')){
-        btn.onclick=function(e){e?.preventDefault?.();goParentHome();};
-        btn.setAttribute('onclick','return false');
-        btn.setAttribute('aria-label','학부모 홈으로');
-      }
-    });
+    // Parent pages always return to the parent home instead of browser history.
+    document.querySelectorAll('.app-bar .icon-btn,.top .back').forEach(bindBack);
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',clean);
