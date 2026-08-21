@@ -95,6 +95,10 @@
     if(radio){radio.checked=true;radio.dispatchEvent(new Event('change',{bubbles:true}));}
   }
 
+  function getVehicleUse(){
+    return document.querySelector('input[name="acctVehicleUse"]:checked')?.value==='true';
+  }
+
   async function loadExisting(){
     install();
     const role=String(document.getElementById('acctRole')?.value||'').toUpperCase();
@@ -132,7 +136,37 @@
     }
   }
 
-  function tick(){install();loadExisting();resetWhenNew();}
+  function bindVehicleSave(){
+    const form=document.getElementById('acctForm');
+    if(!form||form.dataset.ymsVehicleSaveBound==='1') return;
+    form.dataset.ymsVehicleSaveBound='1';
+    form.addEventListener('submit',function(){
+      const role=String(document.getElementById('acctRole')?.value||'').toUpperCase();
+      if(role!=='STUDENT') return;
+      const vehicleUse=getVehicleUse();
+      const base=window._tFetch;
+      if(typeof base!=='function'||base.__ymsVehicleWrapper) return;
+      let restored=false;
+      const restore=()=>{if(!restored&&window._tFetch===wrapped){restored=true;window._tFetch=base;}};
+      const wrapped=async function(path,opt={}){
+        const method=String(opt?.method||'GET').toUpperCase();
+        if(String(path).startsWith('tables/students')&&(method==='POST'||method==='PATCH')){
+          try{
+            const body=typeof opt.body==='string'?JSON.parse(opt.body):(opt.body||{});
+            body.vehicleUse=vehicleUse;
+            opt={...opt,body:JSON.stringify(body)};
+          }catch{}
+          restore();
+        }
+        return base(path,opt);
+      };
+      wrapped.__ymsVehicleWrapper=true;
+      window._tFetch=wrapped;
+      setTimeout(restore,5000);
+    },true);
+  }
+
+  function tick(){install();loadExisting();resetWhenNew();bindVehicleSave();}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',tick); else tick();
   window.addEventListener('load',()=>{tick();setTimeout(tick,200);setTimeout(tick,700);});
 })();
