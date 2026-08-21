@@ -41,7 +41,7 @@
       btn.addEventListener('click',()=>window.YMS_Auth?.logout?.());
       topbar.appendChild(btn);
     }
-    btn.style.setProperty('display',mobileOnly()?'inline-flex':'none','important');
+    btn.style.setProperty('display','inline-flex','important');
     btn.style.setProperty('align-items','center','important');
     btn.style.setProperty('justify-content','center','important');
     btn.style.setProperty('gap','5px','important');
