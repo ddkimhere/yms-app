@@ -1,4 +1,4 @@
-/* YMS teacher home class action click hard-fix */
+/* YMS teacher home actions + lightweight ordering */
 (function(){
   'use strict';
   const u=window.YMS_Auth?.getUser?.();
@@ -20,6 +20,23 @@
       }
     `;
     document.head.appendChild(s);
+  }
+
+  const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
+  function gradeKey(cls){
+    const s=[cls?.grade,cls?.className,cls?.name,cls?.levelCode].filter(Boolean).join(' ');
+    let m;
+    m=s.match(/초중학교\s*([4-6])\s*(?:학년)?/i); if(m)return 100+Number(m[1]);
+    m=s.match(/(?:초등학교|초등|초)\s*([1-6])\s*(?:학년)?/i); if(m)return 100+Number(m[1]);
+    m=s.match(/(?:중학교|중등|중)\s*([1-3])\s*(?:학년)?/i); if(m)return 200+Number(m[1]);
+    m=s.match(/(?:고등학교|고등|고)\s*([1-3])\s*(?:학년)?/i); if(m)return 300+Number(m[1]);
+    return 999;
+  }
+  function sortTeacherClasses(){
+    try{
+      if(typeof _myClasses==='undefined'||!Array.isArray(_myClasses)||_myClasses.length<2)return;
+      _myClasses.sort((a,b)=>gradeKey(a)-gradeKey(b)||clean(a?.className||a?.name).localeCompare(clean(b?.className||b?.name),'ko',{numeric:true,sensitivity:'base'}));
+    }catch{}
   }
 
   function formatToday(){
@@ -97,11 +114,11 @@
       e.preventDefault();e.stopImmediatePropagation();location.href='attendance.html?mode=teacher';return;
     }
 
-    // Modal close/cancel clicks: sync once after the page's own handler finishes.
     if(e.target?.closest?.('#attModal')) setTimeout(syncAttModal,0);
   },true);
 
   function normalize(){
+    document.getElementById('adminShortcut')?.remove();
     document.querySelectorAll('.class-actions button').forEach(btn=>{
       const cid=classIdFrom(btn);
       if(cid)btn.dataset.classId=cid;
@@ -112,9 +129,17 @@
     syncAttModal();
   }
 
-  // No MutationObserver here. The old observer watched class mutations that this
-  // script itself created, which could cause an endless feedback loop on mobile.
+  // teacher-home.html already loads and scopes classes/students itself. Wrap its
+  // single render so ordering happens before cards are painted, with no polling,
+  // extra Firestore read, MutationObserver, or second render.
+  const baseRender=typeof window.renderTeacherHome==='function'?window.renderTeacherHome:null;
+  if(baseRender&&!baseRender.__ymsTeacherOrdered){
+    const wrapped=function(){sortTeacherClasses();const r=baseRender.apply(this,arguments);normalize();return r;};
+    wrapped.__ymsTeacherOrdered=true;
+    window.renderTeacherHome=wrapped;
+  }
+
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(normalize,0),{once:true});
   else setTimeout(normalize,0);
-  window.addEventListener('load',()=>setTimeout(normalize,150),{once:true});
+  window.addEventListener('load',()=>setTimeout(normalize,120),{once:true});
 })();
