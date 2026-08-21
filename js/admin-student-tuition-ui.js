@@ -1,4 +1,4 @@
-/* YMS admin student registration extras: start date + default tuition */
+/* YMS admin student registration extras: start date + vehicle use + default tuition */
 (function(){
   'use strict';
   if(!location.pathname.endsWith('/admin.html')) return;
@@ -25,10 +25,24 @@
       box.id='acctStudentTuitionBox';
       box.style='margin-top:14px;padding-top:14px;border-top:1px solid #C5D3F5;';
       box.innerHTML=`
-        <div style="font-size:12px;font-weight:800;color:#1E3278;margin-bottom:10px;">📅 수업 시작 · 💳 기본 수강료</div>
+        <div style="font-size:12px;font-weight:800;color:#1E3278;margin-bottom:10px;">📅 수업 시작 · 🚐 차량 · 💳 기본 수강료</div>
         <div class="form-group" style="margin:0 0 10px;">
           <label class="form-label">수업 시작일 <span style="color:#E04040;">*</span></label>
           <input type="date" class="form-input" id="acctStartDate" required>
+        </div>
+        <div class="form-group" style="margin:0 0 12px;">
+          <label class="form-label">🚐 차량 이용</label>
+          <div id="acctVehicleUseGroup" style="display:flex;gap:8px;margin-top:6px;">
+            <label style="flex:1;cursor:pointer;">
+              <input type="radio" name="acctVehicleUse" value="true" style="position:absolute;opacity:0;pointer-events:none;">
+              <span class="yms-vehicle-choice" style="display:flex;align-items:center;justify-content:center;height:40px;border:1.5px solid #C8D1E8;border-radius:11px;background:#fff;color:#506080;font-size:12px;font-weight:800;">유</span>
+            </label>
+            <label style="flex:1;cursor:pointer;">
+              <input type="radio" name="acctVehicleUse" value="false" checked style="position:absolute;opacity:0;pointer-events:none;">
+              <span class="yms-vehicle-choice" style="display:flex;align-items:center;justify-content:center;height:40px;border:1.5px solid #C8D1E8;border-radius:11px;background:#fff;color:#506080;font-size:12px;font-weight:800;">무</span>
+            </label>
+          </div>
+          <div style="font-size:10px;color:#7A87A8;margin-top:5px;">‘유’ 선택 학생은 차량 관리 대상에 자동 포함됩니다.</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="form-group" style="margin:0;">
@@ -46,20 +60,39 @@
         </div>
         <div id="acctTuitionPreview" style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff;color:#1E3278;font-size:11px;font-weight:800;">최종 수강료 0원</div>`;
       panel.appendChild(box);
-    }else if(!document.getElementById('acctStartDate')){
-      const start=document.createElement('div');
-      start.className='form-group';
-      start.style.margin='0 0 10px';
-      start.innerHTML='<label class="form-label">수업 시작일 <span style="color:#E04040;">*</span></label><input type="date" class="form-input" id="acctStartDate" required>';
-      const firstGrid=box.querySelector('div[style*="grid-template-columns"]');
-      if(firstGrid) firstGrid.before(start); else box.prepend(start);
     }
+
+    const vehicleRadios=box.querySelectorAll('input[name="acctVehicleUse"]');
+    const paintVehicle=()=>{
+      vehicleRadios.forEach(r=>{
+        const span=r.nextElementSibling;
+        if(!span)return;
+        if(r.checked){
+          span.style.background='#1E3278';span.style.color='#fff';span.style.borderColor='#1E3278';
+        }else{
+          span.style.background='#fff';span.style.color='#506080';span.style.borderColor='#C8D1E8';
+        }
+      });
+    };
+    vehicleRadios.forEach(r=>{
+      if(r.dataset.bound!=='1'){
+        r.addEventListener('change',paintVehicle);
+        r.dataset.bound='1';
+      }
+    });
+    paintVehicle();
 
     const b=document.getElementById('acctTuitionBaseAmount');
     const d=document.getElementById('acctTuitionDiscountAmount');
     if(b&&!b.dataset.ymsCalcBound){b.addEventListener('input',calc);b.dataset.ymsCalcBound='1';}
     if(d&&!d.dataset.ymsCalcBound){d.addEventListener('input',calc);d.dataset.ymsCalcBound='1';}
     calc();
+  }
+
+  function setVehicleUse(value){
+    const wanted=String(value===true||String(value).toLowerCase()==='true');
+    const radio=document.querySelector(`input[name="acctVehicleUse"][value="${wanted}"]`);
+    if(radio){radio.checked=true;radio.dispatchEvent(new Event('change',{bubbles:true}));}
   }
 
   async function loadExisting(){
@@ -78,6 +111,7 @@
       const d=document.getElementById('acctTuitionDiscountAmount');
       const reason=document.getElementById('acctTuitionDiscountReason');
       if(start) start.value=String(s.startDate||s.classStartDate||'').slice(0,10);
+      setVehicleUse(s.vehicleUse===true);
       if(b) b.value=Number(s.tuitionBaseAmount||0)||'';
       if(d) d.value=Number(s.tuitionDiscountAmount||0)||0;
       if(reason) reason.value=s.tuitionDiscountReason||'';
@@ -94,49 +128,11 @@
       const b=document.getElementById('acctTuitionBaseAmount');
       const d=document.getElementById('acctTuitionDiscountAmount');
       const r=document.getElementById('acctTuitionDiscountReason');
-      if(start)start.value='';if(b)b.value='';if(d)d.value='0';if(r)r.value='';calc();
+      if(start)start.value='';setVehicleUse(false);if(b)b.value='';if(d)d.value='0';if(r)r.value='';calc();
     }
   }
 
-  function bindStudentSave(){
-    const form=document.getElementById('acctForm');
-    if(!form||form.dataset.ymsStartDateBound==='1') return;
-    form.dataset.ymsStartDateBound='1';
-    form.addEventListener('submit',function(e){
-      const role=String(document.getElementById('acctRole')?.value||'').toUpperCase();
-      if(role!=='STUDENT') return;
-      const startDate=document.getElementById('acctStartDate')?.value||'';
-      if(!startDate){
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        window.YMS_UI?.toast?.('❌ 수업 시작일을 입력해주세요');
-        document.getElementById('acctStartDate')?.focus();
-        return;
-      }
-
-      const base=window._tFetch;
-      if(typeof base!=='function'||base.__ymsStartDateWrapper) return;
-      let restored=false;
-      const restore=()=>{if(!restored&&window._tFetch===wrapped){restored=true;window._tFetch=base;}};
-      const wrapped=async function(path,opt={}){
-        const method=String(opt?.method||'GET').toUpperCase();
-        if(String(path).startsWith('tables/students')&&(method==='POST'||method==='PATCH')){
-          try{
-            const body=typeof opt.body==='string'?JSON.parse(opt.body):(opt.body||{});
-            body.startDate=startDate;
-            opt={...opt,body:JSON.stringify(body)};
-          }catch{}
-          restore();
-        }
-        return base(path,opt);
-      };
-      wrapped.__ymsStartDateWrapper=true;
-      window._tFetch=wrapped;
-      setTimeout(restore,5000);
-    },true);
-  }
-
-  function tick(){install();loadExisting();resetWhenNew();bindStudentSave();}
+  function tick(){install();loadExisting();resetWhenNew();}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',tick); else tick();
   window.addEventListener('load',()=>{tick();setTimeout(tick,200);setTimeout(tick,700);});
 })();
