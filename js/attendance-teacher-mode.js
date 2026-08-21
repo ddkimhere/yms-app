@@ -16,8 +16,6 @@
   const adminMode=requestedMode==='admin'||(isAdmin&&requestedMode!=='teacher');
   const teacherMode=!adminMode&&(requestedMode==='teacher'||primary==='TEACHER'||hasTeacher);
 
-  // 운영자모드는 ADMIN 권한 그대로 전체 반을 본다.
-  // 선생님모드에서만 기존 겸임 계정을 TEACHER처럼 처리한다.
   if(teacherMode&&hasTeacher){
     auth.getUser=function(){
       const u=originalGetUser();
@@ -124,10 +122,68 @@
     if(right&&!right.querySelector('button:not(.hidden),a:not(.hidden)')) right.style.display='none';
   }
 
+  function installVerifiedSave(){
+    if(typeof window.submitTeacherAtt!=='function'||window.submitTeacherAtt.__ymsVerified) return;
+    const verified=async function(){
+      const saveBtn=document.getElementById('saveAttBtn');
+      if(!saveBtn)return;
+      saveBtn.disabled=true;
+      saveBtn.textContent='저장 중...';
+
+      try{
+        const cls=(typeof _allClasses!=='undefined'&&Array.isArray(_allClasses))?_allClasses.find(c=>String(c.id||c.classId||'')===String(currentClassId||'')):null;
+        if(!cls)throw new Error('반 정보를 찾을 수 없습니다.');
+        const rows=Array.from(document.querySelectorAll('#teacherStudentList .att-student-row'));
+        if(!rows.length)throw new Error('저장할 학생이 없습니다.');
+
+        let success=0;
+        for(const row of rows){
+          const studentId=String(row.dataset.studentId||'');
+          const existingId=String(row.dataset.existingId||'');
+          const status=(typeof teacherAttStatus!=='undefined'&&teacherAttStatus[studentId])||'PRESENT';
+          const stu=(typeof _allStudents!=='undefined'&&Array.isArray(_allStudents))?_allStudents.find(s=>String(s.id||'')===studentId):null;
+          let res;
+          if(existingId){
+            res=await _tFetch(`tables/attendance/${encodeURIComponent(existingId)}`,{
+              method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})
+            });
+          }else{
+            res=await _tFetch('tables/attendance',{
+              method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+                studentId,studentName:stu?.name||'',classId:cls.id||cls.classId||'',className:cls.className||'',
+                date:selectedDate,status,teacherId:current?.id||current?.uid||'',teacherName:current?.name||'',memo:''
+              })
+            });
+          }
+          if(!res?.ok){
+            let detail='';
+            try{detail=(await res.text()).slice(0,180);}catch{}
+            throw new Error(`서버 저장 실패${res?.status?' ('+res.status+')':''}${detail?' · '+detail:''}`);
+          }
+          if(!existingId){
+            try{const created=await res.json();if(created?.id)row.dataset.existingId=created.id;}catch{}
+          }
+          success++;
+        }
+        document.getElementById('savedBadge')?.classList.remove('hidden');
+        window.YMS_UI?.toast?.(`✅ ${success}명 출결이 실제로 저장되었습니다.`);
+      }catch(e){
+        console.error('[YMS] 출결 저장 실패',e);
+        window.YMS_UI?.toast?.('❌ 출결 저장 실패: '+(e?.message||'권한 또는 네트워크를 확인해주세요.'));
+      }finally{
+        saveBtn.disabled=false;
+        saveBtn.textContent='✅ 출결 저장하기';
+      }
+    };
+    verified.__ymsVerified=true;
+    window.submitTeacherAtt=verified;
+  }
+
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',clean,{once:true});
   else clean();
   window.addEventListener('load',()=>{
     clean();
+    installVerifiedSave();
     if(teacherMode) setTimeout(rescopeOnce,180);
   },{once:true});
 })();
