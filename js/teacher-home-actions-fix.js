@@ -47,9 +47,13 @@
     }catch{}
   }
 
-  function formatToday(){
+  function todayKey(){
     const d=new Date();
     const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  function formatToday(){
+    const [y,m,day]=todayKey().split('-');
     return `📅 ${y}. ${m}. ${day}.`;
   }
   function ensureAttDate(){
@@ -68,6 +72,38 @@
     const open=!!modal&&!modal.classList.contains('hidden');
     document.body.classList.toggle('yms-att-modal-open',open);
     if(open)ensureAttDate();
+  }
+
+  function classById(classId){
+    const list=(typeof _myClasses!=='undefined'&&Array.isArray(_myClasses))?_myClasses:[];
+    return list.find(c=>String(c.id||c.classId||'')===String(classId||''))||null;
+  }
+  async function restoreAttendanceState(classId){
+    const cls=classById(classId);
+    if(!cls)return;
+    try{
+      const res=await _tFetch('tables/attendance?limit=1000',{cache:'no-store'});
+      if(!res.ok)return;
+      const json=await res.json();
+      const map={};
+      (json.data||[]).forEach(r=>{
+        const sameDate=String(r.date||'')===todayKey();
+        const sameClass=(cls.id&&String(r.classId||'')===String(cls.id)) || (cls.className&&String(r.className||'')===String(cls.className));
+        if(sameDate&&sameClass&&r.studentId)map[String(r.studentId)]={id:r.id,status:String(r.status||'PRESENT').toUpperCase()};
+      });
+      document.querySelectorAll('#attStudentList .att-student-row').forEach(row=>{
+        const sid=String(row.dataset.studentId||'');
+        const saved=map[sid];
+        const status=saved?.status||'PRESENT';
+        if(typeof attStatus!=='undefined')attStatus[sid]=status;
+        if(saved?.id)row.dataset.existingId=saved.id;
+        row.querySelectorAll('.att-toggle').forEach(btn=>btn.classList.toggle('active',String(btn.dataset.status||'').toUpperCase()===status));
+      });
+      const dateEl=document.getElementById('attModalDate');
+      if(dateEl&&Object.keys(map).length)dateEl.textContent=formatToday()+' · 저장된 출결 불러옴';
+    }catch(e){
+      console.warn('[YMS] 저장된 출결 불러오기 실패',e);
+    }
   }
 
   function currentClass(){
@@ -166,6 +202,18 @@
   if(baseRender&&!baseRender.__ymsTeacherOrdered){
     const wrapped=function(){sortTeacherClasses();const r=baseRender.apply(this,arguments);normalize();return r;};
     wrapped.__ymsTeacherOrdered=true;window.renderTeacherHome=wrapped;
+  }
+
+  const baseShowAtt=typeof window.showAttModal==='function'?window.showAttModal:null;
+  if(baseShowAtt&&!baseShowAtt.__ymsPersistedAttendance){
+    const wrapped=async function(classId){
+      const r=await baseShowAtt.apply(this,arguments);
+      syncAttModal();
+      await restoreAttendanceState(classId);
+      return r;
+    };
+    wrapped.__ymsPersistedAttendance=true;
+    window.showAttModal=wrapped;
   }
 
   const baseShowHw=typeof window.showHwRegModal==='function'?window.showHwRegModal:null;
