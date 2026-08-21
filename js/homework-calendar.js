@@ -8,12 +8,15 @@
   let selectedDate=dateKey(new Date());
   let viewDate=new Date();
   viewDate=new Date(viewDate.getFullYear(),viewDate.getMonth(),1);
+  let scopedSource=null;
 
   const dueKey=hw=>{
-    const raw=hw?.dueAt||'';
+    const raw=String(hw?.dueAt||'').trim();
     if(!raw)return '';
+    const iso=raw.match(/^(\d{4}-\d{2}-\d{2})/);
+    if(iso)return iso[1];
     const d=new Date(raw);
-    if(Number.isNaN(d.getTime()))return String(raw).slice(0,10);
+    if(Number.isNaN(d.getTime()))return raw.slice(0,10);
     return dateKey(d);
   };
 
@@ -86,6 +89,11 @@
   }
 
   function source(){
+    if(Array.isArray(scopedSource)) return scopedSource;
+    if(typeof window.YMS_getVisibleHomework==='function'){
+      const list=window.YMS_getVisibleHomework();
+      if(Array.isArray(list)) return list;
+    }
     try{return Array.isArray(allHomework)?allHomework:[];}catch{return Array.isArray(window.allHomework)?window.allHomework:[];}
   }
 
@@ -130,12 +138,20 @@
 
   if(baseRender&&!baseRender.__ymsCalendar){
     const wrapped=function(list){
+      if(Array.isArray(list)) scopedSource=[...list];
       ensureCalendar();renderCalendar();
       return renderList(Array.isArray(list)?list:source());
     };
     wrapped.__ymsCalendar=true;
     window.renderHomework=wrapped;
   }
+
+  window.YMS_onHomeworkAudienceChanged=function(list){
+    scopedSource=Array.isArray(list)?[...list]:[];
+    ensureCalendar();
+    renderCalendar();
+    renderList(scopedSource);
+  };
 
   ensureCalendar();renderCalendar();
   setTimeout(()=>{renderCalendar();renderList();},120);
