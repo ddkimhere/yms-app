@@ -122,6 +122,10 @@
     return !!uid&&str(h.teacherId)===uid;
   }
 
+  function currentVisible(){
+    return active==='ALL'?[...visible]:visible.filter(h=>h.badge===active);
+  }
+
   function renderSafe(list){
     if(typeof baseRender!=='function')return;
     const u=me(),r=upper(u?.role),roles=Array.isArray(u?.roles)?u.roles.map(upper):[];
@@ -138,8 +142,12 @@
   }
 
   function draw(){
-    const list=active==='ALL'?visible:visible.filter(h=>h.badge===active);
-    if(typeof baseRender==='function')baseRender(list);
+    const list=currentVisible();
+    if(typeof window.YMS_onHomeworkAudienceChanged==='function'){
+      window.YMS_onHomeworkAudienceChanged(list);
+    }else if(typeof baseRender==='function'){
+      baseRender(list);
+    }
   }
 
   window.setFilter=function(el,filter){
@@ -183,6 +191,7 @@
   window.YMS_homeworkMatchesStudent=matchesStudentHomework;
   window.YMS_isPersonalHomework=isPersonalHomework;
   window.YMS_refreshHomeworkAudience=refresh;
+  window.YMS_getVisibleHomework=()=>currentVisible();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,0));
   else setTimeout(refresh,0);
 })();
