@@ -81,28 +81,56 @@
     calc();
   }
 
-  async function loadExisting(){
+  async function loadExisting(force=false){
     install();
     if(String(document.getElementById('acctRole')?.value||'').toUpperCase()!=='STUDENT')return;
     const sid=document.getElementById('acctLinkedStudentId')?.value||'';
-    if(!sid||sid===lastLoaded)return;lastLoaded=sid;
+    if(!sid||(!force&&sid===lastLoaded))return;
+    lastLoaded=sid;
     try{
       const r=await _tFetch(`tables/students/${encodeURIComponent(sid)}`,{cache:'no-store'});if(!r.ok)return;
       const s=await r.json();
       const readingUse=s.readingNUse===true;
       const storedBase=Math.max(0,Number(s.tuitionBaseAmount||0));
       const classFee=Number(s.tuitionCoreAmount||0)||(readingUse?Math.max(0,storedBase-READING_N_FEE):storedBase);
-      document.getElementById('acctStartDate').value=String(s.startDate||s.classStartDate||'').slice(0,10);
-      setChoice('acctVehicleUse',s.vehicleUse===true);setChoice('acctReadingNUse',readingUse);
-      document.getElementById('acctTuitionBaseAmount').value=classFee||'';
-      document.getElementById('acctTuitionDiscountAmount').value=Number(s.tuitionDiscountAmount||0)||0;
-      document.getElementById('acctTuitionDiscountReason').value=s.tuitionDiscountReason||'';calc();
+      const start=document.getElementById('acctStartDate');
+      const base=document.getElementById('acctTuitionBaseAmount');
+      const discount=document.getElementById('acctTuitionDiscountAmount');
+      const reason=document.getElementById('acctTuitionDiscountReason');
+      if(start)start.value=String(s.startDate||s.classStartDate||'').slice(0,10);
+      setChoice('acctVehicleUse',s.vehicleUse===true);
+      setChoice('acctReadingNUse',readingUse);
+      if(base)base.value=classFee||'';
+      if(discount)discount.value=Number(s.tuitionDiscountAmount||0)||0;
+      if(reason)reason.value=s.tuitionDiscountReason||'';
+      calc();
     }catch(e){console.warn('[YMS] load student registration defaults',e);}
   }
 
   function resetWhenNew(){
     const edit=document.getElementById('acctEditId')?.value||'',sid=document.getElementById('acctLinkedStudentId')?.value||'';
-    if(!edit&&!sid&&lastLoaded){lastLoaded='';document.getElementById('acctStartDate').value='';setChoice('acctVehicleUse',false);setChoice('acctReadingNUse',false);document.getElementById('acctTuitionBaseAmount').value='';document.getElementById('acctTuitionDiscountAmount').value='0';document.getElementById('acctTuitionDiscountReason').value='';calc();}
+    if(!edit&&!sid&&lastLoaded){lastLoaded='';const start=document.getElementById('acctStartDate'),base=document.getElementById('acctTuitionBaseAmount'),discount=document.getElementById('acctTuitionDiscountAmount'),reason=document.getElementById('acctTuitionDiscountReason');if(start)start.value='';setChoice('acctVehicleUse',false);setChoice('acctReadingNUse',false);if(base)base.value='';if(discount)discount.value='0';if(reason)reason.value='';calc();}
+  }
+
+  function syncStudentEdit(){
+    if(String(document.getElementById('acctRole')?.value||'').toUpperCase()!=='STUDENT')return;
+    const row=document.getElementById('acctStudentRow');
+    if(row)row.style.display='';
+    install();
+    loadExisting(true);
+  }
+
+  function bindEditSync(){
+    const fn=window.openEditAcct;
+    if(typeof fn!=='function'||fn.__ymsStudentFullEdit)return;
+    const wrapped=function(){
+      const out=fn.apply(this,arguments);
+      setTimeout(syncStudentEdit,0);
+      setTimeout(syncStudentEdit,120);
+      return out;
+    };
+    wrapped.__ymsStudentFullEdit=true;
+    window.openEditAcct=wrapped;
   }
 
   function bindVehicleSave(){
@@ -116,7 +144,7 @@
     },true);
   }
 
-  function tick(){install();loadExisting();resetWhenNew();bindVehicleSave();}
+  function tick(){install();loadExisting();resetWhenNew();bindVehicleSave();bindEditSync();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',tick);else tick();
   window.addEventListener('load',()=>{tick();setTimeout(tick,200);setTimeout(tick,700);});
 })();
