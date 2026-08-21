@@ -46,6 +46,23 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /attendance/{attendanceId} {
+      // Current attendance screens load a limited list and filter it in the app,
+      // so signed-in users need read access for their role-specific view.
+      allow read: if signedIn();
+      allow create: if isAdmin()
+                    || (isTeacher()
+                        && teacherOwnsClass(request.resource.data.classId)
+                        && request.resource.data.teacherId == request.auth.uid);
+      allow update: if isAdmin()
+                    || (isTeacher()
+                        && teacherOwnsClass(resource.data.classId)
+                        && request.resource.data.classId == resource.data.classId
+                        && request.resource.data.studentId == resource.data.studentId
+                        && request.resource.data.date == resource.data.date);
+      allow delete: if isAdmin();
+    }
+
     match /homework/{homeworkId} {
       allow read: if signedIn();
       allow create: if isAdmin()
