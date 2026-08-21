@@ -141,6 +141,21 @@
     return {id:uid,...profile};
   }
 
+  async function getUserProfile(uid){
+    if(!uid) return null;
+    try{
+      const r=await _tFetch(`tables/users/${encodeURIComponent(uid)}`,{cache:'no-store'});
+      return r.ok?await r.json():null;
+    }catch{return null;}
+  }
+
+  async function getAllUsers(){
+    try{
+      const r=await _tFetch('tables/users?limit=1000',{cache:'no-store'});
+      return r.ok?((await r.json()).data||[]):[];
+    }catch{return [];}
+  }
+
   async function relinkForNewUid(oldUid,newUid,role,childIds,linkedStudentId){
     if(role==='PARENT'&&childIds.length){
       await Promise.all(childIds.map(id=>_tFetch(`tables/students/${id}`,{
@@ -150,7 +165,7 @@
     if(role==='STUDENT'){
       let sid=linkedStudentId||'';
       if(!sid){
-        const user=(window._acctList||[]).find(u=>u.id===oldUid);
+        const user=await getUserProfile(oldUid);
         sid=user?.studentId||'';
       }
       if(sid){
@@ -171,7 +186,9 @@
     const tuitionDiscountAmount=Math.min(tuitionBaseAmount,Math.max(0,Number(document.getElementById('acctTuitionDiscountAmount')?.value)||0));
     const tuitionDiscountReason=(document.getElementById('acctTuitionDiscountReason')?.value||'').trim();
     if(tuitionDiscountAmount>0&&!tuitionDiscountReason) throw new Error('할인 금액이 있으면 할인 사유를 입력해주세요.');
-    const stuPayload={name,grade:document.getElementById('acctGrade')?.value.trim()||'',schoolName:document.getElementById('acctSchoolName')?.value.trim()||'',className:opt?.dataset.name||'',teacherName:opt?.dataset.teacher||'',levelCode:opt?.dataset.level||'',classId:classSel?.value||'',tuitionBaseAmount,tuitionDiscountAmount,tuitionDiscountReason,tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),isActive:true,userId:savedUser.id};
+    const startDate=(document.getElementById('acctStartDate')?.value||'').trim();
+    if(!startDate) throw new Error('수업 시작일을 입력해주세요.');
+    const stuPayload={name,grade:document.getElementById('acctGrade')?.value.trim()||'',schoolName:document.getElementById('acctSchoolName')?.value.trim()||'',className:opt?.dataset.name||'',teacherName:opt?.dataset.teacher||'',levelCode:opt?.dataset.level||'',classId:classSel?.value||'',startDate,tuitionBaseAmount,tuitionDiscountAmount,tuitionDiscountReason,tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),isActive:true,userId:savedUser.id};
 
     const linkedId=isEdit ? (document.getElementById('acctLinkedStudentId')?.value||'') : '';
     const stuRes=linkedId
@@ -181,7 +198,8 @@
     const student=await stuRes.json();
     const studentId=linkedId||student.id;
     if(studentId){
-      await _tFetch(`tables/users/${savedUser.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentId})});
+      const r=await _tFetch(`tables/users/${savedUser.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentId})});
+      if(!r.ok) throw new Error(`학생 계정 연결 저장 실패 (HTTP ${r.status})`);
     }
   }
 
@@ -190,18 +208,26 @@
     await Promise.allSettled(childIds.map(id=>_tFetch(`tables/students/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({parentId:savedUser.id})})));
   }
 
+  function bindAccountForm(){
+    const form=document.getElementById('acctForm');
+    if(!form||form.dataset.firebaseSubmitBound==='1') return;
+    form.removeAttribute('onsubmit');
+    form.onsubmit=null;
+    form.addEventListener('submit',window.submitAcctForm);
+    form.dataset.firebaseSubmitBound='1';
+  }
+
   window.addEventListener('load',()=>{
     if(!location.pathname.endsWith('/admin.html')) return;
     installStudentTuitionFields();
     setTimeout(installStudentTuitionFields,300);
-    if(typeof window.submitAcctForm!=='function') return;
 
     window.submitAcctForm=async function(e){
-      e.preventDefault();
+      e?.preventDefault?.();
       installStudentTuitionFields();
-      const editId=document.getElementById('acctEditId').value;
+      const editId=(document.getElementById('acctEditId')?.value||'').trim();
       const isEdit=!!editId;
-      const oldUser=isEdit?(window._acctList||[]).find(u=>u.id===editId):null;
+      const oldUser=isEdit?await getUserProfile(editId):null;
       const role=document.getElementById('acctRole').value;
       const loginId=norm(document.getElementById('acctLoginId').value);
       const name=document.getElementById('acctName').value.trim();
@@ -211,17 +237,28 @@
       if(!loginId){YMS_UI.toast('❌ 아이디를 입력해주세요');return;}
       if(!name){YMS_UI.toast('❌ 이름을 입력해주세요');return;}
       if((!isEdit||loginChanged)&&!pw){YMS_UI.toast(loginChanged?'❌ 아이디 변경 시 새 비밀번호도 입력해주세요':'❌ 비밀번호를 입력해주세요');return;}
-      if(!isEdit && Array.isArray(window._acctList) && _acctList.some(u=>norm(u.loginId)===loginId)){YMS_UI.toast('❌ 이미 사용 중인 아이디입니다');return;}
-      if(loginChanged && Array.isArray(window._acctList) && _acctList.some(u=>u.id!==editId&&norm(u.loginId)===loginId)){YMS_UI.toast('❌ 이미 사용 중인 아이디입니다');return;}
+
+      if(!isEdit||loginChanged){
+        const users=await getAllUsers();
+        const dup=users.some(u=>String(u.id||'')!==editId&&norm(u.loginId)===loginId);
+        if(dup){YMS_UI.toast('❌ 이미 사용 중인 아이디입니다');return;}
+      }
 
       if(!isEdit){
         const linked=document.getElementById('acctLinkedStudentId');
         if(linked) linked.value='';
       }
 
-      const rawChild=document.getElementById('acctChildIds').value.trim();
+      const rawChild=(document.getElementById('acctChildIds')?.value||'').trim();
       const childIds=rawChild.split(',').map(v=>v.trim()).filter(Boolean);
-      const payload={loginId,name,role,roles:[role],phone:document.getElementById('acctPhone').value.trim(),academyId:'ac-001',isActive:true,childIds:rawChild,studentId:document.getElementById('acctStudentId').value.trim(),teacherClasses:document.getElementById('acctTeacherClasses').value.trim(),memo:document.getElementById('acctMemo').value.trim()};
+      const payload={
+        loginId,name,role,roles:[role],
+        phone:(document.getElementById('acctPhone')?.value||'').trim(),
+        academyId:'ac-001',isActive:true,childIds:rawChild,
+        studentId:(document.getElementById('acctStudentId')?.value||'').trim(),
+        teacherClasses:(document.getElementById('acctTeacherClasses')?.value||'').trim(),
+        memo:(document.getElementById('acctMemo')?.value||'').trim()
+      };
 
       const btn=document.querySelector('#acctForm button[type="submit"]');
       if(btn){btn.disabled=true;btn.textContent='저장 중...';}
@@ -231,14 +268,17 @@
           const auth=await createAuthUser(loginId,pw,{allowExisting:false});
           const profile={...payload,email:auth.email};
           savedUser=await writeExactUserProfile(auth.uid,profile);
-          const linkedStudentId=document.getElementById('acctLinkedStudentId')?.value||oldUser?.studentId||'';
+          const linkedStudentId=(document.getElementById('acctLinkedStudentId')?.value||oldUser?.studentId||'').trim();
           await relinkForNewUid(editId,auth.uid,role,childIds,linkedStudentId);
           const del=await _tFetch(`tables/users/${editId}`,{method:'DELETE'});
           if(!del.ok) throw new Error(`기존 사용자 프로필 정리 실패 (HTTP ${del.status})`);
         }else if(isEdit){
           const res=await _tFetch(`tables/users/${editId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-          if(!res.ok) throw new Error(`HTTP ${res.status}`);
-          savedUser={id:editId,...payload};
+          if(!res.ok){
+            const msg=await res.text().catch(()=>`HTTP ${res.status}`);
+            throw new Error(`계정 수정 실패 (${res.status}) ${msg}`);
+          }
+          savedUser={id:editId,...oldUser,...payload};
         }else{
           const auth=await createAuthUser(loginId,pw,{allowExisting:true});
           savedUser=await writeExactUserProfile(auth.uid,{...payload,email:auth.email});
@@ -248,11 +288,10 @@
         if(role==='PARENT'&&!loginChanged) await linkParent(savedUser,childIds);
 
         if(loginChanged) YMS_UI.toast('✅ 새 아이디로 로그인 계정이 변경되었습니다');
-        else if(isEdit && pw) YMS_UI.toast('✅ 계정 정보 수정 완료 · 비밀번호 변경은 별도 기능으로 추가할게요');
         else YMS_UI.toast(isEdit?'✅ 계정이 수정되었습니다':`✅ ${name} 로그인 계정이 생성되었습니다`);
 
-        document.getElementById('acctPanel').classList.add('hidden');
-        document.getElementById('acctForm').reset();
+        document.getElementById('acctPanel')?.classList.add('hidden');
+        document.getElementById('acctForm')?.reset();
         if(typeof loadAccounts==='function') await loadAccounts();
         if(typeof loadAllData==='function') await loadAllData();
         if(typeof window.YMS_syncStudentUsers==='function') await window.YMS_syncStudentUsers();
@@ -263,5 +302,8 @@
         if(btn){btn.disabled=false;btn.textContent='저장';}
       }
     };
+
+    bindAccountForm();
+    setTimeout(bindAccountForm,200);
   });
 })();
