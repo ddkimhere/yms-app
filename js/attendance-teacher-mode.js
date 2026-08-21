@@ -40,8 +40,8 @@
       #teacherView .date-select-bar{padding:0!important;margin:0 0 14px!important;display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
       #teacherView .date-select-bar label{font-size:12px!important;font-weight:800!important;color:#7A87A8!important;margin-left:2px!important}
       #teacherView .date-select-bar input[type=date]{width:100%!important;min-height:52px!important;padding:0 16px!important;border:1px solid #D7DEEC!important;border-radius:16px!important;background:#fff!important;color:#1A2340!important;font-size:15px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(30,50,120,.05)!important}
-      #teacherView .class-tab-row{padding:0!important;margin:0 0 14px!important;gap:8px!important}
-      #teacherView .class-tab{min-height:42px!important;padding:0 16px!important;border:1px solid #D7DEEC!important;border-radius:999px!important;background:#fff!important;color:#7A87A8!important;font-size:12px!important;font-weight:800!important;box-shadow:none!important}
+      #teacherView .class-tab-row{padding:0!important;margin:0 0 14px!important;gap:8px!important;display:flex!important;flex-wrap:wrap!important;overflow:visible!important;white-space:normal!important}
+      #teacherView .class-tab{min-height:42px!important;padding:0 14px!important;border:1px solid #D7DEEC!important;border-radius:999px!important;background:#fff!important;color:#7A87A8!important;font-size:12px!important;font-weight:800!important;box-shadow:none!important;flex:0 1 auto!important;max-width:100%!important;white-space:normal!important;line-height:1.25!important;text-align:center!important}
       #teacherView .class-tab.active{background:#1E3278!important;border-color:#1E3278!important;color:#fff!important}
       #teacherView .page-content{padding:0!important}
       #teacherView .section-header{margin:4px 2px 10px!important;display:flex!important;align-items:center!important;justify-content:space-between!important}
