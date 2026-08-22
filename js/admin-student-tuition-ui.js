@@ -47,33 +47,45 @@
     </div>`;
   }
 
+  function fullMarkup(){
+    return `
+      <div style="font-size:12px;font-weight:800;color:#1E3278;margin-bottom:10px;">📅 수업 시작 · 🚐 차량 · 📚 ReadingN · 💳 수강료</div>
+      <div class="form-group" style="margin:0 0 10px;"><label class="form-label">수업 시작일 <span style="color:#E04040;">*</span></label><input type="date" class="form-input" id="acctStartDate" required></div>
+      ${choiceBlock('acctVehicleUse','🚐 차량 이용','‘유’ 선택 학생은 차량 관리 대상에 자동 포함됩니다.')}
+      ${choiceBlock('acctReadingNUse','📚 ReadingN 사용','사용 시 기본 수강료에 10,000원이 자동 추가됩니다.')}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group" style="margin:0;"><label class="form-label">수업 기본 수강료</label><input type="number" class="form-input" id="acctTuitionBaseAmount" min="0" step="1000" inputmode="numeric" placeholder="예) 250000"></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">할인 금액</label><input type="number" class="form-input" id="acctTuitionDiscountAmount" min="0" step="1000" inputmode="numeric" value="0" placeholder="0"></div>
+      </div>
+      <div class="form-group" style="margin:10px 0 0;"><label class="form-label">할인 사유</label><input type="text" class="form-input" id="acctTuitionDiscountReason" placeholder="예) 형제 할인"></div>
+      <div id="acctTuitionPreview" style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff;color:#1E3278;font-size:11px;font-weight:800;">기본 수강료 0원</div>`;
+  }
+
   function install(){
     const studentRow=document.getElementById('acctStudentRow');
     if(!studentRow)return;
-    const panel=studentRow.firstElementChild;if(!panel)return;
+    const panel=studentRow.firstElementChild||studentRow;
     let box=document.getElementById('acctStudentTuitionBox');
     if(!box){
-      box=document.createElement('div');box.id='acctStudentTuitionBox';
-      box.style='margin-top:14px;padding-top:14px;border-top:1px solid #C5D3F5;';
-      box.innerHTML=`
-        <div style="font-size:12px;font-weight:800;color:#1E3278;margin-bottom:10px;">📅 수업 시작 · 🚐 차량 · 📚 ReadingN · 💳 수강료</div>
-        <div class="form-group" style="margin:0 0 10px;"><label class="form-label">수업 시작일 <span style="color:#E04040;">*</span></label><input type="date" class="form-input" id="acctStartDate" required></div>
-        ${choiceBlock('acctVehicleUse','🚐 차량 이용','‘유’ 선택 학생은 차량 관리 대상에 자동 포함됩니다.')}
-        ${choiceBlock('acctReadingNUse','📚 ReadingN 사용','사용 시 기본 수강료에 10,000원이 자동 추가됩니다.')}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="form-group" style="margin:0;"><label class="form-label">수업 기본 수강료</label><input type="number" class="form-input" id="acctTuitionBaseAmount" min="0" step="1000" inputmode="numeric" placeholder="예) 250000"></div>
-          <div class="form-group" style="margin:0;"><label class="form-label">할인 금액</label><input type="number" class="form-input" id="acctTuitionDiscountAmount" min="0" step="1000" inputmode="numeric" value="0" placeholder="0"></div>
-        </div>
-        <div class="form-group" style="margin:10px 0 0;"><label class="form-label">할인 사유</label><input type="text" class="form-input" id="acctTuitionDiscountReason" placeholder="예) 형제 할인"></div>
-        <div id="acctTuitionPreview" style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff;color:#1E3278;font-size:11px;font-weight:800;">기본 수강료 0원</div>`;
-      panel.appendChild(box);
+      box=document.createElement('div');
+      box.id='acctStudentTuitionBox';
+    }
+
+    // admin-account-fix.js may have created an older tuition-only box first.
+    // Always move the box into the student section and upgrade it to the full form.
+    if(box.parentElement!==panel) panel.appendChild(box);
+    box.style.cssText='display:block;margin-top:14px;padding-top:14px;border-top:1px solid #C5D3F5;';
+    if(!box.querySelector('input[name="acctVehicleUse"]')||!box.querySelector('input[name="acctReadingNUse"]')||!box.querySelector('#acctStartDate')){
+      box.innerHTML=fullMarkup();
     }
 
     ['acctVehicleUse','acctReadingNUse'].forEach(name=>{
       box.querySelectorAll(`input[name="${name}"]`).forEach(r=>{
         if(r.dataset.bound==='1')return;
-        r.addEventListener('change',()=>{paintChoice(name);calc();});r.dataset.bound='1';
-      });paintChoice(name);
+        r.addEventListener('change',()=>{paintChoice(name);calc();});
+        r.dataset.bound='1';
+      });
+      paintChoice(name);
     });
     const b=document.getElementById('acctTuitionBaseAmount'),d=document.getElementById('acctTuitionDiscountAmount');
     if(b&&!b.dataset.ymsCalcBound){b.addEventListener('input',calc);b.dataset.ymsCalcBound='1';}
@@ -109,7 +121,11 @@
 
   function resetWhenNew(){
     const edit=document.getElementById('acctEditId')?.value||'',sid=document.getElementById('acctLinkedStudentId')?.value||'';
-    if(!edit&&!sid&&lastLoaded){lastLoaded='';const start=document.getElementById('acctStartDate'),base=document.getElementById('acctTuitionBaseAmount'),discount=document.getElementById('acctTuitionDiscountAmount'),reason=document.getElementById('acctTuitionDiscountReason');if(start)start.value='';setChoice('acctVehicleUse',false);setChoice('acctReadingNUse',false);if(base)base.value='';if(discount)discount.value='0';if(reason)reason.value='';calc();}
+    if(!edit&&!sid&&lastLoaded){
+      lastLoaded='';
+      const start=document.getElementById('acctStartDate'),base=document.getElementById('acctTuitionBaseAmount'),discount=document.getElementById('acctTuitionDiscountAmount'),reason=document.getElementById('acctTuitionDiscountReason');
+      if(start)start.value='';setChoice('acctVehicleUse',false);setChoice('acctReadingNUse',false);if(base)base.value='';if(discount)discount.value='0';if(reason)reason.value='';calc();
+    }
   }
 
   function syncStudentEdit(){
@@ -121,16 +137,14 @@
   }
 
   function bindEditSync(){
-    const fn=window.openEditAcct;
-    if(typeof fn!=='function'||fn.__ymsStudentFullEdit)return;
-    const wrapped=function(){
-      const out=fn.apply(this,arguments);
-      setTimeout(syncStudentEdit,0);
-      setTimeout(syncStudentEdit,120);
-      return out;
-    };
-    wrapped.__ymsStudentFullEdit=true;
-    window.openEditAcct=wrapped;
+    if(document.documentElement.dataset.ymsStudentEditClickBound==='1')return;
+    document.documentElement.dataset.ymsStudentEditClickBound='1';
+    document.addEventListener('click',e=>{
+      const target=e.target?.closest?.('[onclick*="openEditAcct("]');
+      if(!target)return;
+      setTimeout(syncStudentEdit,20);
+      setTimeout(syncStudentEdit,150);
+    },true);
   }
 
   function bindVehicleSave(){
@@ -139,7 +153,14 @@
       if(String(document.getElementById('acctRole')?.value||'').toUpperCase()!=='STUDENT')return;
       const vehicleUse=selected('acctVehicleUse'),base=window._tFetch;if(typeof base!=='function'||base.__ymsVehicleWrapper)return;
       let restored=false;const restore=()=>{if(!restored&&window._tFetch===wrapped){restored=true;window._tFetch=base;}};
-      const wrapped=async function(path,opt={}){const method=String(opt?.method||'GET').toUpperCase();if(String(path).startsWith('tables/students')&&(method==='POST'||method==='PATCH')){try{const body=typeof opt.body==='string'?JSON.parse(opt.body):(opt.body||{});body.vehicleUse=vehicleUse;opt={...opt,body:JSON.stringify(body)}}catch{}restore()}return base(path,opt)};
+      const wrapped=async function(path,opt={}){
+        const method=String(opt?.method||'GET').toUpperCase();
+        if(String(path).startsWith('tables/students')&&(method==='POST'||method==='PATCH')){
+          try{const body=typeof opt.body==='string'?JSON.parse(opt.body):(opt.body||{});body.vehicleUse=vehicleUse;opt={...opt,body:JSON.stringify(body)}}catch{}
+          restore();
+        }
+        return base(path,opt);
+      };
       wrapped.__ymsVehicleWrapper=true;window._tFetch=wrapped;setTimeout(restore,5000);
     },true);
   }
