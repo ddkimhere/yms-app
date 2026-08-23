@@ -1,6 +1,6 @@
-/* YMS Master Track — Service Worker v4.15.0 */
-const CACHE_NAME='yms-v4.15.0';
-const APP_SHELL=['./login.html','./student-home.html','./parent-home.html','./parent-payment.html','./homework.html','./teacher-home.html','./attendance.html','./notices.html','./counseling.html','./calendar.html','./css/style.css','./js/app.js','./js/admin-multirole-fix.js','./js/admin-account-fix.js','./js/admin-student-tuition-ui.js','./js/student-dashboard.js','./js/admin-structure-fix.js','./js/admin-menu-cleanup.js','./js/admin-homework-link.js','./js/student-select-options.js','./js/class-grade-sort.js','./js/student-class-sync.js','./js/home-widgets.js','./js/student-homework-privacy.js','./js/tuition-discount.js','./js/tuition-jpg.js','./js/payment-year-grid.js','./js/homework-ui-compat.js','./js/homework-personal.js','./js/homework-filter.js','./js/homework-completion.js','./js/homework-delete-fix.js','./js/homework-calendar.js','./js/calendar-live.js','./js/notice-role.js','./js/home-notices.js','./js/parent-home-fix.js','./js/parent-tabbar.js','./js/parent-topbar.js','./js/parent-payment-data.js','./js/parent-link-repair.js','./js/parent-account-save-fix.js','./js/parent-attendance-sync.js','./js/student-mobile-ui.js','./js/teacher-mobile-nav.js','./js/teacher-home-actions-fix.js','./js/teacher-book-fee.js','./js/attendance-teacher-mode.js','./js/admin-attendance-all.js','./js/counseling-live.js','./manifest.json','./images/dairoom-pay-qr.svg','./images/icon-source.svg','./images/icon-192.png','./images/icon-512.png'];
+/* YMS Master Track — Service Worker v4.16.0 */
+const CACHE_NAME='yms-v4.16.0';
+const APP_SHELL=['./login.html','./student-home.html','./parent-home.html','./parent-payment.html','./homework.html','./teacher-home.html','./attendance.html','./notices.html','./counseling.html','./calendar.html','./css/style.css','./js/app.js','./js/admin-multirole-fix.js','./js/admin-account-fix.js','./js/admin-student-tuition-ui.js','./js/student-dashboard.js','./js/admin-structure-fix.js','./js/admin-menu-cleanup.js','./js/admin-homework-link.js','./js/student-select-options.js','./js/class-grade-sort.js','./js/student-class-sync.js','./js/home-widgets.js','./js/student-homework-privacy.js','./js/tuition-discount.js','./js/tuition-jpg.js','./js/payment-year-grid.js','./js/homework-ui-compat.js','./js/homework-personal.js','./js/homework-filter.js','./js/homework-completion.js','./js/homework-delete-fix.js','./js/homework-calendar.js','./js/calendar-live.js','./js/notice-role.js','./js/home-notices.js','./js/parent-home-fix.js','./js/parent-tabbar.js','./js/parent-topbar.js','./js/parent-payment-data.js','./js/parent-payment-auto.js','./js/parent-link-repair.js','./js/parent-account-save-fix.js','./js/parent-attendance-sync.js','./js/student-mobile-ui.js','./js/teacher-mobile-nav.js','./js/teacher-home-actions-fix.js','./js/teacher-book-fee.js','./js/attendance-teacher-mode.js','./js/admin-attendance-all.js','./js/counseling-live.js','./manifest.json','./images/dairoom-pay-qr.svg','./images/icon-source.svg','./images/icon-192.png','./images/icon-512.png'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE_NAME).then(c=>Promise.all(APP_SHELL.map(u=>c.add(u).catch(()=>null)))));
@@ -23,7 +23,7 @@ function scriptsFor(path){
   if(path.endsWith('/notices.html'))out.pre=['js/notice-role.js','js/parent-tabbar.js','js/parent-topbar.js','js/student-mobile-ui.js','js/teacher-mobile-nav.js'];
   if(path.endsWith('/counseling.html')){out.pre=['js/parent-tabbar.js','js/parent-topbar.js','js/student-mobile-ui.js','js/teacher-mobile-nav.js'];out.end=['js/counseling-live.js'];}
   if(path.endsWith('/parent-home.html')){out.pre=['js/parent-home-fix.js','js/notice-role.js','js/home-notices.js','js/parent-tabbar.js'];out.end=['js/home-widgets.js','js/student-homework-privacy.js'];}
-  if(path.endsWith('/parent-payment.html'))out.pre=['js/parent-payment-data.js','js/parent-tabbar.js','js/parent-topbar.js'];
+  if(path.endsWith('/parent-payment.html')){out.pre=['js/parent-payment-data.js','js/parent-tabbar.js','js/parent-topbar.js'];out.end=['js/parent-payment-auto.js'];}
   if(path.endsWith('/student-home.html')){out.pre=['js/notice-role.js','js/home-notices.js','js/student-mobile-ui.js'];out.end=['js/home-widgets.js','js/student-homework-privacy.js'];}
   return out;
 }
@@ -43,9 +43,9 @@ async function patchHtml(req,res){
     const parentPages=['/homework.html','/notices.html','/counseling.html','/parent-home.html','/parent-payment.html','/calendar.html'];
     if(parentPages.some(p=>url.pathname.endsWith(p))&&!html.includes('yms-parent-tabbar-hardfix'))html=html.replace('</head>',PARENT_TAB_CSS+'</head>');
     const appTag='<script src="js/app.js"></script>';
-    const preTags=pre.filter(s=>!html.includes(s)).map(s=>`<script src="${s}?v=4.15.0"></script>`).join('');
+    const preTags=pre.filter(s=>!html.includes(s)).map(s=>`<script src="${s}?v=4.16.0"></script>`).join('');
     if(preTags)html=html.includes(appTag)?html.replace(appTag,appTag+preTags):html.replace('</body>',preTags+'</body>');
-    const endTags=end.filter(s=>!html.includes(s)).map(s=>`<script src="${s}?v=4.15.0"></script>`).join('');
+    const endTags=end.filter(s=>!html.includes(s)).map(s=>`<script src="${s}?v=4.16.0"></script>`).join('');
     if(endTags)html=html.replace('</body>',endTags+'</body>');
     const h=new Headers(res.headers);h.delete('content-length');
     return new Response(html,{status:res.status,statusText:res.statusText,headers:h});
