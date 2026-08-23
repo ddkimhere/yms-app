@@ -1,4 +1,4 @@
-/* YMS parent 5-tab navigation + mobile styling */
+/* YMS parent 6-tab navigation + mobile styling */
 (function(){
   'use strict';
   const user=window.YMS_Auth?.getUser?.();
@@ -10,9 +10,9 @@
     css.textContent=`
       body{padding-bottom:calc(78px + env(safe-area-inset-bottom))!important}
       .app-wrapper{max-width:560px!important;margin:0 auto!important;padding-bottom:82px!important;min-height:100vh!important}
-      .tab-bar{position:fixed!important;left:50%!important;bottom:0!important;transform:translateX(-50%)!important;width:min(100%,560px)!important;height:70px!important;padding:7px 8px calc(7px + env(safe-area-inset-bottom))!important;display:grid!important;grid-template-columns:repeat(5,1fr)!important;background:rgba(255,255,255,.98)!important;border-top:1px solid #E3E8F4!important;box-shadow:0 -4px 16px rgba(30,50,120,.06)!important;z-index:1000!important;backdrop-filter:blur(12px)!important}
+      .tab-bar{position:fixed!important;left:50%!important;bottom:0!important;transform:translateX(-50%)!important;width:min(100%,560px)!important;height:70px!important;padding:7px 5px calc(7px + env(safe-area-inset-bottom))!important;display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;background:rgba(255,255,255,.98)!important;border-top:1px solid #E3E8F4!important;box-shadow:0 -4px 16px rgba(30,50,120,.06)!important;z-index:1000!important;backdrop-filter:blur(12px)!important}
       .parent-tab{appearance:none!important;border:0!important;background:transparent!important;color:#8A96B2!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;padding:3px 0!important;margin:0!important;font:inherit!important;cursor:pointer!important;min-width:0!important;box-shadow:none!important}
-      .parent-tab>span{font-size:19px!important;line-height:1!important}.parent-tab>small{font-size:9px!important;font-weight:750!important;line-height:1.2!important;white-space:nowrap!important}.parent-tab.active{color:#1E3278!important}
+      .parent-tab>span{font-size:18px!important;line-height:1!important}.parent-tab>small{font-size:8.5px!important;font-weight:750!important;line-height:1.2!important;white-space:nowrap!important}.parent-tab.active{color:#1E3278!important}
     `;
     document.head.appendChild(css);
   }
@@ -24,6 +24,7 @@
       ['parent-home.html','⌂','홈'],
       ['homework.html','▣','숙제'],
       ['notices.html','●','공지'],
+      ['attendance.html','✓','출석'],
       ['parent-payment.html','💳','수강료'],
       ['counseling.html','💬','상담']
     ];
