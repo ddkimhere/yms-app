@@ -52,7 +52,7 @@
 
   window.ymsRenderTabBar=function(active){
     const bar=document.getElementById('tabBar');if(!bar)return;
-    const tabs=[['parent-home.html','⌂','홈'],['homework.html','▣','숙제'],['notices.html','●','공지'],['parent-payment.html','💳','수강료'],['counseling.html','💬','상담']];
+    const tabs=[['parent-home.html','⌂','홈'],['homework.html','▣','숙제'],['notices.html','●','공지'],['attendance.html','✓','출석'],['parent-payment.html','💳','수강료']];
     bar.innerHTML=tabs.map(([href,icon,label])=>`<button type="button" class="parent-tab ${active===href?'active':''}" onclick="_ymsGo('${href}')"><span>${icon}</span><small>${label}</small></button>`).join('');
   };
 
