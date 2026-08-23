@@ -144,14 +144,14 @@
     cards([
       {icon:'✅',value:attLabel,label:'오늘 출석',note:s.name||'자녀',href:'attendance.html',tone:attLabel==='출석'?'good':attLabel==='결석'?'alert':''},
       {icon:'📚',value:hw.length,label:'최근 숙제',note:'자녀 숙제 확인',href:'homework.html'},
-      {icon:'💳',value:due===null?'확인':due?`${due.toLocaleString('ko-KR')}원`:'납부 완료',label:'이번 달 원비',note:'수강료/교재비',href:'parent-payment.html',tone:due?'warn':'good'},
-      {icon:'💬',value:'바로가기',label:'상담',note:'상담 신청/답변',href:'counseling.html'}
+      {icon:'💳',value:due===null?'확인':due?`${due.toLocaleString('ko-KR')}원`:'납부 완료',label:'이번 달 원비',note:'수강료/교재비',href:'parent-payment.html',tone:due?'warn':'good'}
     ]);
   }
 
   async function run(){
     if(!make())return;
-    cards([{icon:'•',value:'…',label:'불러오는 중',note:''},{icon:'•',value:'…',label:'불러오는 중',note:''},{icon:'•',value:'…',label:'불러오는 중',note:''},{icon:'•',value:'…',label:'불러오는 중',note:''}]);
+    const count=path==='parent-home.html'&&role==='PARENT'?3:4;
+    cards(Array.from({length:count},()=>({icon:'•',value:'…',label:'불러오는 중',note:''})));
     if(path==='admin.html'&&role==='ADMIN') return adminWidgets();
     if(path==='teacher-home.html'&&(role==='TEACHER'||window.YMS_Auth?.hasRole?.('TEACHER'))) return teacherWidgets();
     if(path==='student-home.html'&&role==='STUDENT') return studentWidgets();
