@@ -1,4 +1,4 @@
-/* YMS admin student registration extras: start date + vehicle + ReadingN + tuition */
+/* YMS admin student registration extras: start date + due day + vehicle + ReadingN + tuition */
 (function(){
   'use strict';
   if(!location.pathname.endsWith('/admin.html')) return;
@@ -35,7 +35,8 @@
     el.textContent=txt;
   }
   function choice(name,label,help){return `<div class="form-group" style="margin:0 0 12px;"><label class="form-label">${label}</label><div style="display:flex;gap:8px;margin-top:6px;"><label style="flex:1;cursor:pointer;"><input type="radio" name="${name}" value="true" style="position:absolute;opacity:0;pointer-events:none;"><span style="display:flex;align-items:center;justify-content:center;height:40px;border:1.5px solid #C8D1E8;border-radius:11px;background:#fff;color:#506080;font-size:12px;font-weight:800;">유</span></label><label style="flex:1;cursor:pointer;"><input type="radio" name="${name}" value="false" checked style="position:absolute;opacity:0;pointer-events:none;"><span style="display:flex;align-items:center;justify-content:center;height:40px;border:1.5px solid #C8D1E8;border-radius:11px;background:#fff;color:#506080;font-size:12px;font-weight:800;">무</span></label></div><div style="font-size:10px;color:#7A87A8;margin-top:5px;">${help}</div></div>`;}
-  function markup(){return `<div style="font-size:12px;font-weight:900;color:#1E3278;margin-bottom:12px;">📅 수업 시작 · 🚐 차량 · 📚 ReadingN · 💳 수강료</div><div class="form-group" style="margin:0 0 12px;"><label class="form-label">수업 시작일 <span style="color:#E04040;">*</span></label><input type="date" class="form-input" id="acctStartDate" required></div>${choice('acctVehicleUse','🚐 차량 이용','‘유’ 선택 학생은 차량 관리 대상에 포함됩니다.')}${choice('acctReadingNUse','📚 ReadingN 사용','사용 시 기본 수강료에 10,000원이 자동 추가됩니다.')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="form-group" style="margin:0;"><label class="form-label">수업 기본 수강료</label><input type="number" class="form-input" id="acctTuitionBaseAmount" min="0" step="1000" inputmode="numeric" placeholder="예) 250000"></div><div class="form-group" style="margin:0;"><label class="form-label">할인 금액</label><input type="number" class="form-input" id="acctTuitionDiscountAmount" min="0" step="1000" inputmode="numeric" value="0" placeholder="0"></div></div><div class="form-group" style="margin:10px 0 0;"><label class="form-label">할인 사유</label><input type="text" class="form-input" id="acctTuitionDiscountReason" placeholder="예) 형제 할인"></div><div id="acctTuitionPreview" style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff;color:#1E3278;font-size:11px;font-weight:800;">기본 수강료 0원</div>`;}
+  function dueOptions(){return '<option value="">— 납입일 선택 —</option>'+Array.from({length:31},(_,i)=>`<option value="${i+1}">매월 ${i+1}일</option>`).join('');}
+  function markup(){return `<div style="font-size:12px;font-weight:900;color:#1E3278;margin-bottom:12px;">📅 수업 시작 · 💳 납입일 · 🚐 차량 · 📚 ReadingN · 수강료</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;"><div class="form-group" style="margin:0;"><label class="form-label">수업 시작일 <span style="color:#E04040;">*</span></label><input type="date" class="form-input" id="acctStartDate" required></div><div class="form-group" style="margin:0;"><label class="form-label">수강료 납입일 <span style="color:#E04040;">*</span></label><select class="form-input form-select" id="acctTuitionDueDay" required>${dueOptions()}</select></div></div>${choice('acctVehicleUse','🚐 차량 이용','‘유’ 선택 학생은 차량 관리 대상에 포함됩니다.')}${choice('acctReadingNUse','📚 ReadingN 사용','사용 시 기본 수강료에 10,000원이 자동 추가됩니다.')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="form-group" style="margin:0;"><label class="form-label">수업 기본 수강료</label><input type="number" class="form-input" id="acctTuitionBaseAmount" min="0" step="1000" inputmode="numeric" placeholder="예) 250000"></div><div class="form-group" style="margin:0;"><label class="form-label">할인 금액</label><input type="number" class="form-input" id="acctTuitionDiscountAmount" min="0" step="1000" inputmode="numeric" value="0" placeholder="0"></div></div><div class="form-group" style="margin:10px 0 0;"><label class="form-label">할인 사유</label><input type="text" class="form-input" id="acctTuitionDiscountReason" placeholder="예) 형제 할인"></div><div id="acctTuitionPreview" style="margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff;color:#1E3278;font-size:11px;font-weight:800;">기본 수강료 0원</div>`;}
 
   function install(){
     const row=document.getElementById('acctStudentRow');if(!row)return null;
@@ -60,8 +61,8 @@
 
   function clearExtras(){
     lastLoaded='';
-    const start=document.getElementById('acctStartDate'),base=document.getElementById('acctTuitionBaseAmount'),disc=document.getElementById('acctTuitionDiscountAmount'),reason=document.getElementById('acctTuitionDiscountReason');
-    if(start)start.value='';if(base)base.value='';if(disc)disc.value='0';if(reason)reason.value='';
+    const start=document.getElementById('acctStartDate'),due=document.getElementById('acctTuitionDueDay'),base=document.getElementById('acctTuitionBaseAmount'),disc=document.getElementById('acctTuitionDiscountAmount'),reason=document.getElementById('acctTuitionDiscountReason');
+    if(start)start.value='';if(due)due.value='';if(base)base.value='';if(disc)disc.value='0';if(reason)reason.value='';
     setChoice('acctVehicleUse',false);setChoice('acctReadingNUse',false);calc();
   }
 
@@ -77,8 +78,9 @@
       const reading=s.readingNUse===true;
       const storedBase=Math.max(0,Number(s.tuitionBaseAmount||0));
       const core=Number(s.tuitionCoreAmount||0)||(reading?Math.max(0,storedBase-READING_N_FEE):storedBase);
-      const start=document.getElementById('acctStartDate'),base=document.getElementById('acctTuitionBaseAmount'),disc=document.getElementById('acctTuitionDiscountAmount'),reason=document.getElementById('acctTuitionDiscountReason');
+      const start=document.getElementById('acctStartDate'),due=document.getElementById('acctTuitionDueDay'),base=document.getElementById('acctTuitionBaseAmount'),disc=document.getElementById('acctTuitionDiscountAmount'),reason=document.getElementById('acctTuitionDiscountReason');
       if(start)start.value=String(s.startDate||s.classStartDate||'').slice(0,10);
+      if(due)due.value=String(Number(s.tuitionDueDay||0)||'');
       setChoice('acctVehicleUse',s.vehicleUse===true);setChoice('acctReadingNUse',reading);
       if(base)base.value=core||'';if(disc)disc.value=Number(s.tuitionDiscountAmount||0)||0;if(reason)reason.value=s.tuitionDiscountReason||'';
       calc();
@@ -115,7 +117,23 @@
     },true);
   }
 
-  function init(){install();bindRole();bindEditClicks();}
+  function bindStudentExtrasSave(){
+    const form=document.getElementById('acctForm');if(!form||form.dataset.ymsStudentExtrasSaveBound==='1')return;
+    form.dataset.ymsStudentExtrasSaveBound='1';
+    form.addEventListener('submit',function(e){
+      if(!isStudent())return;
+      const dueDay=Number(document.getElementById('acctTuitionDueDay')?.value||0);
+      if(!(dueDay>=1&&dueDay<=31)){
+        e.preventDefault();e.stopImmediatePropagation();window.YMS_UI?.toast?.('❌ 수강료 납입일을 선택해주세요');return;
+      }
+      const vehicleUse=selected('acctVehicleUse'),base=window._tFetch;if(typeof base!=='function'||base.__ymsStudentExtrasWrapper)return;
+      let restored=false;const restore=()=>{if(!restored&&window._tFetch===wrapped){restored=true;window._tFetch=base;}};
+      const wrapped=async function(path,opt={}){const method=String(opt?.method||'GET').toUpperCase();if(String(path).startsWith('tables/students')&&(method==='POST'||method==='PATCH')){try{const body=typeof opt.body==='string'?JSON.parse(opt.body):(opt.body||{});body.vehicleUse=vehicleUse;body.tuitionDueDay=dueDay;opt={...opt,body:JSON.stringify(body)}}catch{}restore()}return base(path,opt)};
+      wrapped.__ymsStudentExtrasWrapper=true;window._tFetch=wrapped;setTimeout(restore,5000);
+    },true);
+  }
+
+  function init(){install();bindRole();bindEditClicks();bindStudentExtrasSave();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   window.addEventListener('load',()=>{init();setTimeout(init,250);});
   window.YMS_syncStudentAccountExtras=syncEdit;
