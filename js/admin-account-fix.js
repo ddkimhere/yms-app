@@ -13,7 +13,7 @@
   function ensureStudentExtrasReady(){
     if(String(document.getElementById('acctRole')?.value||'').toUpperCase()!=='STUDENT')return;
     const row=document.getElementById('acctStudentRow');if(row)row.style.display='';
-    if(!document.getElementById('acctStartDate')||!document.querySelector('input[name="acctVehicleUse"]')||!document.querySelector('input[name="acctReadingNUse"]')){
+    if(!document.getElementById('acctStartDate')||!document.getElementById('acctTuitionDueDay')||!document.querySelector('input[name="acctVehicleUse"]')||!document.querySelector('input[name="acctReadingNUse"]')){
       throw new Error('학생 추가 정보 화면을 불러오지 못했습니다. 창을 닫고 다시 열어주세요.');
     }
   }
@@ -56,8 +56,9 @@
     const tuitionDiscountAmount=Math.min(tuitionBaseAmount,Math.max(0,Number(document.getElementById('acctTuitionDiscountAmount')?.value)||0)),tuitionDiscountReason=(document.getElementById('acctTuitionDiscountReason')?.value||'').trim();
     if(tuitionDiscountAmount>0&&!tuitionDiscountReason)throw new Error('할인 금액이 있으면 할인 사유를 입력해주세요.');
     const startDate=(document.getElementById('acctStartDate')?.value||'').trim();if(!startDate)throw new Error('수업 시작일을 입력해주세요.');
+    const tuitionDueDay=Number(document.getElementById('acctTuitionDueDay')?.value||0);if(!(tuitionDueDay>=1&&tuitionDueDay<=31))throw new Error('수강료 납입일을 선택해주세요.');
     const vehicleUse=document.querySelector('input[name="acctVehicleUse"]:checked')?.value==='true';
-    const stuPayload={name,grade:document.getElementById('acctGrade')?.value.trim()||'',schoolName:document.getElementById('acctSchoolName')?.value.trim()||'',className:opt?.dataset.name||'',teacherName:opt?.dataset.teacher||'',levelCode:opt?.dataset.level||'',classId:classSel?.value||'',startDate,vehicleUse,readingNUse,readingNFee,tuitionCoreAmount,tuitionBaseAmount,tuitionDiscountAmount,tuitionDiscountReason,tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),isActive:true,userId:savedUser.id};
+    const stuPayload={name,grade:document.getElementById('acctGrade')?.value.trim()||'',schoolName:document.getElementById('acctSchoolName')?.value.trim()||'',className:opt?.dataset.name||'',teacherName:opt?.dataset.teacher||'',levelCode:opt?.dataset.level||'',classId:classSel?.value||'',startDate,tuitionDueDay,vehicleUse,readingNUse,readingNFee,tuitionCoreAmount,tuitionBaseAmount,tuitionDiscountAmount,tuitionDiscountReason,tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),isActive:true,userId:savedUser.id};
     const linkedId=isEdit?(document.getElementById('acctLinkedStudentId')?.value||''):'';
     const stuRes=linkedId?await _tFetch(`tables/students/${linkedId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(stuPayload)}):await _tFetch('tables/students',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(stuPayload)});
     if(!stuRes.ok)throw new Error(`학생 프로필 저장 실패 (HTTP ${stuRes.status})`);const student=await stuRes.json(),studentId=linkedId||student.id;
