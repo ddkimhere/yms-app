@@ -35,6 +35,25 @@
     if(greet) greet.textContent=`안녕하세요, ${current.name||'학부모'}님 👋`;
   }
 
+  function patchParentMyMenu(){
+    if(!location.pathname.endsWith('/parent-home.html')) return;
+    const fn=window.showMyPage;
+    if(typeof fn!=='function'||fn.__ymsNoCounsel) return;
+    const wrapped=function(){
+      const out=fn.apply(this,arguments);
+      const content=document.getElementById('myPageContent');
+      if(content){
+        [...content.querySelectorAll('button')].forEach(btn=>{
+          const onclick=btn.getAttribute('onclick')||'';
+          if(onclick.includes('counseling.html')||String(btn.textContent||'').includes('상담 신청')) btn.remove();
+        });
+      }
+      return out;
+    };
+    wrapped.__ymsNoCounsel=true;
+    window.showMyPage=wrapped;
+  }
+
   if (!window.renderHomeworkItem) {
     window.renderHomeworkItem=function(hw,onClick){
       const item=document.createElement('button');item.type='button';item.className='parent-list-item';
@@ -94,5 +113,6 @@
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',syncParentIdentity);
   else syncParentIdentity();
-  window.addEventListener('pageshow',syncParentIdentity);
+  window.addEventListener('load',()=>{syncParentIdentity();patchParentMyMenu();});
+  window.addEventListener('pageshow',()=>{syncParentIdentity();setTimeout(patchParentMyMenu,0);});
 })();
