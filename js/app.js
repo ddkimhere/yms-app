@@ -152,7 +152,7 @@
   window.YMS_DEMO={attendance:{s001:[]},students:[],payments:[],classes:[],homework:[],notices:[]};
 })();
 
-/* YMS Firestore read guard — deduplicate and short-cache repeated GETs */
+/* YMS Firestore read guard — deduplicate and tier-cache repeated GETs */
 (function(){
   'use strict';
   if (window.__YMS_FIRESTORE_READ_GUARD__) return;
@@ -160,60 +160,91 @@
   if (typeof base !== 'function') return;
   window.__YMS_FIRESTORE_READ_GUARD__ = true;
 
-  const TTL = 60 * 1000;
   const cache = new Map();
   const inflight = new Map();
+  const SESSION_PREFIX = 'yms_read_cache_v2:';
 
+  function ttlFor(path){
+    const s=String(path||'');
+    if(/^tables\/(users|classes|students)(\?|$)/.test(s)) return 5*60*1000;
+    if(/^tables\/(attendance|payments)(\?|$)/.test(s)) return 30*1000;
+    return 2*60*1000;
+  }
+  function sessionEligible(path){
+    return /^tables\/(users|classes|students)(\?|$)/.test(String(path||''));
+  }
   function cloneData(v){
     try { return structuredClone(v); }
     catch { try { return JSON.parse(JSON.stringify(v)); } catch { return v; } }
   }
-  function response(ok, status, data){
-    return {
-      ok, status,
-      json: async () => cloneData(data),
-      text: async () => typeof data === 'string' ? data : JSON.stringify(data)
-    };
+  function response(ok,status,data){
+    return {ok,status,json:async()=>cloneData(data),text:async()=>typeof data==='string'?data:JSON.stringify(data)};
   }
-  function clearReads(){ cache.clear(); inflight.clear(); }
+  function sessionKey(key){return SESSION_PREFIX+key;}
+  function readSession(key,ttl){
+    try{
+      const raw=sessionStorage.getItem(sessionKey(key));
+      if(!raw)return null;
+      const entry=JSON.parse(raw);
+      if(!entry?.at||Date.now()-entry.at>=ttl){sessionStorage.removeItem(sessionKey(key));return null;}
+      return entry;
+    }catch{return null;}
+  }
+  function writeSession(key,entry){
+    try{sessionStorage.setItem(sessionKey(key),JSON.stringify(entry));}catch{}
+  }
+  function clearReads(){
+    cache.clear();inflight.clear();
+    try{
+      for(let i=sessionStorage.length-1;i>=0;i--){
+        const k=sessionStorage.key(i);if(k&&k.startsWith(SESSION_PREFIX))sessionStorage.removeItem(k);
+      }
+    }catch{}
+  }
 
-  window._tFetch = async function(path, opt = {}){
-    const method = String(opt?.method || 'GET').toUpperCase();
-    const key = String(path || '');
-    const bypass = opt?.cache === 'no-store' || opt?.ymsNoCache === true;
+  window._tFetch=async function(path,opt={}){
+    const method=String(opt?.method||'GET').toUpperCase();
+    const key=String(path||'');
+    const bypass=opt?.cache==='no-store'||opt?.ymsNoCache===true;
 
-    if (method === 'GET' && !bypass) {
-      const hit = cache.get(key);
-      if (hit && (Date.now() - hit.at) < TTL) return response(hit.ok, hit.status, hit.data);
-      if (inflight.has(key)) {
-        const same = await inflight.get(key);
-        return response(same.ok, same.status, same.data);
+    if(method==='GET'&&!bypass){
+      const ttl=ttlFor(key);
+      let hit=cache.get(key);
+      if(!hit&&sessionEligible(key)){
+        hit=readSession(key,ttl);
+        if(hit)cache.set(key,hit);
+      }
+      if(hit&&(Date.now()-hit.at)<ttl)return response(hit.ok,hit.status,hit.data);
+      if(inflight.has(key)){
+        const same=await inflight.get(key);
+        return response(same.ok,same.status,same.data);
       }
 
-      const request = (async () => {
-        const r = await base(path, opt);
+      const request=(async()=>{
+        const r=await base(path,opt);
         let data;
-        try { data = await r.json(); }
-        catch { try { data = await r.text(); } catch { data = {}; } }
-        const entry = {ok:!!r.ok,status:Number(r.status||0),data,at:Date.now()};
-        if (entry.ok) cache.set(key, entry);
+        try{data=await r.json();}
+        catch{try{data=await r.text();}catch{data={};}}
+        const entry={ok:!!r.ok,status:Number(r.status||0),data,at:Date.now()};
+        if(entry.ok){
+          cache.set(key,entry);
+          if(sessionEligible(key))writeSession(key,entry);
+        }
         return entry;
       })();
-      inflight.set(key, request);
-      try {
-        const entry = await request;
-        return response(entry.ok, entry.status, entry.data);
-      } finally {
-        inflight.delete(key);
-      }
+      inflight.set(key,request);
+      try{
+        const entry=await request;
+        return response(entry.ok,entry.status,entry.data);
+      }finally{inflight.delete(key);}
     }
 
-    const r = await base(path, opt);
-    if (method !== 'GET' && r?.ok) clearReads();
+    const r=await base(path,opt);
+    if(method!=='GET'&&r?.ok)clearReads();
     return r;
   };
 
-  window.YMS_clearReadCache = clearReads;
+  window.YMS_clearReadCache=clearReads;
 })();
 
 /* YMS Master Track — PWA bootstrap */
