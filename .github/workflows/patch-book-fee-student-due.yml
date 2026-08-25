@@ -1,0 +1,129 @@
+name: Patch book fees by student due day
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-book-fee-student-due.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Patch payment book billing logic
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('payment.html')
+          t = p.read_text(encoding='utf-8')
+
+          anchor = "const fmtKRW = n => '₩' + Number(n||0).toLocaleString('ko-KR');"
+          helper = r'''const fmtKRW = n => '₩' + Number(n||0).toLocaleString('ko-KR');
+
+// 교재비 청구월: 학생별 납입일 2일 전까지는 해당 월, 이후 등록분은 다음 달
+function getBookBillingCycle(selectedMonth, tuitionDueDay) {
+  const dueDay = Number(tuitionDueDay || 0);
+  if (!selectedMonth || !(dueDay >= 1 && dueDay <= 31)) {
+    return { month: selectedMonth, dueDate: selectedMonth ? selectedMonth + '-10' : '' };
+  }
+
+  const [year, month] = selectedMonth.split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  const actualDueDay = Math.min(dueDay, lastDay);
+  const due = new Date(year, month - 1, actualDueDay);
+  const cutoff = new Date(year, month - 1, actualDueDay);
+  cutoff.setDate(cutoff.getDate() - 2);
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let billYear = year;
+  let billMonth = month;
+  if (today > cutoff) {
+    billMonth += 1;
+    if (billMonth > 12) { billMonth = 1; billYear += 1; }
+  }
+
+  const billLastDay = new Date(billYear, billMonth, 0).getDate();
+  const billDueDay = Math.min(dueDay, billLastDay);
+  const monthStr = `${billYear}-${String(billMonth).padStart(2,'0')}`;
+  const dueDate = `${monthStr}-${String(billDueDay).padStart(2,'0')}`;
+  return { month: monthStr, dueDate };
+}'''
+          if 'function getBookBillingCycle(' not in t:
+              if anchor not in t:
+                  raise SystemExit('fmtKRW anchor not found')
+              t = t.replace(anchor, helper, 1)
+
+          old_dropdown = "sel.innerHTML += `<option value=\"${s.id}\" data-class=\"${s.className||''}\" data-name=\"${s.name}\">${s.name} · ${s.className||'반 미지정'}</option>`;"
+          new_dropdown = "sel.innerHTML += `<option value=\"${s.id}\" data-class=\"${s.className||''}\" data-name=\"${s.name}\" data-due-day=\"${s.tuitionDueDay||''}\">${s.name} · ${s.className||'반 미지정'}</option>`;"
+          if old_dropdown in t:
+              t = t.replace(old_dropdown, new_dropdown, 1)
+
+          old_single_head = """  const studentName = opt?.dataset.name || '';
+  const className   = document.getElementById('bClassName').value;
+  const bookTitle   = document.getElementById('bBookTitle').value;"""
+          new_single_head = """  const studentName = opt?.dataset.name || '';
+  const className   = document.getElementById('bClassName').value;
+  const bookTitle   = document.getElementById('bBookTitle').value;
+  const selectedBookMonth = document.getElementById('bMonth').value;
+  const studentDueDay = Number(opt?.dataset.dueDay || _allStudents.find(s=>s.id===studentId)?.tuitionDueDay || 0);
+  const bookCycle = getBookBillingCycle(selectedBookMonth, studentDueDay);"""
+          if old_single_head in t:
+              t = t.replace(old_single_head, new_single_head, 1)
+
+          old_single_month = """    month:    document.getElementById('bMonth').value,
+    type:     'BOOK', bookTitle,"""
+          new_single_month = """    month:    bookCycle.month,
+    type:     'BOOK', bookTitle,"""
+          if old_single_month in t:
+              t = t.replace(old_single_month, new_single_month, 1)
+
+          old_single_due = "    dueDate: document.getElementById('bMonth').value+'-10',"
+          new_single_due = "    dueDate: bookCycle.dueDate,"
+          if old_single_due in t:
+              t = t.replace(old_single_due, new_single_due, 1)
+
+          old_bulk_month = "  const month     = document.getElementById('tb_month').value;"
+          new_bulk_month = "  const selectedMonth = document.getElementById('tb_month').value;"
+          if old_bulk_month in t:
+              t = t.replace(old_bulk_month, new_bulk_month, 1)
+
+          old_bulk_map = """    students.map(async (s, i) => {
+      const newBook = {
+        studentId:  s.id,"""
+          new_bulk_map = """    students.map(async (s, i) => {
+      const bookCycle = getBookBillingCycle(selectedMonth, s.tuitionDueDay);
+      const newBook = {
+        studentId:  s.id,"""
+          if old_bulk_map in t:
+              t = t.replace(old_bulk_map, new_bulk_map, 1)
+
+          old_bulk_payload_month = "        month,\n        type:        'BOOK',"
+          new_bulk_payload_month = "        month:       bookCycle.month,\n        type:        'BOOK',"
+          if old_bulk_payload_month in t:
+              t = t.replace(old_bulk_payload_month, new_bulk_payload_month, 1)
+
+          old_bulk_due = "        dueDate:     month + '-10',"
+          new_bulk_due = "        dueDate:     bookCycle.dueDate,"
+          if old_bulk_due in t:
+              t = t.replace(old_bulk_due, new_bulk_due, 1)
+
+          p.write_text(t, encoding='utf-8')
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add payment.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: bill book fees by student due-day cutoff"
+          git push origin main
