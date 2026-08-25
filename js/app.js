@@ -152,6 +152,70 @@
   window.YMS_DEMO={attendance:{s001:[]},students:[],payments:[],classes:[],homework:[],notices:[]};
 })();
 
+/* YMS Firestore read guard — deduplicate and short-cache repeated GETs */
+(function(){
+  'use strict';
+  if (window.__YMS_FIRESTORE_READ_GUARD__) return;
+  const base = window._tFetch;
+  if (typeof base !== 'function') return;
+  window.__YMS_FIRESTORE_READ_GUARD__ = true;
+
+  const TTL = 60 * 1000;
+  const cache = new Map();
+  const inflight = new Map();
+
+  function cloneData(v){
+    try { return structuredClone(v); }
+    catch { try { return JSON.parse(JSON.stringify(v)); } catch { return v; } }
+  }
+  function response(ok, status, data){
+    return {
+      ok, status,
+      json: async () => cloneData(data),
+      text: async () => typeof data === 'string' ? data : JSON.stringify(data)
+    };
+  }
+  function clearReads(){ cache.clear(); inflight.clear(); }
+
+  window._tFetch = async function(path, opt = {}){
+    const method = String(opt?.method || 'GET').toUpperCase();
+    const key = String(path || '');
+    const bypass = opt?.cache === 'no-store' || opt?.ymsNoCache === true;
+
+    if (method === 'GET' && !bypass) {
+      const hit = cache.get(key);
+      if (hit && (Date.now() - hit.at) < TTL) return response(hit.ok, hit.status, hit.data);
+      if (inflight.has(key)) {
+        const same = await inflight.get(key);
+        return response(same.ok, same.status, same.data);
+      }
+
+      const request = (async () => {
+        const r = await base(path, opt);
+        let data;
+        try { data = await r.json(); }
+        catch { try { data = await r.text(); } catch { data = {}; } }
+        const entry = {ok:!!r.ok,status:Number(r.status||0),data,at:Date.now()};
+        if (entry.ok) cache.set(key, entry);
+        return entry;
+      })();
+      inflight.set(key, request);
+      try {
+        const entry = await request;
+        return response(entry.ok, entry.status, entry.data);
+      } finally {
+        inflight.delete(key);
+      }
+    }
+
+    const r = await base(path, opt);
+    if (method !== 'GET' && r?.ok) clearReads();
+    return r;
+  };
+
+  window.YMS_clearReadCache = clearReads;
+})();
+
 /* YMS Master Track — PWA bootstrap */
 (function(){
   'use strict';
