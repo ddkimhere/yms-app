@@ -52,15 +52,27 @@
     render();
   }
 
+  async function throwDetailed(r,label){
+    if(r.ok)return;
+    let detail='';
+    try{const j=await r.clone().json();detail=j?.error?.message||j?.error||j?.message||'';}catch{try{detail=await r.clone().text();}catch{}}
+    throw new Error(`${label} (HTTP ${r.status}${detail?': '+detail:''})`);
+  }
+
   window.YMS_teacherCounselSave=async function(studentId){
     const s=students.find(x=>String(x.id)===String(studentId));if(!s)return;
     const card=document.querySelector(`.tcm-card[data-sid="${CSS.escape(String(studentId))}"]`);const note=card?.querySelector('.tcm-note')?.value.trim()||'';
     const existing=recordFor(studentId);const now=new Date().toISOString();
-    const payload={recordType:'MONTHLY_TEACHER',month,studentId:s.id,studentName:s.name||'',classId:s.classId||'',className:s.className||'',teacherId:uid,teacherName:me.name||s.teacherName||'',status:'REPLIED',specialNote:note,reply:note,repliedAt:existing?.repliedAt||now,updatedAt:now,createdAt:existing?.createdAt||now,category:'월상담',title:`${month} 월 상담`};
-    try{const r=existing?await _tFetch('tables/counseling/'+encodeURIComponent(existing.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}):await _tFetch('tables/counseling',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw new Error('상담 저장 실패');const saved=await r.json().catch(()=>({}));if(existing)Object.assign(existing,payload,saved);else records.push({id:saved.id,...payload,...saved});render();window.YMS_UI?.toast?.('✅ 상담 완료로 저장했습니다');}catch(e){console.error(e);window.YMS_UI?.toast?.('❌ 상담 저장에 실패했습니다');}
+    const payload={recordType:'MONTHLY_TEACHER',month,studentId:s.id,studentName:s.name||'',classId:s.classId||'',className:s.className||'',teacherId:uid,teacherName:me.name||s.teacherName||'',requesterId:uid,requesterRole:'TEACHER',requesterName:me.name||'',status:'REPLIED',specialNote:note,reply:note,repliedAt:existing?.repliedAt||now,updatedAt:now,createdAt:existing?.createdAt||now,category:'월상담',title:`${month} 월 상담`,content:note||'월 상담 완료',isRead:true};
+    try{
+      const r=existing?await _tFetch('tables/counseling/'+encodeURIComponent(existing.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}):await _tFetch('tables/counseling',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      await throwDetailed(r,'상담 저장 실패');
+      const saved=await r.json().catch(()=>({}));if(existing)Object.assign(existing,payload,saved);else records.push({id:saved.id,...payload,...saved});render();window.YMS_UI?.toast?.('✅ 상담 완료로 저장했습니다');
+    }catch(e){console.error('[YMS] teacher counseling save',e);window.YMS_UI?.toast?.('❌ '+(e?.message||'상담 저장에 실패했습니다'));
+    }
   };
 
-  window.YMS_teacherCounselCancel=async function(studentId){const r=recordFor(studentId);if(!r)return;try{const payload={status:'PENDING',updatedAt:new Date().toISOString()};const res=await _tFetch('tables/counseling/'+encodeURIComponent(r.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!res.ok)throw new Error();Object.assign(r,payload);render();window.YMS_UI?.toast?.('상담 완료를 취소했습니다');}catch{window.YMS_UI?.toast?.('❌ 상태 변경에 실패했습니다');}};
+  window.YMS_teacherCounselCancel=async function(studentId){const r=recordFor(studentId);if(!r)return;try{const payload={status:'PENDING',updatedAt:new Date().toISOString(),requesterId:uid,requesterRole:'TEACHER',requesterName:me.name||''};const res=await _tFetch('tables/counseling/'+encodeURIComponent(r.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});await throwDetailed(res,'상태 변경 실패');Object.assign(r,payload);render();window.YMS_UI?.toast?.('상담 완료를 취소했습니다');}catch(e){window.YMS_UI?.toast?.('❌ '+(e?.message||'상태 변경에 실패했습니다'));}};
 
   function boot(){setTimeout(load,0);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
