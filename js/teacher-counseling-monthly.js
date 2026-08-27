@@ -1,4 +1,4 @@
-/* YMS teacher monthly counseling checklist */
+/* YMS teacher student-management monthly counseling table */
 (function(){
   'use strict';
   if(!location.pathname.endsWith('/counseling.html')) return;
@@ -12,16 +12,15 @@
   let month=new Date().toISOString().slice(0,7);
   let students=[];
   let records=[];
-  let classIds=new Set();
-  let classNames=new Set();
+  let classOrder=new Map();
 
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const root=()=>document.querySelector('.app-wrapper')||document.querySelector('.student-app')||document.body;
 
   function css(){
-    if(document.getElementById('yms-teacher-counseling-css'))return;
-    const s=document.createElement('style');s.id='yms-teacher-counseling-css';s.textContent=`
-      body{background:#F4F7FD!important}.tcm-page{max-width:760px;margin:0 auto;padding:18px 16px 100px}.tcm-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.tcm-title{font-size:20px;font-weight:900;color:#14245A}.tcm-sub{font-size:11px;color:#7A87A8;margin-top:4px;line-height:1.5}.tcm-month{height:38px;border:1px solid #C8D1E8;border-radius:10px;background:#fff;padding:0 10px;font:inherit;color:#273453}.tcm-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tcm-pill{background:#fff;border:1px solid #E1E6F0;border-radius:999px;padding:7px 11px;font-size:11px;color:#56637E}.tcm-pill strong{color:#17284F}.tcm-list{display:flex;flex-direction:column;gap:9px}.tcm-card{background:#fff;border:1px solid #E1E6F0;border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(30,50,120,.05)}.tcm-card.done{border-color:#A9D9C1;background:#FBFFFD}.tcm-top{display:flex;align-items:center;gap:10px}.tcm-name{font-size:14px;font-weight:900;color:#243356}.tcm-meta{font-size:10px;color:#7A87A8;margin-top:2px}.tcm-state{margin-left:auto;font-size:10px;font-weight:900;padding:5px 9px;border-radius:999px;background:#FFF3E0;color:#C56B00;border:1px solid #FFD49B}.tcm-card.done .tcm-state{background:#E8F6EF;color:#237A53;border-color:#A9D9C1}.tcm-note{width:100%;min-height:70px;margin-top:10px;border:1px solid #D7DEEC;border-radius:11px;padding:9px 10px;resize:vertical;font:inherit;font-size:12px;color:#273453;background:#fff}.tcm-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:8px}.tcm-btn{border:0;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:900;cursor:pointer}.tcm-save{background:#1E3278;color:#fff}.tcm-cancel{background:#F1F3F8;color:#68748C}.tcm-empty{padding:36px;text-align:center;color:#8793AA;background:#fff;border:1px dashed #CDD6E8;border-radius:16px}@media(max-width:600px){.tcm-page{padding:14px 12px 92px}.tcm-title{font-size:18px}}
+    if(document.getElementById('yms-teacher-student-mgmt-css'))return;
+    const s=document.createElement('style');s.id='yms-teacher-student-mgmt-css';s.textContent=`
+      body{background:#F4F7FD!important}.tsm-page{max-width:920px;margin:0 auto;padding:18px 16px 110px}.tsm-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.tsm-title{font-size:20px;font-weight:900;color:#14245A}.tsm-sub{font-size:11px;color:#7A87A8;margin-top:4px;line-height:1.5}.tsm-month{height:38px;border:1px solid #C8D1E8;border-radius:10px;background:#fff;padding:0 10px;font:inherit;color:#273453}.tsm-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tsm-pill{background:#fff;border:1px solid #E1E6F0;border-radius:999px;padding:7px 11px;font-size:11px;color:#56637E}.tsm-pill strong{color:#17284F}.tsm-wrap{overflow:auto;border:1px solid #DCE3F0;border-radius:14px;background:#fff;max-height:70vh}.tsm-table{width:100%;border-collapse:separate;border-spacing:0;min-width:640px;font-size:12px}.tsm-table th{position:sticky;top:0;z-index:3;background:#1E4FD7;color:#fff;padding:11px 10px;border-right:1px solid rgba(255,255,255,.2);text-align:center;white-space:nowrap}.tsm-table td{padding:9px 10px;border-right:1px solid #E5EAF3;border-bottom:1px solid #E5EAF3;background:#fff;vertical-align:middle}.tsm-table th.name,.tsm-table td.name{position:sticky;left:0}.tsm-table th.name{z-index:5;background:#163CA9}.tsm-table td.name{z-index:1;font-weight:900;color:#243356;min-width:130px;box-shadow:2px 0 5px rgba(30,50,120,.05)}.tsm-class{display:block;font-size:10px;color:#8793AA;font-weight:700;margin-top:2px}.tsm-check{text-align:center;min-width:120px}.tsm-check input{width:20px;height:20px;accent-color:#1E4FD7;cursor:pointer}.tsm-note{width:100%;min-width:280px;min-height:42px;border:1px solid #D2DAEA;border-radius:9px;padding:8px 9px;resize:vertical;font:inherit;font-size:12px;color:#273453;background:#fff}.tsm-note:focus{outline:none;border-color:#7492D5;box-shadow:0 0 0 2px rgba(116,146,213,.14)}.tsm-saving{opacity:.55;pointer-events:none}.tsm-empty{padding:34px;text-align:center;color:#8793AA}.tsm-status{font-size:10px;color:#6E7A96;margin-top:4px;text-align:center}@media(max-width:600px){.tsm-page{padding:14px 10px 100px}.tsm-title{font-size:18px}.tsm-table{min-width:590px}.tsm-note{min-width:240px}}
     `;document.head.appendChild(s);
   }
 
@@ -32,13 +31,13 @@
   function render(){
     css();const host=root();if(!host)return;
     const done=students.filter(s=>recordFor(s.id)?.status==='REPLIED').length;
-    host.innerHTML=`<div class="tcm-page"><div class="tcm-head"><div><div class="tcm-title">💬 월 상담 체크</div><div class="tcm-sub">내 담당 학생의 월별 상담 여부를 체크하고 특이사항을 기록합니다. 저장 내용은 운영자 상담관리에 바로 반영됩니다.</div></div><input type="month" class="tcm-month" id="tcmMonth" value="${esc(month)}"></div><div class="tcm-summary"><span class="tcm-pill">담당 학생 <strong>${students.length}명</strong></span><span class="tcm-pill">완료 <strong>${done}명</strong></span><span class="tcm-pill">미완료 <strong>${students.length-done}명</strong></span></div><div class="tcm-list">${students.length?students.map(s=>{const r=recordFor(s.id),isDone=r?.status==='REPLIED',note=r?.specialNote||r?.notes||r?.reply||'';return `<div class="tcm-card ${isDone?'done':''}" data-sid="${esc(s.id)}"><div class="tcm-top"><div><div class="tcm-name">${esc(s.name||'-')}</div><div class="tcm-meta">${esc(s.schoolName||'')}${s.grade?' · '+esc(s.grade):''}${s.className?' · '+esc(s.className):''}</div></div><span class="tcm-state">${isDone?'✓ 상담 완료':'○ 미완료'}</span></div><textarea class="tcm-note" placeholder="특이사항을 입력하세요. (없으면 비워도 됩니다)">${esc(note)}</textarea><div class="tcm-actions">${isDone?`<button class="tcm-btn tcm-cancel" type="button" onclick="YMS_teacherCounselCancel('${String(s.id).replace(/'/g,"\\'")}')">완료 취소</button>`:''}<button class="tcm-btn tcm-save" type="button" onclick="YMS_teacherCounselSave('${String(s.id).replace(/'/g,"\\'")}')">${isDone?'특이사항 저장':'상담 완료'}</button></div></div>`}).join(''):'<div class="tcm-empty">담당 학생이 없습니다. 반 배정을 확인해주세요.</div>'}</div></div>`;
-    document.getElementById('tcmMonth').onchange=e=>{month=e.target.value||new Date().toISOString().slice(0,7);render();};
+    host.innerHTML=`<div class="tsm-page"><div class="tsm-head"><div><div class="tsm-title">👥 학생 관리</div><div class="tsm-sub">담당 반 순서대로 학생을 확인하고, 월 상담 체크와 특이사항을 기록합니다.</div></div><input type="month" class="tsm-month" id="tsmMonth" value="${esc(month)}"></div><div class="tsm-summary"><span class="tsm-pill">담당 학생 <strong>${students.length}명</strong></span><span class="tsm-pill">상담 완료 <strong>${done}명</strong></span><span class="tsm-pill">미완료 <strong>${students.length-done}명</strong></span></div><div class="tsm-wrap"><table class="tsm-table"><thead><tr><th class="name">학생 이름</th><th>상담 체크</th><th>특이사항</th></tr></thead><tbody>${students.length?students.map(s=>{const r=recordFor(s.id),isDone=r?.status==='REPLIED',note=r?.specialNote||r?.notes||r?.reply||'';return `<tr data-sid="${esc(s.id)}"><td class="name">${esc(s.name||'-')}<span class="tsm-class">${esc(s.className||'')}</span></td><td class="tsm-check"><input type="checkbox" ${isDone?'checked':''} onchange="YMS_teacherStudentCheck('${String(s.id).replace(/'/g,"\\'")}',this.checked)"><div class="tsm-status">${isDone?'완료':'미완료'}</div></td><td><textarea class="tsm-note" placeholder="특이사항 입력" onblur="YMS_teacherStudentNote('${String(s.id).replace(/'/g,"\\'")}',this.value)">${esc(note)}</textarea></td></tr>`}).join(''):`<tr><td colspan="3" class="tsm-empty">담당 학생이 없습니다. 반 배정을 확인해주세요.</td></tr>`}</tbody></table></div></div>`;
+    document.getElementById('tsmMonth').onchange=e=>{month=e.target.value||new Date().toISOString().slice(0,7);render();};
     try{window.ymsRenderTeacherNav?.('counseling.html')}catch{}
   }
 
   async function load(){
-    css();const host=root();if(host)host.innerHTML='<div class="tcm-page"><div class="tcm-empty">학생 명단을 불러오는 중...</div></div>';
+    css();const host=root();if(host)host.innerHTML='<div class="tsm-page"><div class="tsm-empty">학생 명단을 불러오는 중...</div></div>';
     try{
       const [cr,sr,rr]=await Promise.all([_tFetch('tables/classes?limit=300'),_tFetch('tables/students?limit=1000'),_tFetch('tables/counseling?limit=1000')]);
       const classes=cr.ok?((await cr.json()).data||[]):[];
@@ -46,33 +45,33 @@
       records=rr.ok?((await rr.json()).data||[]):[];
       const assigned=Array.isArray(me.teacherClasses)?me.teacherClasses:String(me.teacherClasses||'').split(',').map(x=>x.trim()).filter(Boolean);
       const mine=classes.filter(c=>String(c.teacherId||'')===uid||String(c.teacherName||'')===String(me.name||'')||assigned.includes(String(c.id||''))||assigned.includes(String(c.className||'')));
-      classIds=new Set(mine.map(c=>String(c.id||'')).filter(Boolean));classNames=new Set(mine.map(c=>String(c.className||'')).filter(Boolean));
-      students=allStudents.filter(s=>s.isActive!==false&&(classIds.has(String(s.classId||''))||classNames.has(String(s.className||''))||String(s.teacherId||'')===uid||String(s.teacherName||'')===String(me.name||''))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
-    }catch(e){console.error('[YMS] teacher counseling load',e);students=[];records=[];}
+      classOrder=new Map();mine.forEach((c,i)=>{if(c.id)classOrder.set('id:'+String(c.id),i);if(c.className)classOrder.set('name:'+String(c.className),i)});
+      const ids=new Set(mine.map(c=>String(c.id||'')).filter(Boolean));const names=new Set(mine.map(c=>String(c.className||'')).filter(Boolean));
+      students=allStudents.filter(s=>s.isActive!==false&&(ids.has(String(s.classId||''))||names.has(String(s.className||''))||String(s.teacherId||'')===uid||String(s.teacherName||'')===String(me.name||''))).sort((a,b)=>{
+        const ai=classOrder.get('id:'+String(a.classId||''))??classOrder.get('name:'+String(a.className||''))??9999;
+        const bi=classOrder.get('id:'+String(b.classId||''))??classOrder.get('name:'+String(b.className||''))??9999;
+        return ai-bi||String(a.name||'').localeCompare(String(b.name||''),'ko');
+      });
+    }catch(e){console.error('[YMS] teacher student management load',e);students=[];records=[];}
     render();
   }
 
-  async function throwDetailed(r,label){
-    if(r.ok)return;
-    let detail='';
-    try{const j=await r.clone().json();detail=j?.error?.message||j?.error||j?.message||'';}catch{try{detail=await r.clone().text();}catch{}}
-    throw new Error(`${label} (HTTP ${r.status}${detail?': '+detail:''})`);
-  }
-
-  window.YMS_teacherCounselSave=async function(studentId){
+  async function saveState(studentId,{status,note}){
     const s=students.find(x=>String(x.id)===String(studentId));if(!s)return;
-    const card=document.querySelector(`.tcm-card[data-sid="${CSS.escape(String(studentId))}"]`);const note=card?.querySelector('.tcm-note')?.value.trim()||'';
     const existing=recordFor(studentId);const now=new Date().toISOString();
-    const payload={recordType:'MONTHLY_TEACHER',month,studentId:s.id,studentName:s.name||'',classId:s.classId||'',className:s.className||'',teacherId:uid,teacherName:me.name||s.teacherName||'',requesterId:uid,requesterRole:'TEACHER',requesterName:me.name||'',status:'REPLIED',specialNote:note,reply:note,repliedAt:existing?.repliedAt||now,updatedAt:now,createdAt:existing?.createdAt||now,category:'월상담',title:`${month} 월 상담`,content:note||'월 상담 완료',isRead:true};
+    const currentNote=note!==undefined?String(note).trim():(existing?.specialNote||existing?.notes||existing?.reply||'');
+    const nextStatus=status!==undefined?status:(existing?.status||'PENDING');
+    const payload={recordType:'MONTHLY_TEACHER',month,studentId:s.id,studentName:s.name||'',classId:s.classId||'',className:s.className||'',teacherId:uid,teacherName:me.name||s.teacherName||'',requesterId:uid,requesterRole:'TEACHER',requesterName:me.name||'',status:nextStatus,specialNote:currentNote,reply:currentNote,repliedAt:nextStatus==='REPLIED'?(existing?.repliedAt||now):'',updatedAt:now,createdAt:existing?.createdAt||now,category:'월상담',title:`${month} 월 상담`,content:currentNote||(nextStatus==='REPLIED'?'월 상담 완료':''),isRead:true};
+    const row=document.querySelector(`tr[data-sid="${CSS.escape(String(studentId))}"]`);row?.classList.add('tsm-saving');
     try{
       const r=existing?await _tFetch('tables/counseling/'+encodeURIComponent(existing.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}):await _tFetch('tables/counseling',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      await throwDetailed(r,'상담 저장 실패');
-      const saved=await r.json().catch(()=>({}));if(existing)Object.assign(existing,payload,saved);else records.push({id:saved.id,...payload,...saved});render();window.YMS_UI?.toast?.('✅ 상담 완료로 저장했습니다');
-    }catch(e){console.error('[YMS] teacher counseling save',e);window.YMS_UI?.toast?.('❌ '+(e?.message||'상담 저장에 실패했습니다'));
-    }
-  };
+      if(!r.ok){const msg=await r.text().catch(()=>String(r.status));throw new Error(`저장 실패 (${r.status}) ${msg.slice(0,100)}`)}
+      const saved=await r.json().catch(()=>({}));if(existing)Object.assign(existing,payload,saved);else records.push({id:saved.id,...payload,...saved});render();
+    }catch(e){console.error('[YMS] teacher student management save',e);window.YMS_UI?.toast?.('❌ '+(e?.message||'저장에 실패했습니다'));render();}
+  }
 
-  window.YMS_teacherCounselCancel=async function(studentId){const r=recordFor(studentId);if(!r)return;try{const payload={status:'PENDING',updatedAt:new Date().toISOString(),requesterId:uid,requesterRole:'TEACHER',requesterName:me.name||''};const res=await _tFetch('tables/counseling/'+encodeURIComponent(r.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});await throwDetailed(res,'상태 변경 실패');Object.assign(r,payload);render();window.YMS_UI?.toast?.('상담 완료를 취소했습니다');}catch(e){window.YMS_UI?.toast?.('❌ '+(e?.message||'상태 변경에 실패했습니다'));}};
+  window.YMS_teacherStudentCheck=async function(studentId,checked){await saveState(studentId,{status:checked?'REPLIED':'PENDING'});};
+  window.YMS_teacherStudentNote=async function(studentId,value){const existing=recordFor(studentId);const old=existing?.specialNote||existing?.notes||existing?.reply||'';if(String(value).trim()===String(old).trim())return;await saveState(studentId,{note:value});window.YMS_UI?.toast?.('특이사항을 저장했습니다');};
 
   function boot(){setTimeout(load,0);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
