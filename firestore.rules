@@ -16,10 +16,22 @@ service cloud.firestore {
     function teacherOwnsClass(classId) {
       return isTeacher()
         && classId is string
+        && classId != ''
         && exists(/databases/$(database)/documents/classes/$(classId))
         && (
           get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid
           || get(/databases/$(database)/documents/classes/$(classId)).data.teacherName == myProfile().data.name
+        );
+    }
+    function teacherOwnsStudent(studentId) {
+      return isTeacher()
+        && studentId is string
+        && studentId != ''
+        && exists(/databases/$(database)/documents/students/$(studentId))
+        && (
+          get(/databases/$(database)/documents/students/$(studentId)).data.teacherId == request.auth.uid
+          || get(/databases/$(database)/documents/students/$(studentId)).data.teacherName == myProfile().data.name
+          || teacherOwnsClass(get(/databases/$(database)/documents/students/$(studentId)).data.classId)
         );
     }
 
@@ -103,6 +115,7 @@ service cloud.firestore {
     match /counseling/{counselingId} {
       allow read: if isAdmin()
                   || teacherOwnsClass(resource.data.classId)
+                  || teacherOwnsStudent(resource.data.studentId)
                   || (isStudent() && myProfile().data.studentId == resource.data.studentId)
                   || (isParent() && parentHasChild(resource.data.studentId));
 
@@ -112,7 +125,7 @@ service cloud.firestore {
                         && request.resource.data.teacherId == request.auth.uid
                         && request.resource.data.requesterId == request.auth.uid
                         && request.resource.data.requesterRole == 'TEACHER'
-                        && teacherOwnsClass(request.resource.data.classId))
+                        && teacherOwnsStudent(request.resource.data.studentId))
                     || (isStudent()
                         && request.resource.data.requesterId == request.auth.uid
                         && myProfile().data.studentId == request.resource.data.studentId)
@@ -121,6 +134,14 @@ service cloud.firestore {
                         && parentHasChild(request.resource.data.studentId));
 
       allow update: if isAdmin()
+                    || (isTeacher()
+                        && resource.data.recordType == 'MONTHLY_TEACHER'
+                        && resource.data.teacherId == request.auth.uid
+                        && request.resource.data.teacherId == request.auth.uid
+                        && request.resource.data.requesterId == request.auth.uid
+                        && request.resource.data.requesterRole == 'TEACHER'
+                        && request.resource.data.studentId == resource.data.studentId
+                        && teacherOwnsStudent(resource.data.studentId))
                     || teacherOwnsClass(resource.data.classId);
       allow delete: if isAdmin();
     }
