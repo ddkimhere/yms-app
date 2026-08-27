@@ -47,8 +47,6 @@ service cloud.firestore {
     }
 
     match /attendance/{attendanceId} {
-      // Current attendance screens load a limited list and filter it in the app,
-      // so signed-in users need read access for their role-specific view.
       allow read: if signedIn();
       allow create: if isAdmin()
                     || (isTeacher()
@@ -109,6 +107,12 @@ service cloud.firestore {
                   || (isParent() && parentHasChild(resource.data.studentId));
 
       allow create: if isAdmin()
+                    || (isTeacher()
+                        && request.resource.data.recordType == 'MONTHLY_TEACHER'
+                        && request.resource.data.teacherId == request.auth.uid
+                        && request.resource.data.requesterId == request.auth.uid
+                        && request.resource.data.requesterRole == 'TEACHER'
+                        && teacherOwnsClass(request.resource.data.classId))
                     || (isStudent()
                         && request.resource.data.requesterId == request.auth.uid
                         && myProfile().data.studentId == request.resource.data.studentId)
