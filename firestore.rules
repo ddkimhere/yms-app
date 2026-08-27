@@ -112,6 +112,22 @@ service cloud.firestore {
                             || (isTeacher() && resource.data.teacherId == request.auth.uid);
     }
 
+    match /teacherTodos/{todoId} {
+      allow read: if isAdmin()
+                  || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      allow create: if isAdmin()
+                    || (isTeacher()
+                        && request.resource.data.teacherId == request.auth.uid
+                        && request.resource.data.text is string
+                        && request.resource.data.date is string);
+      allow update: if isAdmin()
+                    || (isTeacher()
+                        && resource.data.teacherId == request.auth.uid
+                        && request.resource.data.teacherId == request.auth.uid);
+      allow delete: if isAdmin()
+                    || (isTeacher() && resource.data.teacherId == request.auth.uid);
+    }
+
     match /counseling/{counselingId} {
       allow read: if isAdmin()
                   || teacherOwnsClass(resource.data.classId)
