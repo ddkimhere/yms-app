@@ -93,6 +93,14 @@
     });
   }
 
+  function loadPaymentGuide(){
+    if(document.querySelector('script[data-yms-payment-guide]')) return;
+    const s=document.createElement('script');
+    s.src='js/admin-payment-guide-type.js?v=4.27.13';
+    s.dataset.ymsPaymentGuide='1';
+    document.body.appendChild(s);
+  }
+
   let scheduled=false;
   function schedule(){
     if(scheduled) return;
@@ -103,6 +111,7 @@
   const observer=new MutationObserver(schedule);
   function start(){
     installStyle();
+    loadPaymentGuide();
     const sec=document.getElementById('section-payments');
     if(sec) observer.observe(sec,{childList:true,subtree:true});
     schedule();
