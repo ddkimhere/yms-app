@@ -1,84 +1,19 @@
-/* YMS admin payment guide type restore — CASH / OTHER */
+/* YMS admin payment guide type — saved student method first, modal fallback */
 (function(){
   'use strict';
-  if(!location.pathname.endsWith('/admin.html')) return;
-
+  if(!location.pathname.endsWith('/admin.html'))return;
   let pending=null;
-  const original=()=>window.YMS_setMonthPayStatus;
-
-  function ensureStyle(){
-    if(document.getElementById('yms-pay-guide-css')) return;
-    const s=document.createElement('style');
-    s.id='yms-pay-guide-css';
-    s.textContent=`
-      #ymsPayGuideModal{position:fixed;inset:0;z-index:120000;background:rgba(15,25,55,.45);display:flex;align-items:center;justify-content:center;padding:20px}
-      #ymsPayGuideModal.hidden{display:none!important}
-      #ymsPayGuideModal .pg-box{width:min(100%,430px);background:#fff;border:1px solid #DCE3F0;border-radius:20px;padding:22px;box-shadow:0 22px 60px rgba(20,36,90,.25)}
-      #ymsPayGuideModal .pg-title{font-size:18px;font-weight:900;color:#14245A;margin-bottom:6px}
-      #ymsPayGuideModal .pg-sub{font-size:11px;color:#7A87A8;line-height:1.5;margin-bottom:16px}
-      #ymsPayGuideModal .pg-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-      #ymsPayGuideModal .pg-btn{min-height:74px;border:1.5px solid #C8D1E8;border-radius:14px;background:#fff;color:#26365B;font:inherit;font-size:12px;font-weight:900;cursor:pointer;padding:10px}
-      #ymsPayGuideModal .pg-btn:hover{border-color:#7492D5;background:#EEF3FB}
-      #ymsPayGuideModal .pg-btn strong{display:block;font-size:14px;margin-bottom:4px;color:#1E3278}
-      #ymsPayGuideModal .pg-cancel{width:100%;margin-top:12px;min-height:40px;border:0;border-radius:11px;background:#F1F3F8;color:#68748C;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-      @media(max-width:520px){#ymsPayGuideModal{align-items:flex-end;padding:0}#ymsPayGuideModal .pg-box{border-radius:22px 22px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}#ymsPayGuideModal .pg-options{grid-template-columns:1fr}}
-    `;
-    document.head.appendChild(s);
+  function students(){try{if(typeof _allStudents!=='undefined'&&Array.isArray(_allStudents))return _allStudents;}catch{}return[];}
+  async function studentMethod(studentId){
+    let s=students().find(x=>String(x.id)===String(studentId));
+    if(!s){try{const r=await _tFetch(`tables/students/${encodeURIComponent(studentId)}`,{cache:'no-store'});if(r.ok)s=await r.json();}catch{}}
+    const m=String(s?.paymentMethod||s?.guideType||'').toUpperCase();return m==='CASH'?'CASH':m==='OTHER'?'OTHER':'';
   }
-
-  function ensureModal(){
-    if(document.getElementById('ymsPayGuideModal')) return;
-    const m=document.createElement('div');
-    m.id='ymsPayGuideModal';m.className='hidden';
-    m.innerHTML=`<div class="pg-box"><div class="pg-title">결제 방법 선택</div><div class="pg-sub">납입 처리할 결제 안내 방식을 선택하세요.</div><div class="pg-options"><button type="button" class="pg-btn" data-guide="CASH"><strong>💵 현금결제</strong>현금결제 전용 계좌 안내</button><button type="button" class="pg-btn" data-guide="OTHER"><strong>💳 그 외 결제</strong>계좌이체 · 익산 다이로움 QR 포함</button></div><button type="button" class="pg-cancel">취소</button></div>`;
-    document.body.appendChild(m);
-    m.querySelectorAll('[data-guide]').forEach(b=>b.addEventListener('click',()=>choose(b.dataset.guide)));
-    m.querySelector('.pg-cancel').addEventListener('click',close);
-    m.addEventListener('click',e=>{if(e.target===m)close();});
-  }
-
-  function open(args){ensureStyle();ensureModal();pending=args;document.getElementById('ymsPayGuideModal').classList.remove('hidden');}
-  function close(){pending=null;document.getElementById('ymsPayGuideModal')?.classList.add('hidden');}
-
-  async function choose(guideType){
-    const args=pending;if(!args)return;close();
-    const baseFetch=window._tFetch;
-    let restored=false;
-    const restore=()=>{if(!restored&&window._tFetch===wrapped){restored=true;window._tFetch=baseFetch;}};
-    const wrapped=async function(path,opt={}){
-      const method=String(opt?.method||'GET').toUpperCase();
-      if(String(path).startsWith('tables/payments')&&(method==='POST'||method==='PATCH'||method==='PUT')){
-        try{
-          const body=typeof opt.body==='string'?JSON.parse(opt.body):(opt.body||{});
-          body.guideType=guideType;
-          body.payMethod=guideType==='CASH'?'CASH':'OTHER';
-          opt={...opt,body:JSON.stringify(body)};
-        }catch{}
-      }
-      return baseFetch(path,opt);
-    };
-    window._tFetch=wrapped;
-    try{await args.fn(...args.callArgs);}
-    finally{restore();}
-  }
-
-  function install(){
-    ensureStyle();ensureModal();
-    const fn=original();
-    if(typeof fn!=='function'||fn.__ymsGuideWrapped) return false;
-    const wrappedStatus=async function(btn,studentId,targetMonth,nextStatus){
-      if(nextStatus==='PAID'){
-        open({fn,callArgs:[btn,studentId,targetMonth,nextStatus]});
-        return;
-      }
-      return fn(btn,studentId,targetMonth,nextStatus);
-    };
-    wrappedStatus.__ymsGuideWrapped=true;
-    window.YMS_setMonthPayStatus=wrappedStatus;
-    return true;
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setTimeout(install,0);setTimeout(install,300);},{once:true});
-  else{setTimeout(install,0);setTimeout(install,300);}
-  window.addEventListener('load',()=>setTimeout(install,200),{once:true});
+  function css(){if(document.getElementById('yms-pay-guide-css'))return;const s=document.createElement('style');s.id='yms-pay-guide-css';s.textContent='#ymsPayGuideModal{position:fixed;inset:0;z-index:120000;background:rgba(15,25,55,.45);display:flex;align-items:center;justify-content:center;padding:20px}#ymsPayGuideModal.hidden{display:none!important}#ymsPayGuideModal .pg-box{width:min(100%,430px);background:#fff;border:1px solid #DCE3F0;border-radius:20px;padding:22px;box-shadow:0 22px 60px rgba(20,36,90,.25)}#ymsPayGuideModal .pg-title{font-size:18px;font-weight:900;color:#14245A;margin-bottom:6px}#ymsPayGuideModal .pg-sub{font-size:11px;color:#7A87A8;line-height:1.5;margin-bottom:16px}#ymsPayGuideModal .pg-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}#ymsPayGuideModal .pg-btn{min-height:74px;border:1.5px solid #C8D1E8;border-radius:14px;background:#fff;color:#26365B;font:inherit;font-size:12px;font-weight:900;cursor:pointer;padding:10px}#ymsPayGuideModal .pg-btn strong{display:block;font-size:14px;margin-bottom:4px;color:#1E3278}#ymsPayGuideModal .pg-cancel{width:100%;margin-top:12px;min-height:40px;border:0;border-radius:11px;background:#F1F3F8;color:#68748C;font:inherit;font-size:12px;font-weight:800}@media(max-width:520px){#ymsPayGuideModal{align-items:flex-end;padding:0}#ymsPayGuideModal .pg-box{border-radius:22px 22px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}#ymsPayGuideModal .pg-options{grid-template-columns:1fr}}';document.head.appendChild(s)}
+  function modal(){if(document.getElementById('ymsPayGuideModal'))return;const m=document.createElement('div');m.id='ymsPayGuideModal';m.className='hidden';m.innerHTML='<div class="pg-box"><div class="pg-title">결제 방법 선택</div><div class="pg-sub">이 학생은 납부방식이 저장되어 있지 않습니다. 이번 납입 방식을 선택하세요.</div><div class="pg-options"><button type="button" class="pg-btn" data-guide="OTHER"><strong>💳 다이로움 & 계좌이체</strong>황유진 입금계좌</button><button type="button" class="pg-btn" data-guide="CASH"><strong>💵 현금</strong>김소라 입금계좌</button></div><button type="button" class="pg-cancel">취소</button></div>';document.body.appendChild(m);m.querySelectorAll('[data-guide]').forEach(b=>b.onclick=()=>choose(b.dataset.guide));m.querySelector('.pg-cancel').onclick=close;m.onclick=e=>{if(e.target===m)close()};}
+  function close(){pending=null;document.getElementById('ymsPayGuideModal')?.classList.add('hidden')}
+  async function callWithGuide(fn,args,guide){const base=window._tFetch;let restored=false;const restore=()=>{if(!restored&&window._tFetch===wrapped){restored=true;window._tFetch=base}};const wrapped=async function(path,opt={}){const method=String(opt.method||'GET').toUpperCase();if(String(path).startsWith('tables/payments')&&['POST','PATCH','PUT'].includes(method)){try{const b=typeof opt.body==='string'?JSON.parse(opt.body):(opt.body||{});b.guideType=guide;b.payMethod=guide;b.paymentAccountHolder=guide==='CASH'?'김소라':'황유진';opt={...opt,body:JSON.stringify(b)}}catch{}}return base(path,opt)};window._tFetch=wrapped;try{return await fn(...args)}finally{restore()}}
+  async function choose(guide){const p=pending;if(!p)return;close();return callWithGuide(p.fn,p.args,guide)}
+  function install(){css();modal();const fn=window.YMS_setMonthPayStatus;if(typeof fn!=='function'||fn.__ymsGuideWrapped)return false;const wrapped=async function(btn,studentId,targetMonth,nextStatus){if(nextStatus!=='PAID')return fn(btn,studentId,targetMonth,nextStatus);const method=await studentMethod(studentId);if(method)return callWithGuide(fn,[btn,studentId,targetMonth,nextStatus],method);pending={fn,args:[btn,studentId,targetMonth,nextStatus]};document.getElementById('ymsPayGuideModal').classList.remove('hidden')};wrapped.__ymsGuideWrapped=true;window.YMS_setMonthPayStatus=wrapped;return true;}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setTimeout(install,0);setTimeout(install,300)},{once:true});else{setTimeout(install,0);setTimeout(install,300)}window.addEventListener('load',()=>setTimeout(install,250),{once:true});
 })();
