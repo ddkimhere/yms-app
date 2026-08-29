@@ -1,0 +1,41 @@
+/* YMS sibling-combined tuition JPG */
+(function(){
+'use strict';
+if(!location.pathname.endsWith('/admin.html'))return;
+const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
+const feeMonth=f=>String(f.billingMonth||f.month||f.registeredAt||'').slice(0,7);
+const text=(ctx,v,x,y,size=30,weight=600,color='#1A2340',align='left')=>{ctx.font=`${weight} ${size}px -apple-system,BlinkMacSystemFont,"Noto Sans KR","Segoe UI",sans-serif`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(String(v??''),x,y)};
+const round=(ctx,x,y,w,h,r,fill,stroke)=>{ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}};
+const img=src=>new Promise((ok,bad)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=bad;i.src=src});
+function auto(s){const base=Math.max(0,Number(s?.tuitionBaseAmount||0)),disc=Math.min(base,Math.max(0,Number(s?.tuitionDiscountAmount||0)));return{base,disc,amount:Math.max(0,base-disc)}}
+async function all(col,limit=3000){const r=await _tFetch(`tables/${col}?limit=${limit}`,{cache:'no-store'});return r.ok?((await r.json()).data||[]):[]}
+function ids(v){return Array.isArray(v)?v.map(String):String(v||'').split(',').map(x=>x.trim()).filter(Boolean)}
+async function family(studentId){
+ const [students,users]=await Promise.all([all('students',1000),all('users',1000)]);const s=students.find(x=>String(x.id)===String(studentId));if(!s)return[];
+ if(s.parentId){const g=students.filter(x=>String(x.parentId||'')===String(s.parentId)&&x.isActive!==false);if(g.length)return g;}
+ const p=users.find(u=>String(u.role||'').toUpperCase()==='PARENT'&&ids(u.childIds).includes(String(studentId)));
+ if(p){const set=new Set(ids(p.childIds));return students.filter(x=>set.has(String(x.id))&&x.isActive!==false)}
+ return[s];
+}
+async function buildRows(studentId,month,seed){
+ const [kids,pays,fees]=await Promise.all([family(studentId),all('payments',3000),all('bookFees',3000)]);
+ return kids.map(s=>{const p=pays.find(x=>String(x.studentId)===String(s.id)&&String(x.month||'')===month&&String(x.type||'TUITION')==='TUITION');const t=auto(s),books=fees.filter(f=>String(f.studentId)===String(s.id)&&feeMonth(f)===month&&String(f.status||'REGISTERED')!=='CANCELLED'),bookTotal=books.reduce((a,f)=>a+Number(f.amount||0),0);let tuition=p?Number(p.amount||t.amount):t.amount;if(String(s.id)===String(studentId)&&seed&&Number.isFinite(Number(seed.tuitionAmount)))tuition=Number(seed.tuitionAmount);return{s,p,t,books,bookTotal,tuition,total:tuition+bookTotal}}).filter(r=>{const start=String(r.s.startDate||r.s.classStartDate||'').slice(0,7);return !(start&&month<start)});
+}
+async function make(studentId,month,seed={}){
+ const rows=await buildRows(studentId,month,seed);if(!rows.length)throw Error('청구할 학생 정보가 없습니다.');
+ const W=1080,H=Math.max(1450,600+rows.length*300),c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');ctx.fillStyle='#F4F7FD';ctx.fillRect(0,0,W,H);round(ctx,55,45,970,H-90,38,'#fff','#E3E8F4');round(ctx,55,45,970,220,38,'#1E3278');ctx.fillRect(55,215,970,50);text(ctx,'YMS 부송관 영어',110,130,42,800,'#fff');text(ctx,'교육비 납부 안내',110,200,58,900,'#fff');
+ text(ctx,rows.map(r=>r.s.name).join(' · '),110,330,42,900,'#14245A');text(ctx,`${String(month).replace('-','년 ')}월 교육비`,970,325,28,750,'#7492D5','right');
+ let y=390;for(const r of rows){const boxH=245+Math.min(3,r.books.length)*36;round(ctx,90,y,900,boxH,24,'#F8FAFE','#E3E8F4');text(ctx,r.s.name||'학생',125,y+48,32,900,'#14245A');if(r.s.className)text(ctx,r.s.className,930,y+45,22,650,'#7A87A8','right');text(ctx,'수강료',125,y+98,25,650,'#65718B');text(ctx,money(r.tuition),940,y+98,27,800,'#1A2340','right');let by=y+140;if(r.books.length){text(ctx,'추가 교육비 / 교재비',125,by,23,750,'#1E3278');by+=34;r.books.slice(0,3).forEach(f=>{text(ctx,`· ${f.bookName||f.itemName||'교재비'}`,135,by,21,600,'#526080');text(ctx,money(f.amount),940,by,22,750,'#1A2340','right');by+=32});if(r.books.length>3){text(ctx,`외 ${r.books.length-3}건`,135,by,19,600,'#8A96B2');by+=28}}
+ ctx.strokeStyle='#DCE4F3';ctx.beginPath();ctx.moveTo(125,y+boxH-58);ctx.lineTo(940,y+boxH-58);ctx.stroke();text(ctx,`${r.s.name} 합계`,125,y+boxH-22,26,850,'#14245A');text(ctx,money(r.total),940,y+boxH-22,31,900,'#1E3278','right');y+=boxH+18}
+ const grand=rows.reduce((a,r)=>a+r.total,0);round(ctx,90,y,900,105,24,'#EAF0FF');text(ctx,'형제 교육비 총 합계',125,y+62,31,900,'#14245A');text(ctx,money(grand),940,y+65,42,900,'#1E3278','right');y+=140;
+ const guide=rows.find(r=>r.p?.guideType||r.p?.payMethod)?.p||seed||{};const type=guide.guideType||(guide.payMethod==='CASH'?'CASH':'OTHER'),acct=type==='CASH'?{bank:'카카오뱅크',account:'3333-36-6373135',holder:'김소라'}:{bank:'카카오뱅크',account:'7942-28-56906',holder:'황유진'};text(ctx,type==='CASH'?'현금결제 안내':'그 외 결제 안내',110,y+15,31,850,'#14245A');round(ctx,90,y+40,900,220,24,'#EEF3FB');text(ctx,acct.bank,130,y+105,25,750,'#1E3278');text(ctx,acct.account,130,y+160,36,900,'#14245A');text(ctx,`예금주 ${acct.holder}`,130,y+205,23,650,'#65718B');if(type!=='CASH'){try{const q=await img('images/dairoom-pay-qr.svg');ctx.fillStyle='#fff';ctx.fillRect(735,y+65,175,175);ctx.drawImage(q,745,y+75,155,155)}catch{}}
+ text(ctx,'YMS 부송관 영어 · 문의 063-832-0219',540,H-80,22,650,'#8A96B2','center');return{url:c.toDataURL('image/jpeg',.94),names:rows.map(r=>r.s.name).join('_')}
+async function save(studentId,month,seed){YMS_UI?.toast?.('형제 합산 내역서를 만들고 있습니다…');const out=await make(studentId,month,seed);const a=document.createElement('a');a.href=out.url;a.download=`${out.names}_${month}_교육비합산.jpg`;document.body.appendChild(a);a.click();a.remove();YMS_UI?.toast?.('✅ 형제 합산 교육비 내역서를 저장했습니다.');}
+function install(){
+ const oldMonth=window.YMS_downloadMonthJpg;
+ window.YMS_downloadMonthJpg=async function(studentId,targetMonth){try{return await save(studentId,targetMonth,{})}catch(e){console.error(e);YMS_UI?.toast?.('❌ '+(e.message||'JPG 저장 실패'));if(typeof oldMonth==='function')return oldMonth(studentId,targetMonth)}};
+ const oldPayload=window.downloadTuitionJpgPayload;
+ window.downloadTuitionJpgPayload=async function(payload){try{if(payload?.studentId&&payload?.month)return await save(payload.studentId,payload.month,payload);return typeof oldPayload==='function'?oldPayload(payload):undefined}catch(e){console.error(e);YMS_UI?.toast?.('❌ '+(e.message||'JPG 저장 실패'))}};
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(install,500));else setTimeout(install,500);window.addEventListener('load',()=>setTimeout(install,1200),{once:true});
+})();
