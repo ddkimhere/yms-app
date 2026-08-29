@@ -1,0 +1,43 @@
+/* YMS parent sibling-combined monthly billing */
+(function(){
+  'use strict';
+  if(!location.pathname.endsWith('/parent-payment.html'))return;
+  const u=window.YMS_Auth?.getUser?.();if(String(u?.role||'').toUpperCase()!=='PARENT')return;
+  const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const feeMonth=f=>String(f.billingMonth||f.month||f.registeredAt||'').slice(0,7);
+  const ym=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`};
+  const childIds=Array.isArray(u.childIds)?u.childIds:String(u.childIds||'').split(',').map(x=>x.trim()).filter(Boolean);
+  let kids=[];
+
+  async function getKid(id){const r=await _tFetch(`tables/students/${encodeURIComponent(id)}`,{cache:'no-store'});return r.ok?await r.json():null;}
+  function autoTuition(s){const base=Math.max(0,Number(s?.tuitionBaseAmount||0)),disc=Math.min(base,Math.max(0,Number(s?.tuitionDiscountAmount||0)));return{base,disc,amount:Math.max(0,base-disc)}}
+  async function one(s,targetMonth){
+    const [pays,fees]=await Promise.all([
+      window.YMS_ParentPayments?.query?.(s.id)||Promise.resolve([]),
+      window.YMS_ParentPayments?.queryBookFees?.(s.id)||Promise.resolve([])
+    ]);
+    const p=(pays||[]).find(x=>String(x.month||'')===targetMonth)||null,t=autoTuition(s);
+    const books=(fees||[]).filter(f=>feeMonth(f)===targetMonth&&String(f.status||'REGISTERED')!=='CANCELLED');
+    const bookTotal=books.reduce((a,f)=>a+Number(f.amount||0),0),tuition=p?Number(p.amount||t.amount):t.amount;
+    return{s,p,t,books,bookTotal,tuition,total:tuition+bookTotal};
+  }
+  function status(p){const v=p?.status||'AUTO';return{code:v,text:{PAID:'납부완료',UNPAID:'미납',OVERDUE:'연체',AUTO:'자동 청구'}[v]||v}}
+  async function renderCombined(){
+    const area=document.getElementById('paymentArea'),chips=document.getElementById('childs');if(!area)return;
+    const target=ym();
+    if(chips){chips.innerHTML=`<div style="padding:9px 13px;border-radius:999px;background:#1E3278;color:#fff;font-size:12px;font-weight:800;">👨‍👩‍👧‍👦 ${kids.map(k=>esc(k.name)).join(' · ')} 합산</div>`;}
+    area.innerHTML='<div class="empty">형제 교육비를 합산하는 중...</div>';
+    try{
+      const rows=[];for(const k of kids){const start=String(k.startDate||k.classStartDate||'').slice(0,7);if(start&&target<start)continue;rows.push(await one(k,target));}
+      if(!rows.length){area.innerHTML='<div class="empty">이번 달 청구 대상 자녀가 없습니다.</div>';return;}
+      const total=rows.reduce((a,r)=>a+r.total,0);
+      const guide=rows.find(r=>r.p?.guideType||r.p?.payMethod)?.p||{};const type=guide.guideType||(guide.payMethod==='CASH'?'CASH':'OTHER');
+      const acct=type==='CASH'?{bank:'카카오뱅크',account:'3333-36-6373135',holder:'김소라'}:{bank:'카카오뱅크',account:'7942-28-56906',holder:'황유진'};
+      area.innerHTML=`<div class="card"><div class="month">${esc(target)} 교육비</div><div class="name">${rows.map(r=>esc(r.s.name)).join(' · ')} 학생</div><div style="margin-top:14px;display:grid;gap:12px">${rows.map(r=>{const st=status(r.p);return`<div style="border:1px solid #E3E8F4;border-radius:16px;padding:14px;background:#FAFBFE"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px"><strong style="font-size:16px;color:#14245A">${esc(r.s.name)}</strong><span class="status ${st.code}">${st.text}</span></div><div class="row"><span class="label">수강료</span><span class="value">${money(r.tuition)}</span></div>${r.t.disc?`<div class="row"><span class="label">할인</span><span class="value">-${money(r.t.disc)}${r.s.tuitionDiscountReason?' · '+esc(r.s.tuitionDiscountReason):''}</span></div>`:''}${r.books.length?`<div class="bookbox"><div class="booktitle">📘 추가 교육비 / 교재비</div>${r.books.map(f=>`<div class="bookrow"><span class="bookname">${esc(f.bookName||f.itemName||'교재비')}</span><span class="bookamt">${money(f.amount)}</span></div>`).join('')}</div>`:''}<div class="row" style="border-bottom:0"><span class="label">${esc(r.s.name)} 합계</span><span class="value total">${money(r.total)}</span></div>${r.p?.dueDate?`<div class="muted">납부기한 ${esc(r.p.dueDate)}</div>`:''}</div>`}).join('')}</div><div class="grand"><span>형제 교육비 총 합계</span><strong>${money(total)}</strong></div>${total>0?`<div class="paybox"><div style="font-size:12px;font-weight:800;color:#1E3278">${type==='CASH'?'현금결제 계좌':'결제 안내'}</div><div class="acct">${acct.bank} ${acct.account}</div><div class="muted">예금주 ${acct.holder}</div>${type==='CASH'?'':`<img class="qr" src="images/dairoom-pay-qr.svg" alt="익산 다이로움 결제 QR"><div class="muted" style="text-align:center;font-weight:700;color:#1E3278">익산 다이로움 QR 결제</div>`}</div>`:''}</div>`;
+    }catch(e){console.error('[YMS sibling parent billing]',e);area.innerHTML='<div class="empty">형제 교육비를 불러오지 못했습니다.</div>';}
+  }
+  async function boot(){if(childIds.length<2)return;const arr=[];for(const id of childIds){const k=await getKid(id);if(k)arr.push(k)}kids=arr;if(kids.length>=2)await renderCombined();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250));else setTimeout(boot,250);
+  window.addEventListener('load',()=>setTimeout(boot,600),{once:true});
+})();
