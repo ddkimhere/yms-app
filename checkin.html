@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#1E3278">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="YMS 등원체크">
+  <title>등원 체크 · YMS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR","Segoe UI",sans-serif;background:#F4F7FD;color:#17284F;-webkit-tap-highlight-color:transparent}body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}.kiosk{width:min(100%,620px);min-height:min(900px,calc(100vh - 48px));background:#fff;border-radius:34px;box-shadow:0 18px 55px rgba(30,50,120,.14);padding:38px 34px 30px;display:flex;flex-direction:column;align-items:center}.brand{font-size:15px;font-weight:900;letter-spacing:.08em;color:#7492D5;margin-top:4px}.title{font-size:36px;font-weight:950;margin:14px 0 6px;color:#14245A}.sub{font-size:17px;color:#7A87A8;text-align:center;line-height:1.55}.clock{font-size:18px;font-weight:800;color:#1E3278;margin-top:18px}.pin{width:100%;height:88px;margin:28px 0 18px;border:2px solid #DCE3F0;border-radius:22px;background:#F8FAFE;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:950;letter-spacing:.22em;padding-left:.22em;color:#17284F}.pin.placeholder{font-size:20px;letter-spacing:0;color:#A1AABC;font-weight:750;padding-left:0}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:470px;margin-top:8px}.key{height:82px;border:0;border-radius:20px;background:#EEF3FB;color:#14245A;font-size:31px;font-weight:900;cursor:pointer;box-shadow:0 2px 0 rgba(30,50,120,.05)}.key:active{transform:scale(.97);background:#DDE8FA}.key.action{font-size:19px;color:#56637E}.submit{grid-column:1/-1;height:72px;border:0;border-radius:20px;background:#1E4FD7;color:#fff;font-size:22px;font-weight:950;cursor:pointer;margin-top:2px}.submit:disabled{opacity:.45}.status{min-height:70px;margin-top:20px;text-align:center;font-size:17px;font-weight:800;color:#56637E;line-height:1.5}.status.ok{color:#21875B}.status.err{color:#D43D3D}.status.wait{color:#1E4FD7}.foot{margin-top:auto;padding-top:20px;color:#A1AABC;font-size:12px;text-align:center}.success{position:fixed;inset:0;background:#1E4FD7;display:none;align-items:center;justify-content:center;z-index:100;padding:30px}.success.show{display:flex}.success-card{text-align:center;color:#fff}.success-check{width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:68px;margin:0 auto 24px}.success-name{font-size:42px;font-weight:950}.success-time{font-size:22px;margin-top:12px;opacity:.88}.success-desc{font-size:18px;margin-top:12px;opacity:.8}@media(max-width:600px){body{padding:0}.kiosk{border-radius:0;min-height:100vh;padding:24px 20px}.title{font-size:31px}.key{height:74px}.pin{height:78px;font-size:37px}}
+  </style>
+</head>
+<body>
+  <main class="kiosk">
+    <div class="brand">YMS BUSONG</div>
+    <div class="title">등원 체크</div>
+    <div class="sub">휴대폰 번호에서 <b>010을 뺀 8자리</b>를 입력해주세요.</div>
+    <div class="clock" id="clock">--:--</div>
+    <div class="pin placeholder" id="pin">8자리 숫자</div>
+    <div class="pad" id="pad">
+      <button class="key" data-n="1">1</button><button class="key" data-n="2">2</button><button class="key" data-n="3">3</button>
+      <button class="key" data-n="4">4</button><button class="key" data-n="5">5</button><button class="key" data-n="6">6</button>
+      <button class="key" data-n="7">7</button><button class="key" data-n="8">8</button><button class="key" data-n="9">9</button>
+      <button class="key action" id="clearBtn">전체삭제</button><button class="key" data-n="0">0</button><button class="key action" id="backBtn">⌫</button>
+      <button class="submit" id="submitBtn" disabled>등원하기</button>
+    </div>
+    <div class="status" id="status">학생 정보를 불러오는 중...</div>
+    <div class="foot">등원 체크 전용 화면 · 개인정보는 화면에 표시되지 않습니다.</div>
+  </main>
+  <div class="success" id="success"><div class="success-card"><div class="success-check">✓</div><div class="success-name" id="successName">등원 완료</div><div class="success-time" id="successTime"></div><div class="success-desc">오늘도 힘내요!</div></div></div>
+
+  <script src="js/app.js"></script>
+  <script>
+  (function(){
+    'use strict';
+    const user=window.ymsPageInit?.(true);
+    const pinEl=document.getElementById('pin'),statusEl=document.getElementById('status'),submitBtn=document.getElementById('submitBtn');
+    const success=document.getElementById('success'),successName=document.getElementById('successName'),successTime=document.getElementById('successTime');
+    let value='',students=[],todayAttendance=[],busy=false,ready=false;
+
+    const digits=v=>String(v||'').replace(/\D/g,'');
+    function phone8(v){const d=digits(v);if(d.length===11&&d.startsWith('010'))return d.slice(3);if(d.length===8)return d;return d.length>8?d.slice(-8):'';}
+    function localDate(){const d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`;}
+    function timeText(){return new Intl.DateTimeFormat('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}
+    function setStatus(text,type=''){statusEl.textContent=text;statusEl.className='status'+(type?' '+type:'');}
+    function renderPin(){if(!value){pinEl.textContent='8자리 숫자';pinEl.classList.add('placeholder');}else{pinEl.textContent=value.replace(/(\d{4})(\d+)/,'$1  $2');pinEl.classList.remove('placeholder');}submitBtn.disabled=!ready||busy||value.length!==8;}
+    function reset(){value='';renderPin();if(ready)setStatus('전화번호 8자리를 입력해주세요.');}
+    function tick(){document.getElementById('clock').textContent=new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}
+    tick();setInterval(tick,30000);
+
+    async function load(){
+      if(!user)return;
+      if(String(user.role||'').toUpperCase()!=='ADMIN'){
+        ready=false;setStatus('이 화면은 등원 체크용 관리자 계정에서만 사용할 수 있습니다.','err');document.getElementById('pad').style.opacity='.35';return;
+      }
+      try{
+        const [sr,ar]=await Promise.all([_tFetch('tables/students?limit=1000',{cache:'no-store'}),_tFetch('tables/attendance?limit=1000',{cache:'no-store'})]);
+        if(!sr.ok)throw new Error('학생 정보를 불러오지 못했습니다.');
+        students=((await sr.json()).data||[]).filter(s=>s.isActive!==false);
+        todayAttendance=ar.ok?((await ar.json()).data||[]).filter(a=>String(a.date||'')===localDate()):[];
+        ready=true;setStatus('전화번호 8자리를 입력해주세요.');renderPin();
+      }catch(e){console.error('[YMS checkin] load',e);setStatus('등원 시스템 연결에 실패했습니다. 선생님께 알려주세요.','err');}
+    }
+
+    async function checkin(){
+      if(busy||!ready||value.length!==8)return;
+      busy=true;renderPin();setStatus('등원 처리 중...','wait');
+      try{
+        const matches=students.filter(s=>phone8(s.studentPhone||s.phone||s.mobile||s.phoneNumber||'')===value);
+        if(matches.length===0){setStatus('등록된 번호를 찾을 수 없습니다. 선생님께 확인해주세요.','err');value='';renderPin();busy=false;return;}
+        if(matches.length>1){setStatus('같은 번호가 여러 명에게 등록되어 있습니다. 선생님께 확인해주세요.','err');value='';renderPin();busy=false;return;}
+        const s=matches[0],date=localDate(),now=new Date().toISOString(),tm=timeText();
+        const existing=todayAttendance.find(a=>String(a.studentId||'')===String(s.id));
+        if(existing&&['PRESENT','LATE'].includes(String(existing.status||'').toUpperCase())){
+          successName.textContent=(s.name||'학생')+' · 이미 등원 완료';successTime.textContent=(existing.checkInTime||existing.time||tm);success.classList.add('show');setTimeout(()=>{success.classList.remove('show');reset();},1800);busy=false;return;
+        }
+        const payload={studentId:s.id,studentName:s.name||'',classId:s.classId||'',className:s.className||'',teacherId:user.id||user.uid||'',teacherName:user.name||'관리자',date,status:'PRESENT',checkInTime:tm,checkInAt:now,source:'KIOSK',updatedAt:now,createdAt:existing?.createdAt||now};
+        let r;
+        if(existing?.id)r=await _tFetch('tables/attendance/'+encodeURIComponent(existing.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        else r=await _tFetch('tables/attendance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        if(!r.ok)throw new Error('출석 저장 실패 ('+r.status+')');
+        const saved=await r.json().catch(()=>({}));
+        if(existing)Object.assign(existing,payload,saved);else todayAttendance.push({id:saved.id,...payload,...saved});
+        successName.textContent=(s.name||'학생')+' 등원 완료';successTime.textContent=tm;success.classList.add('show');
+        setTimeout(()=>{success.classList.remove('show');reset();},2000);
+      }catch(e){console.error('[YMS checkin] save',e);setStatus('등원 저장에 실패했습니다. 선생님께 알려주세요.','err');value='';renderPin();}
+      finally{busy=false;renderPin();}
+    }
+
+    document.querySelectorAll('[data-n]').forEach(b=>b.addEventListener('click',()=>{if(value.length<8&&!busy){value+=b.dataset.n;renderPin();if(value.length===8)submitBtn.focus();}}));
+    document.getElementById('backBtn').addEventListener('click',()=>{if(!busy){value=value.slice(0,-1);renderPin();}});
+    document.getElementById('clearBtn').addEventListener('click',()=>{if(!busy){value='';renderPin();}});
+    submitBtn.addEventListener('click',checkin);
+    document.addEventListener('keydown',e=>{if(busy)return;if(/^\d$/.test(e.key)&&value.length<8){value+=e.key;renderPin();}else if(e.key==='Backspace'){value=value.slice(0,-1);renderPin();}else if(e.key==='Enter'&&value.length===8)checkin();});
+    load();
+  })();
+  </script>
+</body>
+</html>
