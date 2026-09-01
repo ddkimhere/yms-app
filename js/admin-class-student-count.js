@@ -6,6 +6,7 @@
   let students=[];
   let loaded=false;
   let loading=null;
+  let patchScheduled=false;
 
   async function loadStudents(){
     if(loaded) return students;
@@ -35,14 +36,14 @@
     const input=document.getElementById('clsSubject');
     if(!input) return;
     const group=input.closest('.form-group');
-    if(group) group.style.display='none';
+    if(group&&group.style.display!=='none') group.style.display='none';
   }
 
   function patchHeader(){
     const tbody=document.getElementById('classMgmtBody');
     const table=tbody?.closest('table');
     const th=table?.querySelector('thead tr th:nth-child(2)');
-    if(th) th.textContent='학생 수';
+    if(th&&th.textContent!=='학생 수') th.textContent='학생 수';
   }
 
   function patchRows(){
@@ -54,20 +55,36 @@
       if(cells.length<2) return;
       const cls=_classList[i];
       if(!cls) return;
-      const n=activeCount(cls);
-      cells[1].innerHTML=`<strong>${n}명</strong>`;
+      const wanted=`${activeCount(cls)}명`;
+      if(cells[1].textContent.trim()!==wanted){
+        cells[1].textContent=wanted;
+        cells[1].style.fontWeight='700';
+      }
+    });
+  }
+
+  function schedulePatch(){
+    if(patchScheduled) return;
+    patchScheduled=true;
+    requestAnimationFrame(()=>{
+      patchScheduled=false;
+      patchHeader();
+      patchRows();
     });
   }
 
   async function refresh(){
-    hideSubjectField();patchHeader();await loadStudents();patchRows();
+    hideSubjectField();
+    patchHeader();
+    await loadStudents();
+    schedulePatch();
   }
 
   function observe(){
     const tbody=document.getElementById('classMgmtBody');
     if(!tbody||tbody.dataset.ymsCountObserver==='1') return;
     tbody.dataset.ymsCountObserver='1';
-    new MutationObserver(()=>{patchHeader();patchRows();}).observe(tbody,{childList:true,subtree:true});
+    new MutationObserver(schedulePatch).observe(tbody,{childList:true,subtree:true});
   }
 
   function install(){
