@@ -12,10 +12,11 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="images/icon-192.png">
   <style>
-    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR","Segoe UI",sans-serif;background:#F4F7FD;color:#17284F;-webkit-tap-highlight-color:transparent}body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}.kiosk{width:min(100%,620px);min-height:min(900px,calc(100vh - 48px));background:#fff;border-radius:34px;box-shadow:0 18px 55px rgba(30,50,120,.14);padding:38px 34px 30px;display:flex;flex-direction:column;align-items:center}.brand{font-size:15px;font-weight:900;letter-spacing:.08em;color:#7492D5;margin-top:4px}.title{font-size:36px;font-weight:950;margin:14px 0 6px;color:#14245A}.sub{font-size:17px;color:#7A87A8;text-align:center;line-height:1.55}.clock{font-size:18px;font-weight:800;color:#1E3278;margin-top:18px}.pin{width:100%;height:88px;margin:28px 0 18px;border:2px solid #DCE3F0;border-radius:22px;background:#F8FAFE;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:950;letter-spacing:.22em;padding-left:.22em;color:#17284F}.pin.placeholder{font-size:20px;letter-spacing:0;color:#A1AABC;font-weight:750;padding-left:0}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:470px;margin-top:8px}.key{height:82px;border:0;border-radius:20px;background:#EEF3FB;color:#14245A;font-size:31px;font-weight:900;cursor:pointer;box-shadow:0 2px 0 rgba(30,50,120,.05)}.key:active{transform:scale(.97);background:#DDE8FA}.key.action{font-size:19px;color:#56637E}.submit{grid-column:1/-1;height:72px;border:0;border-radius:20px;background:#1E4FD7;color:#fff;font-size:22px;font-weight:950;cursor:pointer;margin-top:2px}.submit:disabled{opacity:.45}.status{min-height:70px;margin-top:20px;text-align:center;font-size:17px;font-weight:800;color:#56637E;line-height:1.5}.status.ok{color:#21875B}.status.err{color:#D43D3D}.status.wait{color:#1E4FD7}.foot{margin-top:auto;padding-top:20px;color:#A1AABC;font-size:12px;text-align:center}.success{position:fixed;inset:0;background:#1E4FD7;display:none;align-items:center;justify-content:center;z-index:100;padding:30px}.success.show{display:flex}.success-card{text-align:center;color:#fff}.success-check{width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:68px;margin:0 auto 24px}.success-name{font-size:42px;font-weight:950}.success-time{font-size:22px;margin-top:12px;opacity:.88}.success-desc{font-size:18px;margin-top:12px;opacity:.8}@media(max-width:600px){body{padding:0}.kiosk{border-radius:0;min-height:100vh;padding:24px 20px}.title{font-size:31px}.key{height:74px}.pin{height:78px;font-size:37px}}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR","Segoe UI",sans-serif;background:#F4F7FD;color:#17284F;-webkit-tap-highlight-color:transparent}body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}.kiosk{width:min(100%,620px);min-height:min(900px,calc(100vh - 48px));background:#fff;border-radius:34px;box-shadow:0 18px 55px rgba(30,50,120,.14);padding:38px 34px 30px;display:flex;flex-direction:column;align-items:center}.brand{font-size:15px;font-weight:900;letter-spacing:.08em;color:#7492D5;margin-top:4px}.title{font-size:36px;font-weight:950;margin:14px 0 6px;color:#14245A}.sub{font-size:17px;color:#7A87A8;text-align:center;line-height:1.55}.clock{font-size:18px;font-weight:800;color:#1E3278;margin-top:18px}.pin{width:100%;height:88px;margin:28px 0 18px;border:2px solid #DCE3F0;border-radius:22px;background:#F8FAFE;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:950;letter-spacing:.22em;padding-left:.22em;color:#17284F}.pin.placeholder{font-size:20px;letter-spacing:0;color:#A1AABC;font-weight:750;padding-left:0}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:470px;margin-top:8px}.key{height:82px;border:0;border-radius:20px;background:#EEF3FB;color:#14245A;font-size:31px;font-weight:900;cursor:pointer;box-shadow:0 2px 0 rgba(30,50,120,.05)}.key:active{transform:scale(.97);background:#DDE8FA}.key.action{font-size:19px;color:#56637E}.submit{grid-column:1/-1;height:72px;border:0;border-radius:20px;background:#1E4FD7;color:#fff;font-size:22px;font-weight:950;cursor:pointer;margin-top:2px}.submit:disabled{opacity:.45}.status{min-height:70px;margin-top:20px;text-align:center;font-size:17px;font-weight:800;color:#56637E;line-height:1.5}.status.ok{color:#21875B}.status.err{color:#D43D3D}.status.wait{color:#1E4FD7}.foot{margin-top:auto;padding-top:20px;color:#A1AABC;font-size:12px;text-align:center}.success{position:fixed;inset:0;background:#1E4FD7;display:none;align-items:center;justify-content:center;z-index:100;padding:30px}.success.show{display:flex}.success-card{text-align:center;color:#fff}.success-check{width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:68px;margin:0 auto 24px}.success-name{font-size:42px;font-weight:950}.success-time{font-size:22px;margin-top:12px;opacity:.88}.success-desc{font-size:18px;margin-top:12px;opacity:.8}.login-layer{position:fixed;inset:0;background:#F4F7FD;z-index:200;display:flex;align-items:center;justify-content:center;padding:24px}.login-layer.hidden{display:none}.login-card{width:min(100%,430px);background:#fff;border-radius:28px;padding:34px 28px;box-shadow:0 18px 55px rgba(30,50,120,.16);text-align:center}.login-card h2{margin:10px 0 7px;font-size:27px;color:#14245A}.login-card p{margin:0 0 24px;color:#7A87A8;font-size:14px;line-height:1.55}.login-input{width:100%;height:58px;border:1.5px solid #DCE3F0;border-radius:15px;padding:0 16px;font-size:17px;margin-bottom:12px;outline:none}.login-input:focus{border-color:#7492D5;box-shadow:0 0 0 4px rgba(116,146,213,.12)}.login-btn{width:100%;height:58px;border:0;border-radius:15px;background:#1E4FD7;color:#fff;font-size:17px;font-weight:900;cursor:pointer;margin-top:4px}.login-btn:disabled{opacity:.55}.login-error{min-height:22px;margin:10px 0 0;color:#D43D3D;font-size:13px;font-weight:700}.logout-btn{position:fixed;right:14px;top:14px;z-index:50;border:0;background:rgba(20,36,90,.08);color:#7A87A8;border-radius:999px;padding:8px 11px;font-size:11px;cursor:pointer}@media(max-width:600px){body{padding:0}.kiosk{border-radius:0;min-height:100vh;padding:24px 20px}.title{font-size:31px}.key{height:74px}.pin{height:78px;font-size:37px}.login-layer{padding:18px}}
   </style>
 </head>
 <body>
+  <button class="logout-btn" id="logoutBtn" style="display:none">관리자 로그아웃</button>
   <main class="kiosk">
     <div class="brand">YMS BUSONG</div>
     <div class="title">등원 체크</div>
@@ -29,18 +30,32 @@
       <button class="key action" id="clearBtn">전체삭제</button><button class="key" data-n="0">0</button><button class="key action" id="backBtn">⌫</button>
       <button class="submit" id="submitBtn" disabled>등원하기</button>
     </div>
-    <div class="status" id="status">학생 정보를 불러오는 중...</div>
+    <div class="status" id="status">관리자 로그인을 확인하는 중...</div>
     <div class="foot">등원 체크 전용 화면 · 개인정보는 화면에 표시되지 않습니다.</div>
   </main>
   <div class="success" id="success"><div class="success-card"><div class="success-check">✓</div><div class="success-name" id="successName">등원 완료</div><div class="success-time" id="successTime"></div><div class="success-desc">오늘도 힘내요!</div></div></div>
 
+  <div class="login-layer hidden" id="loginLayer">
+    <form class="login-card" id="kioskLoginForm">
+      <div class="brand">YMS BUSONG</div>
+      <h2>등원 체크 기기 로그인</h2>
+      <p>태블릿에서 처음 한 번만 관리자 계정으로 로그인해주세요.</p>
+      <input class="login-input" id="kioskLoginId" type="text" autocomplete="username" autocapitalize="none" placeholder="관리자 아이디" required>
+      <input class="login-input" id="kioskPassword" type="password" autocomplete="current-password" placeholder="비밀번호" required>
+      <button class="login-btn" id="kioskLoginBtn" type="submit">로그인 후 등원 체크 시작</button>
+      <div class="login-error" id="kioskLoginError"></div>
+    </form>
+  </div>
+
+  <script>(function(){var h=location.href.split('?')[0].split('#')[0],b=h.substring(0,h.lastIndexOf('/')+1);window._YMS_BASE=b;})();</script>
   <script src="js/app.js"></script>
   <script>
   (function(){
     'use strict';
-    const user=window.ymsPageInit?.(true);
+    let user=window.YMS_Auth?.getUser?.()||null;
     const pinEl=document.getElementById('pin'),statusEl=document.getElementById('status'),submitBtn=document.getElementById('submitBtn');
     const success=document.getElementById('success'),successName=document.getElementById('successName'),successTime=document.getElementById('successTime');
+    const loginLayer=document.getElementById('loginLayer'),loginForm=document.getElementById('kioskLoginForm'),loginBtn=document.getElementById('kioskLoginBtn'),loginError=document.getElementById('kioskLoginError'),logoutBtn=document.getElementById('logoutBtn');
     let value='',students=[],todayAttendance=[],busy=false,ready=false;
 
     const digits=v=>String(v||'').replace(/\D/g,'');
@@ -53,19 +68,49 @@
     function tick(){document.getElementById('clock').textContent=new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}
     tick();setInterval(tick,30000);
 
+    function showLogin(message=''){
+      ready=false;renderPin();loginError.textContent=message;loginLayer.classList.remove('hidden');logoutBtn.style.display='none';
+    }
+    function hideLogin(){loginLayer.classList.add('hidden');logoutBtn.style.display='block';}
+
     async function load(){
-      if(!user)return;
+      user=window.YMS_Auth?.getUser?.()||null;
+      if(!user){showLogin();setStatus('관리자 로그인이 필요합니다.','wait');return;}
       if(String(user.role||'').toUpperCase()!=='ADMIN'){
-        ready=false;setStatus('이 화면은 등원 체크용 관리자 계정에서만 사용할 수 있습니다.','err');document.getElementById('pad').style.opacity='.35';return;
+        showLogin('관리자 계정으로 로그인해주세요.');setStatus('관리자 계정이 필요합니다.','err');return;
       }
+      hideLogin();
       try{
+        setStatus('학생 정보를 불러오는 중...','wait');
         const [sr,ar]=await Promise.all([_tFetch('tables/students?limit=1000',{cache:'no-store'}),_tFetch('tables/attendance?limit=1000',{cache:'no-store'})]);
+        if(sr.status===401){showLogin('로그인 시간이 만료되었습니다. 다시 로그인해주세요.');return;}
         if(!sr.ok)throw new Error('학생 정보를 불러오지 못했습니다.');
         students=((await sr.json()).data||[]).filter(s=>s.isActive!==false);
         todayAttendance=ar.ok?((await ar.json()).data||[]).filter(a=>String(a.date||'')===localDate()):[];
         ready=true;setStatus('전화번호 8자리를 입력해주세요.');renderPin();
       }catch(e){console.error('[YMS checkin] load',e);setStatus('등원 시스템 연결에 실패했습니다. 선생님께 알려주세요.','err');}
     }
+
+    loginForm.addEventListener('submit',async function(e){
+      e.preventDefault();loginError.textContent='';
+      const id=document.getElementById('kioskLoginId').value.trim(),pw=document.getElementById('kioskPassword').value;
+      if(!id||!pw){loginError.textContent='아이디와 비밀번호를 입력해주세요.';return;}
+      loginBtn.disabled=true;loginBtn.textContent='로그인 중...';
+      try{
+        const result=await window.YMS_Auth.loginWithTable(id,pw);
+        if(!result?.user)throw new Error('LOGIN_FAILED');
+        if(String(result.user.role||'').toUpperCase()!=='ADMIN'){
+          window.YMS_Auth.logout?.();return;
+        }
+        window.YMS_Auth.save(result.token,result.user);user=result.user;document.getElementById('kioskPassword').value='';hideLogin();await load();
+      }catch(err){console.error('[YMS kiosk login]',err);loginError.textContent='로그인에 실패했습니다. 관리자 아이디와 비밀번호를 확인해주세요.';}
+      finally{loginBtn.disabled=false;loginBtn.textContent='로그인 후 등원 체크 시작';}
+    });
+
+    logoutBtn.addEventListener('click',()=>{
+      try{localStorage.removeItem('yms_firebase_session_v1');}catch{}
+      user=null;students=[];todayAttendance=[];value='';showLogin();setStatus('관리자 로그인이 필요합니다.','wait');renderPin();
+    });
 
     async function checkin(){
       if(busy||!ready||value.length!==8)return;
@@ -96,7 +141,7 @@
     document.getElementById('backBtn').addEventListener('click',()=>{if(!busy){value=value.slice(0,-1);renderPin();}});
     document.getElementById('clearBtn').addEventListener('click',()=>{if(!busy){value='';renderPin();}});
     submitBtn.addEventListener('click',checkin);
-    document.addEventListener('keydown',e=>{if(busy)return;if(/^\d$/.test(e.key)&&value.length<8){value+=e.key;renderPin();}else if(e.key==='Backspace'){value=value.slice(0,-1);renderPin();}else if(e.key==='Enter'&&value.length===8)checkin();});
+    document.addEventListener('keydown',e=>{if(!loginLayer.classList.contains('hidden')||busy)return;if(/^\d$/.test(e.key)&&value.length<8){value+=e.key;renderPin();}else if(e.key==='Backspace'){value=value.slice(0,-1);renderPin();}else if(e.key==='Enter'&&value.length===8)checkin();});
     load();
   })();
   </script>
