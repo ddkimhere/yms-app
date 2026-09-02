@@ -8,8 +8,6 @@
   function encodeVal(v){if(v===null||v===undefined)return{nullValue:null};if(Array.isArray(v))return{arrayValue:{values:v.map(encodeVal)}};if(typeof v==='boolean')return{booleanValue:v};if(typeof v==='number')return Number.isInteger(v)?{integerValue:String(v)}:{doubleValue:v};if(typeof v==='object')return{mapValue:{fields:encodeFields(v)}};return{stringValue:String(v)};}
   function encodeFields(obj){const fields={};Object.entries(obj||{}).forEach(([k,v])=>{if(v!==undefined)fields[k]=encodeVal(v);});return fields;}
 
-  // Student-only UI is owned by admin-student-tuition-ui.js.
-  // Keeping account saving separate prevents new/edit forms from diverging.
   function ensureStudentExtrasReady(){
     if(String(document.getElementById('acctRole')?.value||'').toUpperCase()!=='STUDENT')return;
     const row=document.getElementById('acctStudentRow');if(row)row.style.display='';
@@ -28,7 +26,36 @@
     if(!window.YMS_FIREBASE_CONFIG)throw new Error('Firebase 설정이 없습니다');
     return window.YMS_FIREBASE_CONFIG;
   }
-  async function ensureFreshAdminToken(){try{await window._tFetch('tables/users?limit=1');}catch{}const token=window.YMS_Auth?.getToken?.();if(!token)throw new Error('관리자 로그인 정보가 만료되었습니다. 다시 로그인해주세요.');return token;}
+
+  async function getLiveAdminProfile(){
+    const uid=window.YMS_Auth?.getUser?.()?.id||window.YMS_Auth?.getUser?.()?.uid||'';
+    if(!uid)return null;
+    try{
+      const r=await window._tFetch(`tables/users/${encodeURIComponent(uid)}`,{cache:'no-store'});
+      return r.ok?await r.json():null;
+    }catch{return null;}
+  }
+
+  async function assertLiveAdmin(){
+    const p=await getLiveAdminProfile();
+    if(!p)throw new Error('관리자 프로필을 확인하지 못했습니다. 로그아웃 후 다시 로그인해주세요.');
+    const role=String(p.role||'').toUpperCase();
+    const roles=Array.isArray(p.roles)?p.roles.map(v=>String(v||'').toUpperCase()):[];
+    if(role!=='ADMIN'){
+      if(roles.includes('ADMIN')) throw new Error(`관리자 권한 정보 불일치: 현재 role은 ${role||'없음'}이고 roles에는 ADMIN이 있습니다. Firestore 보안 규칙이 role=ADMIN만 허용해 저장이 차단되고 있습니다.`);
+      throw new Error(`현재 계정의 Firestore role이 ${role||'없음'}입니다. 학생 등록은 ADMIN 계정만 가능합니다.`);
+    }
+    return p;
+  }
+
+  async function ensureFreshAdminToken(){
+    await assertLiveAdmin();
+    try{await window._tFetch('tables/users?limit=1',{cache:'no-store'});}catch{}
+    const token=window.YMS_Auth?.getToken?.();
+    if(!token)throw new Error('관리자 로그인 정보가 만료되었습니다. 다시 로그인해주세요.');
+    return token;
+  }
+
   async function createAuthUser(loginId,password,{allowExisting=false}={}){
     const cfg=await ensureFirebaseConfig(),email=loginEmail(loginId);if(email==='@yms.local')throw new Error('사용할 수 없는 아이디입니다');
     let res=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(cfg.apiKey)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})});
@@ -39,7 +66,14 @@
     }else if(!res.ok){const code=json?.error?.message||`HTTP ${res.status}`;if(String(code).startsWith('WEAK_PASSWORD'))throw new Error('비밀번호는 6자리 이상으로 입력해주세요.');throw new Error(({INVALID_EMAIL:'아이디 형식이 올바르지 않습니다.',OPERATION_NOT_ALLOWED:'Firebase 이메일/비밀번호 로그인이 비활성화되어 있습니다.'}[code])||code);}
     return{uid:json.localId,email};
   }
-  async function writeExactUserProfile(uid,profile){const cfg=await ensureFirebaseConfig(),token=await ensureFreshAdminToken();const url=`https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/users/${encodeURIComponent(uid)}`;const res=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({fields:encodeFields(profile)})});if(!res.ok){const txt=await res.text().catch(()=>`HTTP ${res.status}`);throw new Error(`사용자 프로필 저장 실패 (${res.status}) ${txt}`);}return{id:uid,...profile};}
+
+  async function writeExactUserProfile(uid,profile){
+    const cfg=await ensureFirebaseConfig(),token=await ensureFreshAdminToken();
+    const url=`https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/users/${encodeURIComponent(uid)}`;
+    const res=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({fields:encodeFields(profile)})});
+    if(!res.ok){const txt=await res.text().catch(()=>`HTTP ${res.status}`);throw new Error(`① 사용자 프로필 저장 실패 (${res.status}) ${txt}`);}return{id:uid,...profile};
+  }
+
   async function getUserProfile(uid){if(!uid)return null;try{const r=await _tFetch(`tables/users/${encodeURIComponent(uid)}`,{cache:'no-store'});return r.ok?await r.json():null;}catch{return null;}}
   async function getAllUsers(){try{const r=await _tFetch('tables/users?limit=1000',{cache:'no-store'});return r.ok?((await r.json()).data||[]):[];}catch{return[];}}
 
@@ -61,9 +95,10 @@
     const stuPayload={name,grade:document.getElementById('acctGrade')?.value.trim()||'',schoolName:document.getElementById('acctSchoolName')?.value.trim()||'',className:opt?.dataset.name||'',teacherName:opt?.dataset.teacher||'',levelCode:opt?.dataset.level||'',classId:classSel?.value||'',startDate,tuitionDueDay,vehicleUse,readingNUse,readingNFee,tuitionCoreAmount,tuitionBaseAmount,tuitionDiscountAmount,tuitionDiscountReason,tuitionAmount:Math.max(0,tuitionBaseAmount-tuitionDiscountAmount),isActive:true,userId:savedUser.id};
     const linkedId=isEdit?(document.getElementById('acctLinkedStudentId')?.value||''):'';
     const stuRes=linkedId?await _tFetch(`tables/students/${linkedId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(stuPayload)}):await _tFetch('tables/students',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(stuPayload)});
-    if(!stuRes.ok)throw new Error(`학생 프로필 저장 실패 (HTTP ${stuRes.status})`);const student=await stuRes.json(),studentId=linkedId||student.id;
-    if(studentId){const r=await _tFetch(`tables/users/${savedUser.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentId})});if(!r.ok)throw new Error(`학생 계정 연결 저장 실패 (HTTP ${r.status})`);}
+    if(!stuRes.ok){const detail=await stuRes.text().catch(()=>`HTTP ${stuRes.status}`);throw new Error(`② 학생 프로필 저장 실패 (HTTP ${stuRes.status}) ${detail}`);}const student=await stuRes.json(),studentId=linkedId||student.id;
+    if(studentId){const r=await _tFetch(`tables/users/${savedUser.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentId})});if(!r.ok){const detail=await r.text().catch(()=>`HTTP ${r.status}`);throw new Error(`③ 학생 계정 연결 저장 실패 (HTTP ${r.status}) ${detail}`);}}
   }
+
   async function linkParent(savedUser,childIds){if(!childIds.length)return;await Promise.allSettled(childIds.map(id=>_tFetch(`tables/students/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({parentId:savedUser.id})})));}
   function bindAccountForm(){const form=document.getElementById('acctForm');if(!form||form.dataset.firebaseSubmitBound==='1')return;form.removeAttribute('onsubmit');form.onsubmit=null;form.addEventListener('submit',window.submitAcctForm);form.dataset.firebaseSubmitBound='1';}
 
@@ -81,6 +116,7 @@
       const payload={loginId,name,role,roles:[role],phone:(document.getElementById('acctPhone')?.value||'').trim(),academyId:'ac-001',isActive:true,childIds:rawChild,studentId:(document.getElementById('acctStudentId')?.value||'').trim(),teacherClasses:(document.getElementById('acctTeacherClasses')?.value||'').trim(),memo:(document.getElementById('acctMemo')?.value||'').trim()};
       const btn=document.querySelector('#acctForm button[type="submit"]');if(btn){btn.disabled=true;btn.textContent='저장 중...';}
       try{
+        await assertLiveAdmin();
         let savedUser;
         if(loginChanged){const auth=await createAuthUser(loginId,pw,{allowExisting:false}),profile={...payload,email:auth.email};savedUser=await writeExactUserProfile(auth.uid,profile);const linkedStudentId=(document.getElementById('acctLinkedStudentId')?.value||oldUser?.studentId||'').trim();await relinkForNewUid(editId,auth.uid,role,childIds,linkedStudentId);const del=await _tFetch(`tables/users/${editId}`,{method:'DELETE'});if(!del.ok)throw new Error(`기존 사용자 프로필 정리 실패 (HTTP ${del.status})`);}
         else if(isEdit){const res=await _tFetch(`tables/users/${editId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!res.ok){const msg=await res.text().catch(()=>`HTTP ${res.status}`);throw new Error(`계정 수정 실패 (${res.status}) ${msg}`);}savedUser={id:editId,...oldUser,...payload};}
