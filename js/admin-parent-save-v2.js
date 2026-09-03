@@ -1,4 +1,4 @@
-/* YMS parent account save v3 — dedicated reliable parent flow */
+/* YMS parent account save v4 — auth UID aligned parent flow */
 (function(){
   'use strict';
   if(!location.pathname.endsWith('/admin.html')) return;
@@ -34,10 +34,7 @@
     const checked=[...document.querySelectorAll('.yms-sibling-check:checked')].map(x=>String(x.value||'').trim()).filter(Boolean);
     if(checked.length)return [...new Set(checked)];
     const sel=document.getElementById('acctChildSelect');
-    if(sel){
-      const ids=[...sel.selectedOptions].map(o=>String(o.value||'').trim()).filter(Boolean);
-      if(ids.length)return [...new Set(ids)];
-    }
+    if(sel){const ids=[...sel.selectedOptions].map(o=>String(o.value||'').trim()).filter(Boolean);if(ids.length)return [...new Set(ids)];}
     return [...new Set(String(document.getElementById('acctChildIds')?.value||'').split(',').map(x=>x.trim()).filter(Boolean))];
   }
 
@@ -58,23 +55,27 @@
     return token;
   }
 
-  async function createOrReuseAuth(loginId,password){
+  async function authForParent(loginId,password,{createIfMissing=true}={}){
     const cfg=await config(),email=loginEmail(loginId);
     if(email==='@yms.local')throw new Error('아이디를 확인해주세요.');
-    let r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(cfg.apiKey)}`,{
+    let r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(cfg.apiKey)}`,{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})
     });
     let j=await r.json().catch(()=>({}));
     if(r.ok)return{uid:j.localId,email};
-    const code=j?.error?.message||'';
-    if(String(code).startsWith('WEAK_PASSWORD'))throw new Error('비밀번호는 6자리 이상으로 입력해주세요.');
-    if(code!=='EMAIL_EXISTS')throw new Error(code||`Firebase 계정 생성 실패 (${r.status})`);
-    r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(cfg.apiKey)}`,{
+    const signInCode=j?.error?.message||'';
+    if(!createIfMissing||!['EMAIL_NOT_FOUND','INVALID_LOGIN_CREDENTIALS','INVALID_PASSWORD'].includes(signInCode)){
+      throw new Error('학부모 아이디 또는 비밀번호를 확인해주세요.');
+    }
+    r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(cfg.apiKey)}`,{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})
     });
     j=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error('이미 같은 아이디가 있습니다. 기존 비밀번호가 다르면 다른 아이디를 사용해주세요.');
-    return{uid:j.localId,email};
+    if(r.ok)return{uid:j.localId,email};
+    const code=j?.error?.message||'';
+    if(String(code).startsWith('WEAK_PASSWORD'))throw new Error('비밀번호는 6자리 이상으로 입력해주세요.');
+    if(code==='EMAIL_EXISTS')throw new Error('이미 같은 아이디가 있습니다. 기존 비밀번호를 정확히 입력해주세요.');
+    throw new Error(code||`Firebase 계정 생성 실패 (${r.status})`);
   }
 
   async function writeUser(uid,payload){
@@ -108,23 +109,36 @@
     const ids=childIds();
     if(!name)throw new Error('이름을 입력해주세요.');
     if(!loginId)throw new Error('아이디를 입력해주세요.');
-    if(!editId&&!password)throw new Error('비밀번호를 입력해주세요.');
     if(!ids.length)throw new Error('연결할 자녀를 한 명 이상 선택해주세요.');
 
     let uid=editId,email='';
-    if(!editId){const auth=await createOrReuseAuth(loginId,password);uid=auth.uid;email=auth.email;}
+    let repaired=false;
+    if(!editId){
+      if(!password)throw new Error('비밀번호를 입력해주세요.');
+      const auth=await authForParent(loginId,password,{createIfMissing:true});uid=auth.uid;email=auth.email;
+    }else if(password){
+      const auth=await authForParent(loginId,password,{createIfMissing:false});
+      uid=auth.uid;email=auth.email;repaired=uid!==editId;
+    }
+
     const payload={loginId,name,role:'PARENT',roles:['PARENT'],phone,academyId:'ac-001',isActive:true,childIds:ids.join(','),studentId:'',teacherClasses:'',memo};
     if(email)payload.email=email;
 
-    if(editId){
+    if(!editId||repaired){
+      await writeUser(uid,payload);
+      if(repaired){
+        await linkChildren(uid,ids,phone);
+        const old=await _tFetch(`tables/users/${encodeURIComponent(editId)}`,{method:'DELETE'});
+        if(!old.ok&&old.status!==404)console.warn('[YMS] old parent profile cleanup failed',old.status);
+      }
+    }else{
       const r=await _tFetch(`tables/users/${encodeURIComponent(uid)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!r.ok)throw new Error(`학부모 계정 수정 실패 (${r.status})`);
-    }else{
-      await writeUser(uid,payload);
     }
+
     await linkChildren(uid,ids,phone);
     const hidden=document.getElementById('acctChildIds');if(hidden)hidden.value=ids.join(',');
-    return{name,uid};
+    return{name,uid,repaired};
   }
 
   function showInlineError(message){
@@ -141,8 +155,8 @@
 
   function install(){
     const form=document.getElementById('acctForm');
-    if(!form||form.dataset.parentSaveV3==='1')return;
-    form.dataset.parentSaveV3='1';
+    if(!form||form.dataset.parentSaveV4==='1')return;
+    form.dataset.parentSaveV4='1';
     form.addEventListener('submit',async function(e){
       if(String(document.getElementById('acctRole')?.value||'').toUpperCase()!=='PARENT')return;
       e.preventDefault();e.stopImmediatePropagation();clearInlineError();
@@ -151,13 +165,14 @@
       if(btn){btn.disabled=true;btn.textContent='저장 중...';}
       try{
         const result=await saveParent();
-        window.YMS_UI?.toast?.(`✅ ${result.name} 학부모 계정이 저장되었습니다`);
+        const msg=result.repaired?`✅ ${result.name} 학부모 로그인 계정 연결을 복구했습니다`:`✅ ${result.name} 학부모 계정이 저장되었습니다`;
+        window.YMS_UI?.toast?.(msg);
         document.getElementById('acctPanel')?.classList.add('hidden');
         form.reset();
         if(typeof window.loadAccounts==='function')await window.loadAccounts();
         if(typeof window.loadAllData==='function')await window.loadAllData();
       }catch(err){
-        console.error('[YMS parent save v3]',err);
+        console.error('[YMS parent save v4]',err);
         const msg=err?.message||'학부모 계정 저장 실패';
         showInlineError('❌ '+msg);
         window.YMS_UI?.toast?.('❌ '+msg);
