@@ -1,4 +1,4 @@
-/* YMS parent account save v2 — dedicated reliable parent flow */
+/* YMS parent account save v3 — dedicated reliable parent flow */
 (function(){
   'use strict';
   if(!location.pathname.endsWith('/admin.html')) return;
@@ -18,6 +18,12 @@
   async function config(){
     if(window.YMS_FIREBASE_CONFIG)return window.YMS_FIREBASE_CONFIG;
     await new Promise((resolve,reject)=>{
+      const existing=document.querySelector('script[src*="firebase-config.js"]');
+      if(existing){
+        const started=Date.now();
+        const wait=()=>{if(window.YMS_FIREBASE_CONFIG)return resolve();if(Date.now()-started>4000)return reject(new Error('Firebase 설정을 불러오지 못했습니다.'));setTimeout(wait,50)};
+        wait();return;
+      }
       const s=document.createElement('script');s.src='js/firebase-config.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s);
     });
     if(!window.YMS_FIREBASE_CONFIG)throw new Error('Firebase 설정을 불러오지 못했습니다.');
@@ -32,7 +38,24 @@
       const ids=[...sel.selectedOptions].map(o=>String(o.value||'').trim()).filter(Boolean);
       if(ids.length)return [...new Set(ids)];
     }
-    return String(document.getElementById('acctChildIds')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+    return [...new Set(String(document.getElementById('acctChildIds')?.value||'').split(',').map(x=>x.trim()).filter(Boolean))];
+  }
+
+  async function freshAdminToken(){
+    const u=window.YMS_Auth?.getUser?.();
+    if(!u)throw new Error('관리자 로그인이 필요합니다.');
+    try{
+      const r=await window._tFetch(`tables/users/${encodeURIComponent(u.id||u.uid||'')}`,{cache:'no-store'});
+      if(!r.ok)throw new Error('AUTH_CHECK_'+r.status);
+      const p=await r.json();
+      if(String(p?.role||'').toUpperCase()!=='ADMIN')throw new Error('현재 계정에 관리자 저장 권한이 없습니다.');
+    }catch(e){
+      if(String(e?.message||'').includes('관리자 저장 권한'))throw e;
+      throw new Error('관리자 인증이 만료되었습니다. 로그아웃 후 다시 로그인해주세요.');
+    }
+    const token=window.YMS_Auth?.getToken?.();
+    if(!token)throw new Error('관리자 인증이 만료되었습니다. 로그아웃 후 다시 로그인해주세요.');
+    return token;
   }
 
   async function createOrReuseAuth(loginId,password){
@@ -45,21 +68,24 @@
     if(r.ok)return{uid:j.localId,email};
     const code=j?.error?.message||'';
     if(String(code).startsWith('WEAK_PASSWORD'))throw new Error('비밀번호는 6자리 이상으로 입력해주세요.');
-    if(code!=='EMAIL_EXISTS')throw new Error(code||`계정 생성 실패 (${r.status})`);
+    if(code!=='EMAIL_EXISTS')throw new Error(code||`Firebase 계정 생성 실패 (${r.status})`);
     r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(cfg.apiKey)}`,{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})
     });
     j=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error('이미 같은 아이디의 계정이 있습니다. 기존 비밀번호가 다르면 다른 아이디를 사용해주세요.');
+    if(!r.ok)throw new Error('이미 같은 아이디가 있습니다. 기존 비밀번호가 다르면 다른 아이디를 사용해주세요.');
     return{uid:j.localId,email};
   }
 
   async function writeUser(uid,payload){
-    const cfg=await config(),token=window.YMS_Auth?.getToken?.();
-    if(!token)throw new Error('관리자 로그인 정보가 만료되었습니다. 다시 로그인해주세요.');
+    const cfg=await config(),token=await freshAdminToken();
     const url=`https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/users/${encodeURIComponent(uid)}`;
     const r=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({fields:encodeFields(payload)})});
-    if(!r.ok){const t=await r.text().catch(()=>String(r.status));throw new Error(`학부모 계정 저장 실패 (${r.status}) ${t.slice(0,120)}`)}
+    if(!r.ok){
+      const t=await r.text().catch(()=>String(r.status));
+      if(r.status===401||r.status===403)throw new Error(`학부모 계정 저장 권한 오류 (${r.status}). 로그아웃 후 다시 로그인해주세요.`);
+      throw new Error(`학부모 계정 저장 실패 (${r.status}) ${t.slice(0,120)}`);
+    }
   }
 
   async function linkChildren(uid,ids,phone){
@@ -67,11 +93,12 @@
       const r=await window._tFetch(`tables/students/${encodeURIComponent(sid)}`,{
         method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({parentId:uid,parentPhone:phone||''})
       });
-      if(!r.ok)throw new Error(`자녀 연결 실패 (${r.status})`);
+      if(!r.ok)throw new Error(`자녀 연결 저장 실패 (${r.status})`);
     }
   }
 
-  async function saveParent(form){
+  async function saveParent(){
+    await freshAdminToken();
     const editId=String(document.getElementById('acctEditId')?.value||'').trim();
     const loginId=norm(document.getElementById('acctLoginId')?.value);
     const name=String(document.getElementById('acctName')?.value||'').trim();
@@ -88,35 +115,52 @@
     if(!editId){const auth=await createOrReuseAuth(loginId,password);uid=auth.uid;email=auth.email;}
     const payload={loginId,name,role:'PARENT',roles:['PARENT'],phone,academyId:'ac-001',isActive:true,childIds:ids.join(','),studentId:'',teacherClasses:'',memo};
     if(email)payload.email=email;
+
     if(editId){
       const r=await _tFetch(`tables/users/${encodeURIComponent(uid)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!r.ok)throw new Error(`학부모 계정 수정 실패 (${r.status})`);
-    }else await writeUser(uid,payload);
+    }else{
+      await writeUser(uid,payload);
+    }
     await linkChildren(uid,ids,phone);
-    document.getElementById('acctChildIds').value=ids.join(',');
+    const hidden=document.getElementById('acctChildIds');if(hidden)hidden.value=ids.join(',');
     return{name,uid};
   }
 
+  function showInlineError(message){
+    let el=document.getElementById('parentSaveError');
+    const form=document.getElementById('acctForm');
+    if(!el&&form){
+      el=document.createElement('div');el.id='parentSaveError';
+      el.style.cssText='margin:10px 0;padding:10px 12px;border-radius:10px;background:#FFF3F3;border:1px solid #FFD1D1;color:#C73838;font-size:12px;font-weight:700;line-height:1.5;';
+      form.querySelector('button[type="submit"]')?.parentElement?.insertAdjacentElement('beforebegin',el);
+    }
+    if(el){el.textContent=message;el.style.display='block';}
+  }
+  function clearInlineError(){const el=document.getElementById('parentSaveError');if(el)el.style.display='none';}
+
   function install(){
     const form=document.getElementById('acctForm');
-    if(!form||form.dataset.parentSaveV2==='1')return;
-    form.dataset.parentSaveV2='1';
+    if(!form||form.dataset.parentSaveV3==='1')return;
+    form.dataset.parentSaveV3='1';
     form.addEventListener('submit',async function(e){
       if(String(document.getElementById('acctRole')?.value||'').toUpperCase()!=='PARENT')return;
-      e.preventDefault();e.stopImmediatePropagation();
+      e.preventDefault();e.stopImmediatePropagation();clearInlineError();
       const btn=form.querySelector('button[type="submit"]');
       if(btn?.disabled)return;
       if(btn){btn.disabled=true;btn.textContent='저장 중...';}
       try{
-        const result=await saveParent(form);
+        const result=await saveParent();
         window.YMS_UI?.toast?.(`✅ ${result.name} 학부모 계정이 저장되었습니다`);
         document.getElementById('acctPanel')?.classList.add('hidden');
         form.reset();
         if(typeof window.loadAccounts==='function')await window.loadAccounts();
         if(typeof window.loadAllData==='function')await window.loadAllData();
       }catch(err){
-        console.error('[YMS parent save v2]',err);
-        window.YMS_UI?.toast?.('❌ '+(err?.message||'학부모 계정 저장 실패'));
+        console.error('[YMS parent save v3]',err);
+        const msg=err?.message||'학부모 계정 저장 실패';
+        showInlineError('❌ '+msg);
+        window.YMS_UI?.toast?.('❌ '+msg);
       }finally{if(btn){btn.disabled=false;btn.textContent='저장';}}
     },true);
   }
