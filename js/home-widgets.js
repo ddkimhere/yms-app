@@ -15,7 +15,8 @@
   const arr=v=>Array.isArray(v)?v:String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
   const today=()=>{const d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`;};
   const month=()=>today().slice(0,7);
-  const read=async p=>{try{const r=await _tFetch(p,{cache:'no-store'});if(!r.ok)return null;const j=await r.json();return Array.isArray(j?.data)?j.data:j;}catch{return null;}};
+  // Dashboard data may be slightly stale for a short period; never bypass the shared read cache here.
+  const read=async p=>{try{const r=await _tFetch(p);if(!r.ok)return null;const j=await r.json();return Array.isArray(j?.data)?j.data:j;}catch{return null;}};
 
   function style(){
     if(document.getElementById('yms-home-widget-style'))return;
