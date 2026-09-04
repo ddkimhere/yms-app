@@ -44,15 +44,15 @@
   async function loadScope(){
     try{
       if(effectiveRole==='TEACHER'){
-        const r=await _tFetch('tables/classes?limit=300',{cache:'no-store'});
+        const r=await _tFetch('tables/classes?limit=300');
         if(r.ok){const rows=(await r.json()).data||[],assigned=csv(user.teacherClasses);rows.filter(c=>String(c.teacherId||'')===String(user.id||user.uid||'')||String(c.teacherName||'')===String(user.name||'')||assigned.includes(String(c.id||''))||assigned.includes(String(c.className||''))).forEach(c=>c.className&&classNames.add(c.className));}
       }else if(effectiveRole==='STUDENT'){
         let s=null;const sid=user.studentId||user._tableId;
-        if(sid){const r=await _tFetch('tables/students/'+encodeURIComponent(sid),{cache:'no-store'});if(r.ok)s=await r.json();}
-        if(!s){const r=await _tFetch('tables/students?limit=500',{cache:'no-store'});if(r.ok)s=((await r.json()).data||[]).find(x=>String(x.userId||'')===String(user.id||user.uid||'')||String(x.name||'')===String(user.name||''));}
+        if(sid){const r=await _tFetch('tables/students/'+encodeURIComponent(sid));if(r.ok)s=await r.json();}
+        if(!s){const r=await _tFetch('tables/students?limit=500');if(r.ok)s=((await r.json()).data||[]).find(x=>String(x.userId||'')===String(user.id||user.uid||'')||String(x.name||'')===String(user.name||''));}
         if(s?.className)classNames.add(s.className);
       }else if(effectiveRole==='PARENT'){
-        for(const id of csv(user.childIds)){const r=await _tFetch('tables/students/'+encodeURIComponent(id),{cache:'no-store'});if(r.ok){const s=await r.json();if(s?.className)classNames.add(s.className);}}
+        for(const id of csv(user.childIds)){const r=await _tFetch('tables/students/'+encodeURIComponent(id));if(r.ok){const s=await r.json();if(s?.className)classNames.add(s.className);}}
       }
     }catch(e){console.warn('[YMS] home notice scope',e)}
   }
@@ -98,7 +98,7 @@
 
   async function init(){
     installStyle();ensureArea();await loadScope();
-    try{const r=await _tFetch('tables/notices?limit=100',{cache:'no-store'});if(!r.ok)throw new Error('notice load');const j=await r.json();render(j.data||[]);}catch(e){const a=ensureArea();if(a){a.className='yms-home-notice-empty';a.textContent='공지사항을 불러오지 못했습니다.';}console.warn('[YMS] home notices',e);}
+    try{const r=await _tFetch('tables/notices?limit=100');if(!r.ok)throw new Error('notice load');const j=await r.json();render(j.data||[]);}catch(e){const a=ensureArea();if(a){a.className='yms-home-notice-empty';a.textContent='공지사항을 불러오지 못했습니다.';}console.warn('[YMS] home notices',e);}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,0));else setTimeout(init,0);
 })();
