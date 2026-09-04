@@ -13,6 +13,19 @@
   let allClasses=[],allStudents=[],allAttendance=[];
   let state=new Map(),loading=false;
 
+  function decodeVal(v){
+    if(!v||typeof v!=='object')return null;
+    if('stringValue'in v)return v.stringValue;
+    if('integerValue'in v)return Number(v.integerValue);
+    if('doubleValue'in v)return Number(v.doubleValue);
+    if('booleanValue'in v)return v.booleanValue;
+    if('timestampValue'in v)return v.timestampValue;
+    if('nullValue'in v)return null;
+    if('arrayValue'in v)return (v.arrayValue.values||[]).map(decodeVal);
+    return null;
+  }
+  function decodeDoc(doc){const out={id:String(doc?.name||'').split('/').pop()};Object.entries(doc?.fields||{}).forEach(([k,v])=>out[k]=decodeVal(v));return out;}
+
   function gradeRank(cls){
     const text=`${cls?.grade||''} ${cls?.className||cls?.name||''}`;
     let m=text.match(/초(?:등학교)?\s*([1-6])/);if(m)return 100+Number(m[1]);
@@ -40,7 +53,17 @@
     `;document.head.appendChild(s);
   }
   function ensureHost(){const tv=document.getElementById('teacherView');if(!tv)return null;let host=document.getElementById('adminAttendanceAll');if(!host){host=document.createElement('div');host.id='adminAttendanceAll';tv.appendChild(host);}return host;}
-  async function fetchAll(path){try{const r=await _tFetch(path,{cache:'no-store'});if(!r.ok)return [];const j=await r.json();return j.data||[];}catch(e){console.warn('[YMS] admin attendance fetch',e);return [];}}
+  async function fetchAll(path){try{const r=await _tFetch(path);if(!r.ok)return [];const j=await r.json();return j.data||[];}catch(e){console.warn('[YMS] admin attendance fetch',e);return [];}}
+  async function fetchAttendanceForDate(date){
+    try{
+      const token=window.YMS_Auth?.getToken?.();if(!token)return [];
+      const url='https://firestore.googleapis.com/v1/projects/yms-app-bb735/databases/(default)/documents:runQuery';
+      const body={structuredQuery:{from:[{collectionId:'attendance'}],where:{fieldFilter:{field:{fieldPath:'date'},op:'EQUAL',value:{stringValue:String(date)}}},limit:1000}};
+      const r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return (await r.json()).filter(x=>x.document).map(x=>decodeDoc(x.document));
+    }catch(e){console.warn('[YMS] admin attendance date query',e);return [];}
+  }
 
   function rebuildState(){
     state=new Map();const date=selectedDate();
@@ -61,7 +84,7 @@
   }
   async function load(){
     if(loading)return;loading=true;ensureStyle();const host=ensureHost();if(host)host.innerHTML='<div class="loading-row">전체 반 출결을 불러오는 중...</div>';
-    try{[allClasses,allStudents,allAttendance]=await Promise.all([fetchAll('tables/classes?limit=300'),fetchAll('tables/students?limit=1000'),fetchAll('tables/attendance?limit=2000')]);rebuildState();render();}finally{loading=false;}
+    try{const date=selectedDate();[allClasses,allStudents,allAttendance]=await Promise.all([fetchAll('tables/classes?limit=300'),fetchAll('tables/students?limit=1000'),fetchAttendanceForDate(date)]);rebuildState();render();}finally{loading=false;}
   }
   function bindDate(){const input=document.getElementById('attDateInput');if(!input||input.dataset.adminAllBound==='1')return;input.dataset.adminAllBound='1';input.addEventListener('change',load);}
   function start(){ensureStyle();bindDate();load();}
