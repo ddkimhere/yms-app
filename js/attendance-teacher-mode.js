@@ -83,7 +83,7 @@
 
   async function fetchData(path){
     try{
-      const r=await _tFetch(path,{cache:'no-store'});
+      const r=await _tFetch(path);
       if(!r.ok) return [];
       return (await r.json()).data||[];
     }catch{return [];}
