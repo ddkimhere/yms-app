@@ -30,6 +30,7 @@
 
   function render(){
     css();const host=root();if(!host)return;
+    window.YMS_TeacherStudentRoster=[...students];
     const done=students.filter(s=>recordFor(s.id)?.status==='REPLIED').length;
     host.innerHTML=`<div class="tsm-page"><div class="tsm-head"><div><div class="tsm-title">👥 학생 관리</div><div class="tsm-sub">상담 체크와 특이사항을 입력한 뒤 학생별 저장 버튼을 눌러주세요.</div></div><input type="month" class="tsm-month" id="tsmMonth" value="${esc(month)}"></div><div class="tsm-summary"><span class="tsm-pill">담당 학생 <strong>${students.length}명</strong></span><span class="tsm-pill">상담 완료 <strong>${done}명</strong></span><span class="tsm-pill">미완료 <strong>${students.length-done}명</strong></span></div><div class="tsm-wrap"><table class="tsm-table"><thead><tr><th class="name">학생 이름</th><th>상담 체크</th><th>특이사항</th><th>저장</th></tr></thead><tbody>${students.length?students.map(s=>{const r=recordFor(s.id),isDone=r?.status==='REPLIED',note=r?.specialNote||r?.notes||r?.reply||'';return `<tr data-sid="${esc(s.id)}"><td class="name">${esc(s.name||'-')}<span class="tsm-class">${esc(s.className||'')}</span></td><td class="tsm-check"><input class="tsm-check-input" type="checkbox" ${isDone?'checked':''} onchange="YMS_teacherStudentDirty('${String(s.id).replace(/'/g,"\\'")}')"><div class="tsm-status">${isDone?'완료':'미완료'}</div></td><td><textarea class="tsm-note" placeholder="특이사항 입력" oninput="YMS_teacherStudentDirty('${String(s.id).replace(/'/g,"\\'")}')">${esc(note)}</textarea></td><td class="tsm-savecell"><button type="button" class="tsm-savebtn" onclick="YMS_teacherStudentSave('${String(s.id).replace(/'/g,"\\'")}')">저장</button><div class="tsm-saved">${r?'저장됨':''}</div></td></tr>`}).join(''):`<tr><td colspan="4" class="tsm-empty">담당 학생이 없습니다. 반 배정을 확인해주세요.</td></tr>`}</tbody></table></div></div>`;
     document.getElementById('tsmMonth').onchange=e=>{month=e.target.value||new Date().toISOString().slice(0,7);render();};
@@ -52,7 +53,8 @@
         const bi=classOrder.get('id:'+String(b.classId||''))??classOrder.get('name:'+String(b.className||''))??9999;
         return ai-bi||String(a.name||'').localeCompare(String(b.name||''),'ko');
       });
-    }catch(e){console.error('[YMS] teacher student management load',e);students=[];records=[];}
+      window.YMS_TeacherStudentRoster=[...students];
+    }catch(e){console.error('[YMS] teacher student management load',e);students=[];records=[];window.YMS_TeacherStudentRoster=[];}
     render();
   }
 
