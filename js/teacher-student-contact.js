@@ -35,7 +35,6 @@
         const th=document.createElement('th');th.className='tsm-contact-head '+(['tsm-school','tsm-grade','tsm-phone','tsm-phone'][i]);th.textContent=label;
         nameTh?.insertAdjacentElement('afterend',th);
       });
-      // insertAdjacentElement(afterend) reverses order, so normalize explicitly.
       const added=[...hr.querySelectorAll('.tsm-contact-head')];
       added.forEach(x=>x.remove());
       const labels=[['학교','tsm-school'],['학년','tsm-grade'],['학생 전화','tsm-phone'],['부모님 전화','tsm-phone']];
@@ -58,10 +57,16 @@
   }
 
   async function load(){
-    try{const r=await _tFetch('tables/students?limit=1000',{cache:'no-store'});if(r.ok)students=(await r.json()).data||[];}catch(e){console.warn('[YMS] teacher contact load failed',e)}
+    const shared=Array.isArray(window.YMS_TeacherStudentRoster)?window.YMS_TeacherStudentRoster:[];
+    if(shared.length){students=[...shared];enhance();return;}
+    try{const r=await _tFetch('tables/students?limit=1000');if(r.ok)students=(await r.json()).data||[];}catch(e){console.warn('[YMS] teacher contact load failed',e)}
     enhance();
   }
-  let timer=null;const obs=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(enhance,30);});
-  function boot(){load();obs.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,300);}
+  let timer=null;const obs=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(()=>{
+    const shared=Array.isArray(window.YMS_TeacherStudentRoster)?window.YMS_TeacherStudentRoster:[];
+    if(shared.length)students=[...shared];
+    enhance();
+  },60);});
+  function boot(){setTimeout(load,180);obs.observe(document.body,{childList:true,subtree:true});setTimeout(enhance,420);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
