@@ -13,7 +13,7 @@
 
   async function getStudent(id){
     if(!id)return null;
-    try{const r=await _tFetch('tables/students/'+encodeURIComponent(id),{cache:'no-store'});return r.ok?await r.json():null;}catch{return null;}
+    try{const r=await _tFetch('tables/students/'+encodeURIComponent(id));return r.ok?await r.json():null;}catch{return null;}
   }
 
   async function viewerStudents(u){
@@ -22,7 +22,7 @@
       const ids=[u?.studentId,u?._tableId].map(str).filter(Boolean);
       for(const id of ids){const s=await getStudent(id);if(s)return [s];}
       try{
-        const r=await _tFetch('tables/students?limit=1000',{cache:'no-store'});
+        const r=await _tFetch('tables/students?limit=1000');
         if(r.ok){
           const list=(await r.json()).data||[],uid=str(u?.id||u?.uid);
           const s=list.find(x=>(uid&&str(x.userId)===uid)||(norm(x.name)&&norm(x.name)===norm(u?.name)));
@@ -63,7 +63,7 @@
   async function loadLiveCalendar(){
     const u=me();if(!u||!window._tFetch)return;
     try{
-      const [hr,cr]=await Promise.all([_tFetch('tables/homework?limit=500',{cache:'no-store'}),_tFetch('tables/classes?limit=500',{cache:'no-store'})]);
+      const [hr,cr]=await Promise.all([_tFetch('tables/homework?limit=500'),_tFetch('tables/classes?limit=500')]);
       let homework=hr.ok?((await hr.json()).data||[]):[];
       const classes=cr.ok?((await cr.json()).data||[]):[];
       window.YMS_DEMO.teacherClasses=classes.map(c=>({classId:c.id||c.classId,className:c.className||c.name||''}));
