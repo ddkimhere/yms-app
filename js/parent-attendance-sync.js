@@ -1,4 +1,4 @@
-/* YMS parent attendance linkage: fresh childIds + durable attendance history */
+/* YMS parent attendance linkage: scoped child attendance + cached history */
 (function(){
   'use strict';
   if((location.pathname.split('/').pop()||'')!=='attendance.html')return;
@@ -7,10 +7,30 @@
   const me=auth?.getUser?.();
   if(String(me?.role||'').toUpperCase()!=='PARENT')return;
   const str=v=>String(v||'').trim();
+  const ATT_TTL=2*60*1000;
+  const attCache=new Map();
+  let lastSyncAt=0;
+
+  function decodeVal(v){
+    if(!v||typeof v!=='object')return null;
+    if('stringValue'in v)return v.stringValue;
+    if('integerValue'in v)return Number(v.integerValue);
+    if('doubleValue'in v)return Number(v.doubleValue);
+    if('booleanValue'in v)return v.booleanValue;
+    if('timestampValue'in v)return v.timestampValue;
+    if('nullValue'in v)return null;
+    if('arrayValue'in v)return (v.arrayValue.values||[]).map(decodeVal);
+    return null;
+  }
+  function decodeDoc(doc){
+    const out={id:String(doc?.name||'').split('/').pop()};
+    Object.entries(doc?.fields||{}).forEach(([k,v])=>out[k]=decodeVal(v));
+    return out;
+  }
 
   async function read(path){
     try{
-      const r=await _tFetch(path,{cache:'no-store'});
+      const r=await _tFetch(path);
       if(!r.ok)return null;
       return await r.json();
     }catch{return null;}
@@ -32,6 +52,25 @@
       if(s&&!Array.isArray(s))out.push(s);
     }
     return out;
+  }
+
+  async function queryAttendance(studentId){
+    const sid=str(studentId);if(!sid)return [];
+    const cached=attCache.get(sid);
+    if(cached&&Date.now()-cached.at<ATT_TTL)return cached.data;
+    const token=auth?.getToken?.();
+    if(!token)throw new Error('로그인이 필요합니다.');
+    const url='https://firestore.googleapis.com/v1/projects/yms-app-bb735/databases/(default)/documents:runQuery';
+    const body={structuredQuery:{
+      from:[{collectionId:'attendance'}],
+      where:{fieldFilter:{field:{fieldPath:'studentId'},op:'EQUAL',value:{stringValue:sid}}},
+      limit:500
+    }};
+    const r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)throw new Error(`출결 조회 실패 (${r.status})`);
+    const rows=(await r.json()).filter(x=>x.document).map(x=>decodeDoc(x.document));
+    attCache.set(sid,{at:Date.now(),data:rows});
+    return rows;
   }
 
   function renderSelector(children){
@@ -70,17 +109,17 @@
       const yyyyMM=`${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
       let records=[];
       try{
-        const r=await _tFetch('tables/attendance?limit=3000',{cache:'no-store'});
-        if(r.ok){
-          const j=await r.json();
-          records=(j.data||[]).filter(x=>String(x.studentId||'')===String(selectedStudentId||'')&&String(x.date||'').startsWith(yyyyMM));
-        }
+        const all=await queryAttendance(selectedStudentId);
+        records=all.filter(x=>String(x.date||'').startsWith(yyyyMM));
       }catch(e){console.warn('[YMS] 부모 출결 조회 실패',e);}
       if(typeof renderParentRecords==='function')renderParentRecords(records);
     };
   }
 
   async function sync(){
+    const now=Date.now();
+    if(now-lastSyncAt<1000)return;
+    lastSyncAt=now;
     try{
       installDurableLoader();
       const children=await resolveChildren();
