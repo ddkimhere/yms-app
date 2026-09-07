@@ -24,6 +24,18 @@
     `;document.head.appendChild(s);
   }
 
+  function decodeVal(v){if(!v||typeof v!=='object')return null;if('stringValue'in v)return v.stringValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('booleanValue'in v)return v.booleanValue;if('timestampValue'in v)return v.timestampValue;if('nullValue'in v)return null;if('arrayValue'in v)return (v.arrayValue.values||[]).map(decodeVal);return null;}
+  function decodeDoc(doc){const out={id:String(doc?.name||'').split('/').pop()};Object.entries(doc?.fields||{}).forEach(([k,v])=>out[k]=decodeVal(v));return out;}
+  async function runEqualQuery(collection,field,value,limit=1000){
+    const token=window.YMS_Auth?.getToken?.();if(!token)throw new Error('NO_TOKEN');
+    const url='https://firestore.googleapis.com/v1/projects/yms-app-bb735/databases/(default)/documents:runQuery';
+    const body={structuredQuery:{from:[{collectionId:collection}],where:{fieldFilter:{field:{fieldPath:field},op:'EQUAL',value:{stringValue:String(value)}}},limit}};
+    const r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)throw new Error(`QUERY_${collection}_${r.status}`);
+    return (await r.json()).filter(x=>x.document).map(x=>decodeDoc(x.document));
+  }
+  function dedupe(list){const m=new Map();for(const x of list||[]){if(x?.id)m.set(String(x.id),x);}return [...m.values()];}
+
   function recordFor(sid){
     return records.filter(r=>String(r.studentId||'')===String(sid)&&String(r.month||String(r.repliedAt||r.updatedAt||r.createdAt||'').slice(0,7))===month&&String(r.recordType||'')==='MONTHLY_TEACHER').sort((a,b)=>String(b.updatedAt||b.repliedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.repliedAt||a.createdAt||'')))[0]||null;
   }
@@ -40,19 +52,37 @@
   async function load(){
     css();const host=root();if(host)host.innerHTML='<div class="tsm-page"><div class="tsm-empty">학생 명단을 불러오는 중...</div></div>';
     try{
-      const [cr,sr,rr]=await Promise.all([_tFetch('tables/classes?limit=300'),_tFetch('tables/students?limit=1000'),_tFetch('tables/counseling?limit=1000')]);
+      const cr=await _tFetch('tables/classes?limit=300');
       const classes=cr.ok?((await cr.json()).data||[]):[];
-      const allStudents=sr.ok?((await sr.json()).data||[]):[];
-      records=rr.ok?((await rr.json()).data||[]):[];
       const assigned=Array.isArray(me.teacherClasses)?me.teacherClasses:String(me.teacherClasses||'').split(',').map(x=>x.trim()).filter(Boolean);
       const mine=classes.filter(c=>String(c.teacherId||'')===uid||String(c.teacherName||'')===String(me.name||'')||assigned.includes(String(c.id||''))||assigned.includes(String(c.className||'')));
       classOrder=new Map();mine.forEach((c,i)=>{if(c.id)classOrder.set('id:'+String(c.id),i);if(c.className)classOrder.set('name:'+String(c.className),i)});
-      const ids=new Set(mine.map(c=>String(c.id||'')).filter(Boolean));const names=new Set(mine.map(c=>String(c.className||'')).filter(Boolean));
-      students=allStudents.filter(s=>s.isActive!==false&&(ids.has(String(s.classId||''))||names.has(String(s.className||''))||String(s.teacherId||'')===uid||String(s.teacherName||'')===String(me.name||''))).sort((a,b)=>{
+
+      let scopedStudents=[],scopedRecords=[];
+      const classIds=mine.map(c=>String(c.id||'')).filter(Boolean);
+      if(classIds.length){
+        try{
+          const studentSets=await Promise.all(classIds.map(id=>runEqualQuery('students','classId',id,500)));
+          const counselingSets=await Promise.all(classIds.map(id=>runEqualQuery('counseling','classId',id,500)));
+          scopedStudents=dedupe(studentSets.flat());
+          scopedRecords=dedupe(counselingSets.flat());
+        }catch(queryErr){
+          console.warn('[YMS] scoped teacher query fallback',queryErr);
+          const [sr,rr]=await Promise.all([_tFetch('tables/students?limit=1000'),_tFetch('tables/counseling?limit=1000')]);
+          const allStudents=sr.ok?((await sr.json()).data||[]):[];
+          const allRecords=rr.ok?((await rr.json()).data||[]):[];
+          const ids=new Set(classIds),names=new Set(mine.map(c=>String(c.className||'')).filter(Boolean));
+          scopedStudents=allStudents.filter(s=>ids.has(String(s.classId||''))||names.has(String(s.className||''))||String(s.teacherId||'')===uid||String(s.teacherName||'')===String(me.name||''));
+          scopedRecords=allRecords.filter(r=>ids.has(String(r.classId||''))||String(r.teacherId||'')===uid);
+        }
+      }
+
+      students=scopedStudents.filter(s=>s.isActive!==false).sort((a,b)=>{
         const ai=classOrder.get('id:'+String(a.classId||''))??classOrder.get('name:'+String(a.className||''))??9999;
         const bi=classOrder.get('id:'+String(b.classId||''))??classOrder.get('name:'+String(b.className||''))??9999;
         return ai-bi||String(a.name||'').localeCompare(String(b.name||''),'ko');
       });
+      records=scopedRecords;
       window.YMS_TeacherStudentRoster=[...students];
     }catch(e){console.error('[YMS] teacher student management load',e);students=[];records=[];window.YMS_TeacherStudentRoster=[];}
     render();
