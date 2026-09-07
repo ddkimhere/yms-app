@@ -10,20 +10,42 @@
   const myUid=()=>String(authUser()?.id||authUser()?.uid||'');
   const canEdit=hw=>isAdmin()||(isTeacher()&&String(hw?.teacherId||'')===myUid());
 
+  function decodeVal(v){if(!v||typeof v!=='object')return null;if('stringValue'in v)return v.stringValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('booleanValue'in v)return v.booleanValue;if('timestampValue'in v)return v.timestampValue;if('nullValue'in v)return null;if('arrayValue'in v)return (v.arrayValue.values||[]).map(decodeVal);return null;}
+  function decodeDoc(doc){const out={id:String(doc?.name||'').split('/').pop()};Object.entries(doc?.fields||{}).forEach(([k,v])=>out[k]=decodeVal(v));return out;}
+  async function runStudentsByClass(classId){
+    const token=window.YMS_Auth?.getToken?.();if(!token)throw new Error('NO_TOKEN');
+    const url='https://firestore.googleapis.com/v1/projects/yms-app-bb735/databases/(default)/documents:runQuery';
+    const body={structuredQuery:{from:[{collectionId:'students'}],where:{fieldFilter:{field:{fieldPath:'classId'},op:'EQUAL',value:{stringValue:String(classId)}}},limit:500}};
+    const r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)throw new Error('STUDENT_QUERY_'+r.status);
+    return (await r.json()).filter(x=>x.document).map(x=>decodeDoc(x.document));
+  }
+  function dedupe(list){const m=new Map();for(const x of list||[]){if(x?.id)m.set(String(x.id),x);}return [...m.values()];}
+
   async function loadScope(){
     try{
       const u=authUser();
-      const [sr,cr]=await Promise.all([_tFetch('tables/students?limit=500'),_tFetch('tables/classes?limit=200')]);
-      const allStudents=sr.ok?((await sr.json()).data||[]):[];
+      const cr=await _tFetch('tables/classes?limit=200');
       const allClasses=cr.ok?((await cr.json()).data||[]):[];
-      if(isAdmin()){students=allStudents;teacherClasses=allClasses;return;}
+      if(isAdmin()){
+        const sr=await _tFetch('tables/students?limit=500');
+        students=sr.ok?((await sr.json()).data||[]):[];teacherClasses=allClasses;return;
+      }
       if(isTeacher()){
         const assigned=Array.isArray(u?.teacherClasses)?u.teacherClasses:String(u?.teacherClasses||'').split(',').map(x=>x.trim()).filter(Boolean);
         const uid=myUid(),un=norm(u?.name);
         teacherClasses=allClasses.filter(c=>(uid&&String(c.teacherId||'')===uid)||(un&&norm(c.teacherName)===un)||assigned.includes(String(c.id||''))||assigned.includes(String(c.className||'')));
-        const ids=new Set(teacherClasses.map(c=>String(c.id||'')).filter(Boolean));
-        const names=new Set(teacherClasses.map(c=>String(c.className||'')).filter(Boolean));
-        students=allStudents.filter(s=>ids.has(String(s.classId||''))||names.has(String(s.className||'')));
+        const classIds=teacherClasses.map(c=>String(c.id||'')).filter(Boolean);
+        if(!classIds.length){students=[];return;}
+        try{
+          students=dedupe((await Promise.all(classIds.map(runStudentsByClass))).flat());
+        }catch(queryErr){
+          console.warn('[YMS] homework scoped students fallback',queryErr);
+          const sr=await _tFetch('tables/students?limit=500');
+          const allStudents=sr.ok?((await sr.json()).data||[]):[];
+          const ids=new Set(classIds),names=new Set(teacherClasses.map(c=>String(c.className||'')).filter(Boolean));
+          students=allStudents.filter(s=>ids.has(String(s.classId||''))||names.has(String(s.className||'')));
+        }
         return;
       }
       students=[];teacherClasses=[];
