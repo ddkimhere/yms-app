@@ -5,6 +5,8 @@
 
   const READING_N_FEE=10000;
   const QR_SRC='images/dairoom-pay-qr.svg';
+  const BOOK_BANK='카카오뱅크 3333-36-6373135';
+  const BOOK_HOLDER='김소라';
   const cfg=()=>window.YMS_FIREBASE_CONFIG||{projectId:'yms-app-bb735'};
   const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
   const escFile=v=>String(v||'학생').replace(/[\\/:*?"<>|]/g,'');
@@ -54,15 +56,16 @@
     if(fees.length>maxRows){text(ctx,`외 ${fees.length-maxRows}건`,135,y,25,650,'#7A87A8');}
     const total=fees.reduce((s,f)=>s+Number(f.amount||0),0);ctx.strokeStyle='#DCE4F3';ctx.beginPath();ctx.moveTo(135,915);ctx.lineTo(935,915);ctx.stroke();text(ctx,'교재비 합계',135,970,34,850,'#14245A');text(ctx,money(total),935,970,44,900,'#1E3278','right');
 
-    text(ctx,'다이로움 결제',110,1055,32,850,'#14245A');
-    text(ctx,'교재비는 다이로움 QR로 결제할 수 있습니다.',110,1100,25,600,'#526080');
-    text(ctx,'ReadingN(리딩앤) 이용료 10,000원은 교재비에 포함됩니다.',110,1140,23,600,'#7A87A8');
+    text(ctx,'교재비 납부 안내',110,1045,31,850,'#14245A');
+    text(ctx,'다이로움 QR 또는 아래 계좌로 납부해주세요.',110,1085,24,600,'#526080');
+    text(ctx,`${BOOK_BANK}  ·  예금주 ${BOOK_HOLDER}`,110,1125,27,800,'#1E3278');
+    text(ctx,'ReadingN(리딩앤) 이용료 10,000원은 교재비에 포함됩니다.',110,1162,21,600,'#7A87A8');
     try{
       const img=await loadImg(QR_SRC);
-      ctx.fillStyle='#FFFFFF';ctx.fillRect(780,1030,170,170);ctx.drawImage(img,790,1040,150,150);
-      text(ctx,'익산 다이로움',865,1222,20,700,'#1E3278','center');
+      ctx.fillStyle='#FFFFFF';ctx.fillRect(790,1025,160,160);ctx.drawImage(img,800,1035,140,140);
+      text(ctx,'익산 다이로움',870,1205,19,700,'#1E3278','center');
     }catch(e){console.warn('[YMS] book fee QR load failed',e);}
-    text(ctx,'※ 교육비와 교재비는 별도 내역서로 안내됩니다.',110,1215,22,600,'#8A96B2');
+    text(ctx,'※ 교육비와 교재비는 별도 내역서로 안내됩니다.',110,1210,21,600,'#8A96B2');
     text(ctx,'YMS 부송관 영어 · 문의 063-832-0219',540,1270,23,650,'#8A96B2','center');
 
     const a=document.createElement('a');a.href=c.toDataURL('image/jpeg',0.94);a.download=`${escFile(student?.name||fees[0]?.studentName)}_${targetMonth}_교재비내역.jpg`;document.body.appendChild(a);a.click();a.remove();
