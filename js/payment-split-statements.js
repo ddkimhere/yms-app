@@ -4,12 +4,14 @@
   if(!location.pathname.endsWith('/admin.html')) return;
 
   const READING_N_FEE=10000;
+  const QR_SRC='images/dairoom-pay-qr.svg';
   const cfg=()=>window.YMS_FIREBASE_CONFIG||{projectId:'yms-app-bb735'};
   const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
   const escFile=v=>String(v||'학생').replace(/[\\/:*?"<>|]/g,'');
   const monthLabel=m=>{const p=String(m||'').split('-');return p.length===2?`${p[0]}년 ${Number(p[1])}월`:String(m||'');};
   const text=(ctx,v,x,y,size=34,weight=500,color='#1A2340',align='left')=>{ctx.font=`${weight} ${size}px -apple-system,BlinkMacSystemFont,"Noto Sans KR","Segoe UI",sans-serif`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(String(v??''),x,y);};
   const round=(ctx,x,y,w,h,r,fill,stroke)=>{ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}};
+  const loadImg=src=>new Promise((ok,fail)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=fail;i.src=src;});
   let activeStudentId='';
 
   function decodeVal(v){if(!v||typeof v!=='object')return null;if('stringValue'in v)return v.stringValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return Number(v.doubleValue);if('booleanValue'in v)return v.booleanValue;if('timestampValue'in v)return v.timestampValue;return null;}
@@ -45,13 +47,23 @@
     text(ctx,'YMS 부송관 영어',110,135,44,800,'#FFFFFF');text(ctx,'교재비 내역서',110,205,60,900,'#FFFFFF');
     text(ctx,student?.name||fees[0]?.studentName||'학생',110,340,48,900,'#14245A');text(ctx,`${monthLabel(targetMonth)} 교재비`,970,335,30,700,'#7492D5','right');if(student?.className)text(ctx,student.className,110,385,27,600,'#7A87A8');
 
-    round(ctx,95,430,890,600,26,'#F8FAFE','#E3E8F4');
+    round(ctx,95,430,890,565,26,'#F8FAFE','#E3E8F4');
     text(ctx,'교재명',135,495,29,800,'#65718B');text(ctx,'금액',935,495,29,800,'#65718B','right');ctx.strokeStyle='#DCE4F3';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(135,520);ctx.lineTo(935,520);ctx.stroke();
-    let y=575;const maxRows=7;
+    let y=575;const maxRows=6;
     fees.slice(0,maxRows).forEach(f=>{const name=f.bookName||f.memo||'교재';text(ctx,name.length>22?name.slice(0,22)+'…':name,135,y,29,650,'#273453');text(ctx,money(f.amount),935,y,30,750,'#1A2340','right');y+=62;});
     if(fees.length>maxRows){text(ctx,`외 ${fees.length-maxRows}건`,135,y,25,650,'#7A87A8');}
-    const total=fees.reduce((s,f)=>s+Number(f.amount||0),0);ctx.strokeStyle='#DCE4F3';ctx.beginPath();ctx.moveTo(135,955);ctx.lineTo(935,955);ctx.stroke();text(ctx,'교재비 합계',135,1010,34,850,'#14245A');text(ctx,money(total),935,1010,44,900,'#1E3278','right');
-    text(ctx,'※ 교육비와 교재비는 별도 내역서로 안내됩니다.',110,1100,28,700,'#526080');text(ctx,'ReadingN(리딩앤) 이용료 10,000원은 교재비에 포함됩니다.',110,1150,24,600,'#7A87A8');text(ctx,'YMS 부송관 영어 · 문의 063-832-0219',540,1260,23,650,'#8A96B2','center');
+    const total=fees.reduce((s,f)=>s+Number(f.amount||0),0);ctx.strokeStyle='#DCE4F3';ctx.beginPath();ctx.moveTo(135,915);ctx.lineTo(935,915);ctx.stroke();text(ctx,'교재비 합계',135,970,34,850,'#14245A');text(ctx,money(total),935,970,44,900,'#1E3278','right');
+
+    text(ctx,'다이로움 결제',110,1055,32,850,'#14245A');
+    text(ctx,'교재비는 다이로움 QR로 결제할 수 있습니다.',110,1100,25,600,'#526080');
+    text(ctx,'ReadingN(리딩앤) 이용료 10,000원은 교재비에 포함됩니다.',110,1140,23,600,'#7A87A8');
+    try{
+      const img=await loadImg(QR_SRC);
+      ctx.fillStyle='#FFFFFF';ctx.fillRect(780,1030,170,170);ctx.drawImage(img,790,1040,150,150);
+      text(ctx,'익산 다이로움',865,1222,20,700,'#1E3278','center');
+    }catch(e){console.warn('[YMS] book fee QR load failed',e);}
+    text(ctx,'※ 교육비와 교재비는 별도 내역서로 안내됩니다.',110,1215,22,600,'#8A96B2');
+    text(ctx,'YMS 부송관 영어 · 문의 063-832-0219',540,1270,23,650,'#8A96B2','center');
 
     const a=document.createElement('a');a.href=c.toDataURL('image/jpeg',0.94);a.download=`${escFile(student?.name||fees[0]?.studentName)}_${targetMonth}_교재비내역.jpg`;document.body.appendChild(a);a.click();a.remove();
     window.YMS_UI?.toast?.('교재비 JPG 내역서가 저장되었습니다.');
