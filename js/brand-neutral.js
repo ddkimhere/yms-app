@@ -1,14 +1,16 @@
-/* Neutral app branding: remove visible YMS text while preserving statement JPG generators */
+/* Class Note branding: remove visible YMS text while preserving statement JPG generators */
 (function(){
   'use strict';
 
+  const APP_NAME='Class Note';
   const SKIP_TAGS=new Set(['SCRIPT','STYLE','NOSCRIPT','CANVAS','TEXTAREA']);
   const ATTRS=['title','placeholder','aria-label','alt'];
 
   function cleanText(v){
-    if(typeof v!=='string'||!v.toUpperCase().includes('YMS')) return v;
+    if(typeof v!=='string') return v;
     return v
-      .replace(/YMS\s*Master\s*Track/gi,'Master Track')
+      .replace(/YMS\s*Master\s*Track/gi,APP_NAME)
+      .replace(/Master\s*Track/gi,APP_NAME)
       .replace(/YMS/gi,'')
       .replace(/[ \t]{2,}/g,' ')
       .replace(/\s+([·|/,:;!?])/g,'$1')
@@ -26,27 +28,27 @@
   function scrubNode(root){
     if(!root) return;
     if(root.nodeType===3){
-      if(!shouldSkip(root)&&/YMS/i.test(root.nodeValue||'')) root.nodeValue=cleanText(root.nodeValue||'');
+      if(!shouldSkip(root)&&/(YMS|Master\s*Track)/i.test(root.nodeValue||'')) root.nodeValue=cleanText(root.nodeValue||'');
       return;
     }
     if(root.nodeType!==1&&root.nodeType!==9&&root.nodeType!==11) return;
     if(root.nodeType===1&&!shouldSkip(root)){
-      ATTRS.forEach(a=>{const v=root.getAttribute?.(a);if(v&&/YMS/i.test(v))root.setAttribute(a,cleanText(v));});
+      ATTRS.forEach(a=>{const v=root.getAttribute?.(a);if(v&&/(YMS|Master\s*Track)/i.test(v))root.setAttribute(a,cleanText(v));});
     }
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-    let n;while((n=walker.nextNode())){if(!shouldSkip(n)&&/YMS/i.test(n.nodeValue||''))n.nodeValue=cleanText(n.nodeValue||'');}
+    let n;while((n=walker.nextNode())){if(!shouldSkip(n)&&/(YMS|Master\s*Track)/i.test(n.nodeValue||''))n.nodeValue=cleanText(n.nodeValue||'');}
     if(root.querySelectorAll){
       root.querySelectorAll(ATTRS.map(a=>`[${a}]`).join(',')).forEach(el=>{
         if(shouldSkip(el))return;
-        ATTRS.forEach(a=>{const v=el.getAttribute(a);if(v&&/YMS/i.test(v))el.setAttribute(a,cleanText(v));});
+        ATTRS.forEach(a=>{const v=el.getAttribute(a);if(v&&/(YMS|Master\s*Track)/i.test(v))el.setAttribute(a,cleanText(v));});
       });
     }
   }
 
   function scrubTitle(){
-    if(/YMS/i.test(document.title||''))document.title=cleanText(document.title);
+    if(/(YMS|Master\s*Track)/i.test(document.title||''))document.title=cleanText(document.title)||APP_NAME;
     document.querySelectorAll('meta[name="application-name"],meta[name="apple-mobile-web-app-title"]').forEach(m=>{
-      const v=m.getAttribute('content')||'';if(/YMS/i.test(v))m.setAttribute('content',cleanText(v)||'Master Track');
+      const v=m.getAttribute('content')||'';if(/(YMS|Master\s*Track)/i.test(v))m.setAttribute('content',cleanText(v)||APP_NAME);
     });
   }
 
