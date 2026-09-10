@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Master Track",
-  "short_name": "Master Track",
-  "description": "학원 관리 앱",
+  "name": "Class Note",
+  "short_name": "Class Note",
+  "description": "수업과 학생을 관리하는 개인 업무 앱",
   "start_url": "./login.html",
   "scope": "./",
   "display": "standalone",
